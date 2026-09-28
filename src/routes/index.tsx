@@ -29,7 +29,8 @@ function Home() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="grid-backdrop">
+      <main className="relative">
+        <div aria-hidden className="grid-backdrop pointer-events-none absolute inset-0 -z-10" />
         <section className="mx-auto max-w-4xl px-4 py-24 text-center">
           <h1 className="font-display text-4xl font-bold tracking-tight sm:text-6xl">
             Master DSA by <span className="text-gradient">Patterns</span> 🚀
