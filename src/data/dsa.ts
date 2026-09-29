@@ -1,3 +1,4 @@
+import { buildExtraProblems } from "./extra-problems";
 export type Difficulty = "Easy" | "Medium" | "Hard";
 
 export interface Topic {
@@ -531,7 +532,7 @@ function starter(
   return { cpp, javascript: js, python: py, java };
 }
 
-export const PROBLEMS: Problem[] = [
+const CORE_PROBLEMS: Problem[] = [
   {
     slug: "two-sum",
     title: "Two Sum",
@@ -1265,13 +1266,18 @@ export const PROBLEMS: Problem[] = [
   },
 ];
 
+export const PROBLEMS: Problem[] = [
+  ...CORE_PROBLEMS,
+  ...buildExtraProblems().filter((e) => !CORE_PROBLEMS.some((c) => c.slug === e.slug)),
+];
+
 export const topicBySlug = (slug: string) => TOPICS.find((t) => t.slug === slug);
 export const patternBySlug = (slug: string) => PATTERNS.find((p) => p.slug === slug);
 export const problemBySlug = (slug: string) => PROBLEMS.find((p) => p.slug === slug);
 
 export const PLATFORM_STATS = [
   { label: "Patterns", value: "250+", detail: "Reusable problem-solving templates" },
-  { label: "DSA Problems", value: "20+", detail: "Curated, pattern-tagged and growing" },
+  { label: "DSA Problems", value: "250+", detail: "Curated, pattern-tagged and growing" },
   { label: "CodeX Playground", value: "4 langs", detail: "C++, JavaScript, Python, Java" },
   { label: "Progress Tracking", value: "Live", detail: "Streaks, topics and revision" },
 ];
