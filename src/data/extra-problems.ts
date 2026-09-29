@@ -278,7 +278,7 @@ export function buildExtraProblems(): Problem[] {
   return RAW.trim()
     .split("\n")
     .map((line, i) => {
-      const [title, d, topic, pattern] = line.split("|");
+      const [title = "", d = "M", topic = "", pattern = ""] = line.split("|");
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       const name = pattern.replace(/-/g, " ");
       return {
@@ -286,7 +286,7 @@ export function buildExtraProblems(): Problem[] {
         title,
         topic,
         pattern,
-        difficulty: D[d],
+        difficulty: D[d] ?? "Medium",
         description: `Solve "${title}". Read the full statement on the linked practice page, then work through the steps here.`,
         examples: [],
         constraints: [],
