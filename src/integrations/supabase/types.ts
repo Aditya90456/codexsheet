@@ -7,14 +7,104 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          id: string
+          username: string | null
+          display_name: string | null
+          avatar_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          username?: string | null
+          display_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          username?: string | null
+          display_name?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_progress: {
+        Row: {
+          id: string
+          user_id: string
+          problem_slug: string
+          status: "unsolved" | "attempted" | "solved"
+          language: "cpp" | "javascript" | "python" | "java" | null
+          code: string | null
+          notes: string | null
+          starred: boolean
+          solved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          problem_slug: string
+          status?: "unsolved" | "attempted" | "solved"
+          language?: "cpp" | "javascript" | "python" | "java" | null
+          code?: string | null
+          notes?: string | null
+          starred?: boolean
+          solved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          problem_slug?: string
+          status?: "unsolved" | "attempted" | "solved"
+          language?: "cpp" | "javascript" | "python" | "java" | null
+          code?: string | null
+          notes?: string | null
+          starred?: boolean
+          solved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      user_streaks: {
+        Row: {
+          user_id: string
+          current_streak: number
+          longest_streak: number
+          last_solved_date: string | null
+          total_solved: number
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          current_streak?: number
+          longest_streak?: number
+          last_solved_date?: string | null
+          total_solved?: number
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          current_streak?: number
+          longest_streak?: number
+          last_solved_date?: string | null
+          total_solved?: number
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
