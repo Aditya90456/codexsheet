@@ -1,9 +1,18 @@
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 
-/** Returns the browser backend client (null during server rendering). */
-export function getSupabase() {
-  if (typeof window === "undefined") return null;
-  return supabase;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+let clerkTokenGetter: (() => Promise<string | null>) | null = null;
+
+export function setClerkTokenGetter(getter: (() => Promise<string | null>) | null) {
+  clerkTokenGetter = getter;
 }
 
-export const isSupabaseConfigured = true;
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      accessToken: async () => clerkTokenGetter?.() ?? null,
+    })
+  : null;
+
+export { supabase };
