@@ -7,14 +7,15 @@ import {
   useUser,
 } from "@clerk/clerk-react";
 import {
+  ArrowRight,
   Check,
   ChevronDown,
   CircleHelp,
   Code2,
   ExternalLink,
-  Filter,
   GitBranch,
-  ListFilter,
+  LayoutDashboard,
+  Rows3,
   Search,
   Sparkles,
   Target,
@@ -134,6 +135,7 @@ function App() {
       ) as ProgressMap,
   );
   const [query, setQuery] = useState("");
+  const [activeView, setActiveView] = useState<"dashboard" | "problems">("dashboard");
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
@@ -162,6 +164,31 @@ function App() {
     (item) => item.status === "In progress",
   ).length;
   const percent = Math.round((solved / 250) * 100);
+  const studyQueue = useMemo(
+    () =>
+      problems
+        .filter((problem) => progress[problem.number]?.status !== "Solved")
+        .sort((left, right) => {
+          const leftActive = progress[left.number]?.status === "In progress";
+          const rightActive = progress[right.number]?.status === "In progress";
+          return Number(rightActive) - Number(leftActive) || left.number - right.number;
+        })
+        .slice(0, 5),
+    [progress],
+  );
+  const patternStats = useMemo(
+    () =>
+      patterns
+        .map((name) => {
+          const matching = problems.filter((problem) => problem.pattern === name);
+          const completed = matching.filter(
+            (problem) => progress[problem.number]?.status === "Solved",
+          ).length;
+          return { name, total: matching.length, completed };
+        })
+        .filter((item) => item.total > 0),
+    [progress],
+  );
 
   useEffect(() => {
     setClerkTokenGetter(() => getToken({ template: "supabase" }));
@@ -244,12 +271,17 @@ function App() {
             <div className="breadcrumb">
               <span>Library</span>
               <span>/</span>
-              <span>Interview prep</span>
+              <span>{activeView === "dashboard" ? "Dashboard" : "Problems"}</span>
             </div>
             <h1>
-              DSA 250 <span className="private-pill">Curated sheet</span>
+              {activeView === "dashboard" ? "Your progress" : "Problem library"}{" "}
+              <span className="private-pill">DSA 250</span>
             </h1>
-            <p>A focused path through the patterns that show up most.</p>
+            <p>
+              {activeView === "dashboard"
+                ? "A clear view of your practice and what to tackle next."
+                : "Find a problem, update its status, and keep your practice moving."}
+            </p>
           </div>
           <div className="title-actions">
             <button className="secondary-button">
@@ -260,20 +292,27 @@ function App() {
             </button>
           </div>
         </div>
-        <nav className="toolbar">
-          <button className="tool-button">
-            <ListFilter size={16} /> Views
+        <nav className="view-switcher" aria-label="Workspace views">
+          <button
+            className={activeView === "dashboard" ? "active" : ""}
+            aria-pressed={activeView === "dashboard"}
+            onClick={() => setActiveView("dashboard")}
+          >
+            <LayoutDashboard size={16} /> Dashboard
           </button>
-          <button className="tool-button">
-            <Filter size={16} /> Saved filters
+          <button
+            className={activeView === "problems" ? "active" : ""}
+            aria-pressed={activeView === "problems"}
+            onClick={() => setActiveView("problems")}
+          >
+            <Rows3 size={16} /> Problems
+            <span>{visibleProblems.length}</span>
           </button>
-          <span className="toolbar-spacer" />
-          <span className="sync-note">
-            {visibleProblems.length} problems shown
-          </span>
         </nav>
       </section>
-      <section className="insight-strip">
+      {activeView === "dashboard" && (
+        <>
+          <section className="insight-strip">
         <div className="insight">
           <span className="insight-label">Solved</span>
           <strong>
@@ -298,8 +337,81 @@ function App() {
           <Trophy size={16} />
           <span>{250 - solved} problems left in your path</span>
         </div>
-      </section>
-      <section className="sheet-card">
+          </section>
+          <section className="dashboard-grid">
+            <div className="dashboard-panel queue-panel">
+              <header className="panel-heading">
+                <div>
+                  <span className="insight-label">Study queue</span>
+                  <h2>{inProgress ? "Pick up where you left off" : "Start with a classic"}</h2>
+                </div>
+                <button className="panel-link" onClick={() => setActiveView("problems")}>
+                  All problems <ArrowRight size={15} />
+                </button>
+              </header>
+              <div className="queue-list">
+                {studyQueue.map((problem) => {
+                  const current = progress[problem.number]?.status ?? "Todo";
+                  return (
+                    <div className="queue-row" key={problem.number}>
+                      <span className="queue-number">{String(problem.number).padStart(3, "0")}</span>
+                      <div className="queue-problem">
+                        <strong>{problem.title}</strong>
+                        <span>{problem.pattern}</span>
+                      </div>
+                      <span className={`queue-status ${current.toLowerCase().replace(" ", "-")}`}>
+                        {current}
+                      </span>
+                      <a
+                        className="external-link"
+                        href={problem.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Open ${problem.title}`}
+                      >
+                        <ArrowRight size={15} />
+                      </a>
+                    </div>
+                  );
+                })}
+                {studyQueue.length === 0 && (
+                  <p className="queue-empty">Every problem is marked solved. Nice work.</p>
+                )}
+              </div>
+            </div>
+            <div className="dashboard-panel pattern-panel">
+              <header className="panel-heading">
+                <div>
+                  <span className="insight-label">Coverage</span>
+                  <h2>Patterns</h2>
+                </div>
+                <span className="pattern-total">{patternStats.length} topics</span>
+              </header>
+              <div className="pattern-overview">
+                {patternStats.slice(0, 7).map((item) => (
+                  <div className="pattern-progress" key={item.name}>
+                    <div>
+                      <span>{item.name}</span>
+                      <small>{item.completed}/{item.total}</small>
+                    </div>
+                    <span className="pattern-track">
+                      <i style={{ width: `${Math.round((item.completed / item.total) * 100)}%` }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+      {activeView === "problems" && <section className="sheet-card">
+        <div className="problems-heading">
+          <div>
+            <h2>All problems</h2>
+            <span>{visibleProblems.length} matching problems</span>
+          </div>
+          <span className="problems-count">250 total</span>
+        </div>
         <div className="sheet-controls">
           <div className="search-box">
             <Search size={16} />
@@ -416,7 +528,7 @@ function App() {
             {user ? "Synced progress" : "Sign in to sync progress"}
           </span>
         </div>
-      </section>
+      </section>}
       <footer className="footer-note">
         Use the patterns, then make the problem yours.
       </footer>
