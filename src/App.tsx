@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   SignInButton,
   SignUpButton,
@@ -15,15 +15,22 @@ import {
   ExternalLink,
   GitBranch,
   LayoutDashboard,
+  LoaderCircle,
+  MessageCircle,
+  NotebookPen,
   Rows3,
+  Send,
   Search,
-  Sparkles,
   Target,
   Trophy,
+  UsersRound,
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { setClerkTokenGetter, supabase } from "./lib/supabase";
+import {
+  setClerkTokenGetter,
+  supabase,
+} from "./lib/supabase";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -34,6 +41,12 @@ type Problem = {
   link: string;
 };
 type ProgressMap = Record<number, { status: Status; notes: string }>;
+type ChatMessage = {
+  id: number;
+  userId: string;
+  content: string;
+  createdAt: string;
+};
 
 const seeds: Array<[string, string, Problem["difficulty"]]> = [
   ["Two Sum", "Arrays & Hashing", "Easy"],
@@ -135,11 +148,29 @@ function App() {
       ) as ProgressMap,
   );
   const [query, setQuery] = useState("");
-  const [activeView, setActiveView] = useState<"dashboard" | "problems">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "problems" | "chat" | "notes">("dashboard");
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
   const [notice, setNotice] = useState("Saved locally");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatReload, setChatReload] = useState(0);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
+  const [chatLoadedFor, setChatLoadedFor] = useState<string | null>(null);
+  const [chatError, setChatError] = useState("");
+  const [chatLiveStatus, setChatLiveStatus] = useState("");
+  const [personalNote, setPersonalNote] = useState("");
+  const [notesReload, setNotesReload] = useState(0);
+  const [notesLoadedFor, setNotesLoadedFor] = useState<string | null>(null);
+  const [notesSavedContent, setNotesSavedContent] = useState<string | null>(null);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesError, setNotesError] = useState("");
+  const [notesSavedAt, setNotesSavedAt] = useState<Date | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const currentUserIdRef = useRef<string | null>(user?.id ?? null);
+  currentUserIdRef.current = user?.id ?? null;
 
   const visibleProblems = useMemo(
     () =>
@@ -189,11 +220,203 @@ function App() {
         .filter((item) => item.total > 0),
     [progress],
   );
-
   useEffect(() => {
-    setClerkTokenGetter(() => getToken({ template: "supabase" }));
+    setClerkTokenGetter(() => getToken());
     return () => setClerkTokenGetter(null);
   }, [getToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let channel: ReturnType<NonNullable<typeof supabase>["channel"]> | null = null;
+    setChatMessages([]);
+    setChatDraft("");
+    setChatLoadedFor(null);
+    setChatSending(false);
+    setChatError("");
+    setChatLiveStatus("");
+    if (!isLoaded || !user) {
+      setChatLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (!supabase) {
+      setChatError("Connect Supabase to load the group chat.");
+      setChatLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+    const supabaseClient = supabase;
+
+    channel = supabaseClient
+      .channel("group-chat")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "group_chat_messages" },
+        (payload) => {
+          const message = payload.new as {
+            id: number;
+            user_id: string;
+            content: string;
+            created_at: string;
+          };
+          setChatMessages((current) => {
+            if (current.some((item) => item.id === message.id)) return current;
+            return [...current, {
+              id: message.id,
+              userId: message.user_id,
+              content: message.content,
+              createdAt: message.created_at,
+            }].sort((left, right) => left.id - right.id);
+          });
+        },
+      )
+      .subscribe((state) => {
+        if (cancelled) return;
+        setChatLiveStatus(
+          state === "SUBSCRIBED"
+            ? "Live"
+            : state === "CHANNEL_ERROR" || state === "TIMED_OUT" || state === "CLOSED"
+              ? "Live updates disconnected. Reload to reconnect."
+              : "Connecting...",
+        );
+      });
+
+    setChatLoading(true);
+    void (async () => {
+      try {
+        const { data, error } = await supabaseClient
+          .from("group_chat_messages")
+          .select("id, user_id, content, created_at")
+          .order("id", { ascending: false })
+          .limit(100);
+        if (cancelled) return;
+        if (error) {
+          setChatError(`Could not load the group chat. ${error.message}`);
+          return;
+        }
+        const loadedMessages = (data ?? []).reverse().map((message) => ({
+            id: message.id,
+            userId: message.user_id,
+            content: message.content,
+            createdAt: message.created_at,
+          }));
+        setChatMessages((current) => {
+          const merged = new Map(current.map((message) => [message.id, message]));
+          for (const message of loadedMessages) merged.set(message.id, message);
+          return [...merged.values()].sort((left, right) => left.id - right.id);
+        });
+        setChatLoadedFor(user.id);
+      } catch (error) {
+        if (!cancelled) {
+          const detail = error instanceof Error ? error.message : "Network error.";
+          setChatError(`Could not load the group chat. ${detail}`);
+        }
+      } finally {
+        if (!cancelled) setChatLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) void supabaseClient.removeChannel(channel);
+    };
+  }, [chatReload, isLoaded, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPersonalNote("");
+    setNotesLoadedFor(null);
+    setNotesSavedContent(null);
+    setNotesSaving(false);
+    setNotesSavedAt(null);
+    setNotesError("");
+    if (!isLoaded || !user) return;
+    if (!supabase) {
+      setNotesError("Connect Supabase to load your private notebook.");
+      return;
+    }
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("personal_notes")
+          .select("content, updated_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) {
+          setNotesError(`Could not load your notebook. ${error.message}`);
+          return;
+        }
+        setPersonalNote(data?.content ?? "");
+        setNotesSavedContent(data?.content ?? "");
+        setNotesSavedAt(data?.updated_at ? new Date(data.updated_at) : null);
+        setNotesLoadedFor(user.id);
+      } catch (error) {
+        if (!cancelled) {
+          const detail = error instanceof Error ? error.message : "Network error.";
+          setNotesError(`Could not load your notebook. ${detail}`);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, notesReload, user?.id]);
+
+  useEffect(() => {
+    if (
+      !user ||
+      !isLoaded ||
+      notesLoadedFor !== user.id ||
+      notesSavedContent === personalNote ||
+      !supabase
+    ) return;
+
+    const supabaseClient = supabase;
+    let cancelled = false;
+    const timeout = window.setTimeout(() => {
+      setNotesSaving(true);
+      void (async () => {
+        try {
+          const savedAt = new Date();
+          const { error } = await supabaseClient
+            .from("personal_notes")
+            .upsert(
+              { user_id: user.id, content: personalNote, updated_at: savedAt.toISOString() },
+              { onConflict: "user_id" },
+            );
+          if (cancelled) return;
+          if (error) {
+            setNotesError(`Could not save your notebook. ${error.message}`);
+          } else {
+            setNotesError("");
+            setNotesSavedContent(personalNote);
+            setNotesSavedAt(savedAt);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            const detail = error instanceof Error ? error.message : "Network error.";
+            setNotesError(`Could not save your notebook. ${detail}`);
+          }
+        } finally {
+          if (!cancelled) setNotesSaving(false);
+        }
+      })();
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [isLoaded, notesLoadedFor, notesSavedContent, personalNote, user?.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeView, chatMessages, chatSending]);
 
   useEffect(() => {
     localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
@@ -230,6 +453,54 @@ function App() {
       ...current,
       [number]: { status: nextStatus, notes: current[number]?.notes ?? "" },
     }));
+  }
+
+  async function sendGroupMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const message = chatDraft.trim();
+    if (!message || chatSending) return;
+    if (!user) {
+      setChatError("Sign in to join the group chat.");
+      return;
+    }
+    if (!supabase) {
+      setChatError("Connect Supabase before sending a chat message.");
+      return;
+    }
+
+    const requestUserId = user.id;
+    setChatSending(true);
+    setChatError("");
+    try {
+      const { data, error } = await supabase
+        .from("group_chat_messages")
+        .insert({ user_id: requestUserId, content: message })
+        .select("id, user_id, content, created_at")
+        .single();
+      if (error || !data) {
+        if (currentUserIdRef.current === requestUserId) {
+          setChatError(`Could not send your message. ${error?.message ?? "No row was returned."}`);
+        }
+        return;
+      }
+      if (currentUserIdRef.current !== requestUserId) return;
+      setChatMessages((current) => current.some((item) => item.id === data.id)
+        ? current
+        : [...current, {
+            id: data.id,
+            userId: data.user_id,
+            content: data.content,
+            createdAt: data.created_at,
+          }].sort((left, right) => left.id - right.id));
+      setChatDraft("");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Network error.";
+      if (currentUserIdRef.current === requestUserId) {
+        setChatError(`Could not send your message. ${detail}`);
+      }
+    } finally {
+      if (currentUserIdRef.current === requestUserId) setChatSending(false);
+    }
   }
 
   return (
@@ -271,24 +542,39 @@ function App() {
             <div className="breadcrumb">
               <span>Library</span>
               <span>/</span>
-              <span>{activeView === "dashboard" ? "Dashboard" : "Problems"}</span>
+              <span>
+                {activeView === "dashboard"
+                  ? "Dashboard"
+                  : activeView === "problems"
+                    ? "Problems"
+                    : activeView === "chat"
+                      ? "Group chat"
+                      : "Personal notes"}
+              </span>
             </div>
             <h1>
-              {activeView === "dashboard" ? "Your progress" : "Problem library"}{" "}
+              {activeView === "dashboard"
+                ? "Your progress"
+                : activeView === "problems"
+                  ? "Problem library"
+                  : activeView === "chat"
+                    ? "Group chat"
+                    : "Personal notebook"}{" "}
               <span className="private-pill">DSA 250</span>
             </h1>
             <p>
               {activeView === "dashboard"
                 ? "A clear view of your practice and what to tackle next."
-                : "Find a problem, update its status, and keep your practice moving."}
+                : activeView === "problems"
+                  ? "Find a problem, update its status, and keep your practice moving."
+                  : activeView === "chat"
+                    ? "Talk through DSA problems and share ideas with the study group."
+                    : "Keep private study notes that sync with your account."}
             </p>
           </div>
           <div className="title-actions">
             <button className="secondary-button">
               <GitBranch size={16} /> View repo
-            </button>
-            <button className="primary-button">
-              <Sparkles size={16} /> Ask Codex
             </button>
           </div>
         </div>
@@ -307,6 +593,20 @@ function App() {
           >
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
+          </button>
+          <button
+            className={activeView === "chat" ? "active" : ""}
+            aria-pressed={activeView === "chat"}
+            onClick={() => setActiveView("chat")}
+          >
+            <MessageCircle size={16} /> Group chat
+          </button>
+          <button
+            className={activeView === "notes" ? "active" : ""}
+            aria-pressed={activeView === "notes"}
+            onClick={() => setActiveView("notes")}
+          >
+            <NotebookPen size={16} /> Notes
           </button>
         </nav>
       </section>
@@ -403,6 +703,150 @@ function App() {
             </div>
           </section>
         </>
+      )}
+      {activeView === "chat" && (
+        <section className="chat-card" aria-label="Shared group chat">
+          <header className="chat-heading">
+            <div className="group-chat-icon"><UsersRound size={18} /></div>
+            <div>
+              <h2>DSA study group</h2>
+              <p>Shared with everyone signed in to Codexsheet</p>
+            </div>
+          </header>
+          {!user ? (
+            <div className="feature-sign-in">
+              <p>Sign in to join the shared study group and chat with other learners.</p>
+              <SignInButton mode="modal">
+                <button className="primary-button">Sign in</button>
+              </SignInButton>
+            </div>
+          ) : (
+            <>
+              <div className="chat-transcript" aria-live="polite">
+                {chatLoading || (chatLoadedFor !== user.id && !chatError) ? (
+                  <p className="chat-status"><LoaderCircle size={15} className="spin" /> Loading group chat...</p>
+                ) : chatLoadedFor !== user.id ? (
+                  <p className="chat-status">Group chat could not be loaded.</p>
+                ) : chatMessages.length === 0 ? (
+                  <div className="chat-welcome">
+                    <UsersRound size={20} />
+                    <strong>Start the conversation</strong>
+                    <p>Share what you’re learning, ask a question, or help someone with a DSA problem.</p>
+                  </div>
+                ) : (
+                  chatMessages.map((message) => (
+                    <article className={`chat-message ${message.userId === user.id ? "user" : "member"}`} key={message.id}>
+                      <span className="chat-sender">
+                        {message.userId === user.id ? "You" : `Member · ${message.userId.slice(-6)}`}
+                      </span>
+                      <p>{message.content}</p>
+                    </article>
+                  ))
+                )}
+                {chatSending && (
+                  <p className="chat-status"><LoaderCircle size={15} className="spin" /> Sending message...</p>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              {chatLiveStatus && <p className="chat-live-status" role="status">{chatLiveStatus}</p>}
+              {chatError && <p className="feature-error" role="alert">{chatError}</p>}
+              {chatError && chatLoadedFor !== user.id && supabase && (
+                <button
+                  className="panel-link chat-retry"
+                  type="button"
+                  onClick={() => setChatReload((current) => current + 1)}
+                >
+                  Retry loading group chat
+                </button>
+              )}
+              {!supabase && <p className="feature-error" role="alert">Supabase is not configured for group chat.</p>}
+              <form className="chat-composer" onSubmit={sendGroupMessage}>
+                <textarea
+                  aria-label="Write a group chat message"
+                  maxLength={4000}
+                  placeholder="Message the study group..."
+                  value={chatDraft}
+                  onChange={(event) => setChatDraft(event.target.value)}
+                  disabled={!supabase || chatLoading || chatSending || chatLoadedFor !== user.id}
+                  rows={2}
+                />
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={!supabase || chatLoading || chatSending || chatLoadedFor !== user.id || !chatDraft.trim()}
+                  aria-label="Send message"
+                >
+                  {chatSending ? <LoaderCircle size={16} className="spin" /> : <Send size={16} />}
+                  <span>{chatSending ? "Sending" : "Send"}</span>
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      )}
+      {activeView === "notes" && (
+        <section className="notebook-card" aria-label="Personal notebook">
+          <header className="notebook-heading">
+            <div className="notebook-icon"><NotebookPen size={18} /></div>
+            <div>
+              <h2>Your private notebook</h2>
+              <p>Notes are saved automatically and are visible only to your account.</p>
+            </div>
+            {user && (
+              <span className="notebook-save-state" role="status">
+                {notesSaving ? (
+                  <><LoaderCircle size={14} className="spin" /> Saving</>
+                ) : notesLoadedFor !== user.id ? (
+                  null
+                ) : notesSavedContent !== personalNote ? (
+                  "Unsaved changes"
+                ) : notesSavedAt ? (
+                  <><Check size={14} /> Saved</>
+                ) : "Ready"}
+              </span>
+            )}
+          </header>
+          {!user ? (
+            <div className="feature-sign-in">
+              <p>Sign in to create a private notebook that syncs with your account.</p>
+              <SignInButton mode="modal">
+                <button className="primary-button">Sign in</button>
+              </SignInButton>
+            </div>
+          ) : (
+            <>
+              {notesError && <p className="feature-error" role="alert">{notesError}</p>}
+              {notesError && notesLoadedFor !== user.id && supabase && (
+                <button
+                  className="panel-link chat-retry"
+                  type="button"
+                  onClick={() => setNotesReload((current) => current + 1)}
+                >
+                  Retry loading notes
+                </button>
+              )}
+              {!supabase && <p className="feature-error" role="alert">Supabase is not configured for notes.</p>}
+              <textarea
+                className="personal-notes-editor"
+                aria-label="Personal study notes"
+                maxLength={100000}
+                placeholder="Write down a concept, an insight, or what you want to review next..."
+                onChange={(event) => {
+                  setPersonalNote(event.target.value);
+                  setNotesError("");
+                }}
+                value={notesLoadedFor === user.id ? personalNote : ""}
+                disabled={!supabase || notesLoadedFor !== user.id}
+              />
+              <footer className="notebook-footer">
+                <span>{personalNote.length.toLocaleString()} / 100,000 characters</span>
+                {notesSavedAt && !notesSaving && (
+                  <span>Last saved {notesSavedAt.toLocaleTimeString()}</span>
+                )}
+              </footer>
+            </>
+          )}
+        </section>
       )}
       {activeView === "problems" && <section className="sheet-card">
         <div className="problems-heading">
