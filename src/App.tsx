@@ -9,14 +9,19 @@ import {
 import {
   ArrowRight,
   AudioLines,
+  CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleHelp,
   Code2,
   ExternalLink,
+  Flame,
   GitBranch,
   LayoutDashboard,
   LoaderCircle,
+  Map as MapIcon,
   MessageCircle,
   NotebookPen,
   Plus,
@@ -59,7 +64,12 @@ type PersonalNote = {
   savedContent: string;
   updatedAt: string;
 };
-type WorkspaceView = "dashboard" | "problems" | "chat" | "notes" | "coach";
+type RoadmapPreferences = {
+  targetWeeks: number;
+  sessionsPerWeek: number;
+  focusPattern: string;
+};
+type WorkspaceView = "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach";
 
 const elevenLabsAgentId = "agent_6801m0q9g55pe3vr0eb8y4sgkby7";
 const elevenLabsVoiceId = "C2S5J6WvmHnrQWjUu6Rg";
@@ -152,6 +162,42 @@ const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
   };
 });
 
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getPracticeStreak(practiceDays: string[]) {
+  const dates = new Set(practiceDays);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  let current = 0;
+  if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
+    const cursor = dates.has(localDateKey(today)) ? today : yesterday;
+    while (dates.has(localDateKey(cursor))) {
+      current += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+  }
+
+  let best = 0;
+  let run = 0;
+  let previous: Date | null = null;
+  for (const key of [...dates].sort()) {
+    const [year, month, day] = key.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    const expected = previous ? new Date(previous) : null;
+    expected?.setDate(expected.getDate() + 1);
+    run = expected && localDateKey(expected) === key ? run + 1 : 1;
+    best = Math.max(best, run);
+    previous = date;
+  }
+  return { current, best };
+}
+
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
@@ -170,8 +216,23 @@ function App() {
         localStorage.getItem("codexsheet-dsa-progress") ?? "{}",
       ) as ProgressMap,
   );
+  const [practiceDays, setPracticeDays] = useState<string[]>(
+    () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
+  );
+  const practiceStreak = getPracticeStreak(practiceDays);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>("dashboard");
+  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
+    () => JSON.parse(
+      localStorage.getItem("codexsheet-roadmap-preferences") ??
+        '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
+    ) as RoadmapPreferences,
+  );
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
@@ -203,6 +264,20 @@ function App() {
   const currentUserIdRef = useRef<string | null>(user?.id ?? null);
   currentUserIdRef.current = user?.id ?? null;
   const selectedNote = personalNotes.find((note) => note.id === selectedNoteId) ?? null;
+  const calendarYear = calendarMonth.getFullYear();
+  const calendarMonthIndex = calendarMonth.getMonth();
+  const calendarMonthKey = `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, "0")}`;
+  const calendarLeadingDays = new Date(calendarYear, calendarMonthIndex, 1).getDay();
+  const calendarDaysInMonth = new Date(calendarYear, calendarMonthIndex + 1, 0).getDate();
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
+    const day = index - calendarLeadingDays + 1;
+    return day > 0 && day <= calendarDaysInMonth
+      ? new Date(calendarYear, calendarMonthIndex, day)
+      : null;
+  });
+  const practiceDaySet = new Set(practiceDays);
+  const activeDaysThisMonth = practiceDays.filter((day) => day.startsWith(calendarMonthKey)).length;
+  const todayDateKey = localDateKey(new Date());
 
   const visibleProblems = useMemo(
     () =>
@@ -252,6 +327,39 @@ function App() {
         .filter((item) => item.total > 0),
     [progress],
   );
+  const roadmapProblems = useMemo(() => {
+    const completionByPattern = new Map(
+      patternStats.map((item) => [item.name, item.completed / item.total]),
+    );
+    return problems
+      .filter((problem) => progress[problem.number]?.status !== "Solved")
+      .sort((left, right) => {
+        const leftInProgress = progress[left.number]?.status === "In progress";
+        const rightInProgress = progress[right.number]?.status === "In progress";
+        if (leftInProgress !== rightInProgress) return Number(rightInProgress) - Number(leftInProgress);
+        if (roadmapPreferences.focusPattern === "Build weak areas") {
+          const weaknessDifference =
+            (completionByPattern.get(left.pattern) ?? 0) -
+            (completionByPattern.get(right.pattern) ?? 0);
+          if (weaknessDifference !== 0) return weaknessDifference;
+        } else if (roadmapPreferences.focusPattern !== "All patterns") {
+          const focusDifference =
+            Number(right.pattern === roadmapPreferences.focusPattern) -
+            Number(left.pattern === roadmapPreferences.focusPattern);
+          if (focusDifference !== 0) return focusDifference;
+        }
+        return left.number - right.number;
+      });
+  }, [patternStats, progress, roadmapPreferences.focusPattern]);
+  const roadmapWeeks = useMemo(() => {
+    if (roadmapProblems.length === 0) return [];
+    const weekCount = Math.min(roadmapPreferences.targetWeeks, roadmapProblems.length);
+    const problemsPerWeek = Math.ceil(roadmapProblems.length / weekCount);
+    return Array.from({ length: weekCount }, (_, index) => ({
+      number: index + 1,
+      problems: roadmapProblems.slice(index * problemsPerWeek, (index + 1) * problemsPerWeek),
+    }));
+  }, [roadmapPreferences.targetWeeks, roadmapProblems]);
   useEffect(() => {
     setClerkTokenGetter(() => getToken());
     return () => setClerkTokenGetter(null);
@@ -749,6 +857,14 @@ function App() {
   }, [activeView, chatMessages, chatSending]);
 
   useEffect(() => {
+    localStorage.setItem("codexsheet-practice-days", JSON.stringify(practiceDays));
+  }, [practiceDays]);
+
+  useEffect(() => {
+    localStorage.setItem("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
+  }, [roadmapPreferences]);
+
+  useEffect(() => {
     localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
     if (!isLoaded) {
       setNotice("Loading account");
@@ -779,10 +895,15 @@ function App() {
   }, [isLoaded, progress, user]);
 
   function setProblemStatus(number: number, nextStatus: Status) {
+    if ((progress[number]?.status ?? "Todo") === nextStatus) return;
     setProgress((current) => ({
       ...current,
       [number]: { status: nextStatus, notes: current[number]?.notes ?? "" },
     }));
+    if (nextStatus !== "Todo") {
+      const today = localDateKey(new Date());
+      setPracticeDays((current) => current.includes(today) ? current : [...current, today]);
+    }
   }
 
   async function sendGroupMessage(event: FormEvent<HTMLFormElement>) {
@@ -877,6 +998,10 @@ function App() {
                   ? "Dashboard"
                   : activeView === "problems"
                     ? "Problems"
+                    : activeView === "calendar"
+                      ? "Calendar"
+                      : activeView === "roadmap"
+                        ? "Roadmap"
                     : activeView === "chat"
                       ? "Group chat"
                         : activeView === "notes"
@@ -889,6 +1014,10 @@ function App() {
                 ? "Your progress"
                 : activeView === "problems"
                   ? "Problem library"
+                  : activeView === "calendar"
+                    ? "Practice calendar"
+                    : activeView === "roadmap"
+                      ? "Your DSA roadmap"
                   : activeView === "chat"
                     ? "Group chat"
                       : activeView === "notes"
@@ -901,6 +1030,10 @@ function App() {
                 ? "A clear view of your practice and what to tackle next."
                 : activeView === "problems"
                   ? "Find a problem, update its status, and keep your practice moving."
+                  : activeView === "calendar"
+                    ? "See your practice history and keep your daily streak going."
+                    : activeView === "roadmap"
+                      ? "A study plan shaped around your pace and the patterns you want to master."
                   : activeView === "chat"
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
@@ -929,6 +1062,20 @@ function App() {
           >
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
+          </button>
+          <button
+            className={activeView === "calendar" ? "active" : ""}
+            aria-pressed={activeView === "calendar"}
+            onClick={() => setActiveView("calendar")}
+          >
+            <CalendarDays size={16} /> Calendar
+          </button>
+          <button
+            className={activeView === "roadmap" ? "active" : ""}
+            aria-pressed={activeView === "roadmap"}
+            onClick={() => setActiveView("roadmap")}
+          >
+            <MapIcon size={16} /> Roadmap
           </button>
           <button
             className={activeView === "chat" ? "active" : ""}
@@ -975,6 +1122,15 @@ function App() {
           <span className="insight-label">In progress</span>
           <strong>{inProgress}</strong>
           <span className="insight-detail">keep the streak alive</span>
+        </div>
+        <div className="insight insight-streak">
+          <span className="insight-label">Practice streak</span>
+          <strong><Flame size={16} /> {practiceStreak.current}<small>days</small></strong>
+          <span className="insight-detail">
+            {practiceStreak.current > 0
+              ? `Best: ${practiceStreak.best} days`
+              : "Update a problem to start"}
+          </span>
         </div>
         <div className="insight">
           <span className="insight-label">Completion</span>
@@ -1051,6 +1207,222 @@ function App() {
             </div>
           </section>
         </>
+      )}
+      {activeView === "roadmap" && (
+        <section className="roadmap-card" aria-label="Customized DSA roadmap">
+          <header className="roadmap-heading">
+            <div className="roadmap-icon"><MapIcon size={18} /></div>
+            <div>
+              <h2>Your study plan</h2>
+              <p>Adjust your timeline and focus. Your unsolved problems will be reordered automatically.</p>
+            </div>
+          </header>
+          <div className="roadmap-controls">
+            <label>
+              <span>Finish in</span>
+              <select
+                value={roadmapPreferences.targetWeeks}
+                onChange={(event) => setRoadmapPreferences((current) => ({
+                  ...current,
+                  targetWeeks: Number(event.target.value),
+                }))}
+              >
+                <option value={4}>4 weeks</option>
+                <option value={8}>8 weeks</option>
+                <option value={12}>12 weeks</option>
+                <option value={16}>16 weeks</option>
+              </select>
+            </label>
+            <label>
+              <span>Study days each week</span>
+              <select
+                value={roadmapPreferences.sessionsPerWeek}
+                onChange={(event) => setRoadmapPreferences((current) => ({
+                  ...current,
+                  sessionsPerWeek: Number(event.target.value),
+                }))}
+              >
+                <option value={3}>3 days</option>
+                <option value={5}>5 days</option>
+                <option value={7}>7 days</option>
+              </select>
+            </label>
+            <label>
+              <span>Focus area</span>
+              <select
+                value={roadmapPreferences.focusPattern}
+                onChange={(event) => setRoadmapPreferences((current) => ({
+                  ...current,
+                  focusPattern: event.target.value,
+                }))}
+              >
+                <option>Build weak areas</option>
+                <option>All patterns</option>
+                {patterns.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="roadmap-load" aria-live="polite">
+            <strong>{roadmapProblems.length}</strong>
+            <span>problems remaining</span>
+            <i />
+            <strong>{Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong>
+            <span>per study day</span>
+            <i />
+            <strong>{roadmapPreferences.sessionsPerWeek}</strong>
+            <span>days each week</span>
+          </div>
+          {roadmapWeeks.length === 0 ? (
+            <div className="roadmap-complete">
+              <Check size={20} />
+              <strong>You’ve completed the roadmap.</strong>
+              <p>All 250 problems are marked solved.</p>
+            </div>
+          ) : (
+            <div className="roadmap-weeks">
+              {roadmapWeeks.map((week) => (
+                <article className="roadmap-week" key={week.number}>
+                  <header>
+                    <div>
+                      <span className="roadmap-week-label">WEEK {String(week.number).padStart(2, "0")}</span>
+                      <h3>
+                        {week.problems.some((problem) => progress[problem.number]?.status === "In progress")
+                          ? "Continue and build momentum"
+                          : roadmapPreferences.focusPattern === "Build weak areas"
+                            ? "Strengthen your foundations"
+                            : roadmapPreferences.focusPattern === "All patterns"
+                              ? "Keep a balanced pace"
+                              : `Focus on ${roadmapPreferences.focusPattern}`}
+                      </h3>
+                    </div>
+                    <span className="roadmap-week-count">{week.problems.length} problems</span>
+                  </header>
+                  <div className="roadmap-task-list">
+                    {week.problems.map((problem) => {
+                      const current = progress[problem.number]?.status ?? "Todo";
+                      return (
+                        <div className="roadmap-task" key={problem.number}>
+                          <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
+                          <div className="roadmap-task-info">
+                            <a
+                              className="roadmap-problem-link"
+                              href={problem.link}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <strong>{problem.title}</strong>
+                              <ExternalLink size={12} />
+                            </a>
+                            <span>{problem.pattern} · {problem.difficulty}</span>
+                          </div>
+                          <select
+                            className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
+                            aria-label={`Status for ${problem.title}`}
+                            value={current}
+                            onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
+                          >
+                            <option>Todo</option>
+                            <option>In progress</option>
+                            <option>Solved</option>
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      {activeView === "calendar" && (
+        <section className="calendar-card" aria-label="Practice activity calendar">
+          <header className="calendar-topline">
+            <div className="calendar-titlelockup">
+              <div className="calendar-icon"><CalendarDays size={18} /></div>
+              <div>
+                <h2>Practice calendar</h2>
+                <p>{activeDaysThisMonth} active {activeDaysThisMonth === 1 ? "day" : "days"} this month</p>
+              </div>
+            </div>
+            <div className="calendar-controls">
+              <button
+                className="secondary-button calendar-nav-button"
+                type="button"
+                aria-label="Previous month"
+                title="Previous month"
+                onClick={() => {
+                  setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+                  setSelectedCalendarDate(null);
+                }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <strong>{calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong>
+              <button
+                className="secondary-button calendar-nav-button"
+                type="button"
+                aria-label="Next month"
+                title="Next month"
+                onClick={() => {
+                  setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+                  setSelectedCalendarDate(null);
+                }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </header>
+          <div className="calendar-body">
+            <div className="calendar-weekdays" aria-hidden="true">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className="calendar-grid" role="grid" aria-label={`${calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })} practice days`}>
+              {calendarDays.map((date, index) => {
+                if (!date) return <span className="calendar-day-spacer" key={`empty-${index}`} />;
+                const dateKey = localDateKey(date);
+                const isActive = practiceDaySet.has(dateKey);
+                const isToday = dateKey === todayDateKey;
+                const isFuture = dateKey > todayDateKey;
+                return (
+                  <button
+                    className={`calendar-day${isActive ? " active" : ""}${isToday ? " today" : ""}${selectedCalendarDate === dateKey ? " selected" : ""}`}
+                    key={dateKey}
+                    type="button"
+                    aria-label={`${date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}${isActive ? ", practice recorded" : ", no practice recorded"}`}
+                    aria-pressed={selectedCalendarDate === dateKey}
+                    disabled={isFuture}
+                    onClick={() => setSelectedCalendarDate(dateKey)}
+                  >
+                    <span>{date.getDate()}</span>
+                    {!isFuture && (
+                      <span className="calendar-day-mood" aria-hidden="true">
+                        {isActive ? "🔥" : "😠"}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <footer className="calendar-footer">
+            <div className="calendar-legend">
+              <span><i aria-hidden="true">🔥</i> Practiced</span>
+              <span><i aria-hidden="true">😠</i> Missed</span>
+            </div>
+            <span className="calendar-streak-summary"><Flame size={14} /> {practiceStreak.current}-day streak</span>
+            <p className="calendar-selection" role="status">
+              {selectedCalendarDate ? (
+                <>
+                  <strong>{new Date(`${selectedCalendarDate}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</strong>
+                  <span>{practiceDaySet.has(selectedCalendarDate) ? "Practice logged" : "No practice logged"}</span>
+                </>
+              ) : "Select a date to see your activity."}
+            </p>
+          </footer>
+        </section>
       )}
       {activeView === "chat" && (
         <section className="chat-card" aria-label="Shared group chat">

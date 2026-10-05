@@ -288,7 +288,7 @@ h1 {
 
 .insight-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(180px, 1.5fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(180px, 1.5fr);
   max-width: 1370px;
   margin: 22px auto 0;
   border: 1px solid #dfe7df;
@@ -328,6 +328,10 @@ h1 {
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.insight-streak strong svg {
+  color: #e5a74f;
 }
 
 .insight-detail {
@@ -1357,6 +1361,458 @@ tbody tr:hover {
   font: 500 10px 'DM Mono', monospace;
 }
 
+.roadmap-card {
+  max-width: 1370px;
+  margin: 20px auto 0;
+  overflow: hidden;
+  border: 1px solid #30283b;
+  border-radius: 14px;
+  background: #191620;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+}
+
+.roadmap-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #30283b;
+}
+
+.roadmap-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #40364e;
+  border-radius: 9px;
+  background: #211b2b;
+  color: #c4a7ff;
+}
+
+.roadmap-heading h2 {
+  margin: 0;
+  color: #f1edf8;
+  font-size: 14px;
+}
+
+.roadmap-heading p {
+  margin: 4px 0 0;
+  color: #92889f;
+  font-size: 10px;
+}
+
+.roadmap-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #30283b;
+  background: #17141e;
+}
+
+.roadmap-controls label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #aaa1b8;
+  font-size: 10px;
+}
+
+.roadmap-controls select,
+.roadmap-task-status {
+  min-width: 0;
+  border: 1px solid #3b3347;
+  border-radius: 7px;
+  background: #100e15;
+  color: #e7e0ef;
+  font: inherit;
+  font-size: 11px;
+}
+
+.roadmap-controls select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.roadmap-load {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #30283b;
+  color: #92889f;
+  font-size: 10px;
+}
+
+.roadmap-load strong {
+  color: #f1edf8;
+  font: 600 14px 'DM Mono', monospace;
+}
+
+.roadmap-load i {
+  width: 1px;
+  height: 14px;
+  margin: 0 8px;
+  background: #40364e;
+}
+
+.roadmap-weeks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+}
+
+.roadmap-week {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #30283b;
+  border-radius: 9px;
+  background: #17141e;
+}
+
+.roadmap-week > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 66px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #30283b;
+}
+
+.roadmap-week-label {
+  color: #c4a7ff;
+  font: 500 9px 'DM Mono', monospace;
+}
+
+.roadmap-week h3 {
+  margin: 4px 0 0;
+  color: #e7e0ef;
+  font-size: 11px;
+}
+
+.roadmap-week-count {
+  flex: none;
+  color: #92889f;
+  font: 500 9px 'DM Mono', monospace;
+}
+
+.roadmap-task-list {
+  padding: 0 12px;
+}
+
+.roadmap-task {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 104px;
+  align-items: center;
+  gap: 9px;
+  min-height: 56px;
+  border-bottom: 1px solid #292330;
+}
+
+.roadmap-task:last-child {
+  border-bottom: 0;
+}
+
+.roadmap-task-number {
+  color: #827990;
+  font: 500 9px 'DM Mono', monospace;
+}
+
+.roadmap-task-info {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.roadmap-problem-link {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  color: #e7e0ef;
+}
+
+.roadmap-problem-link strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadmap-problem-link svg {
+  flex: none;
+  color: #92889f;
+}
+
+.roadmap-problem-link:hover,
+.roadmap-problem-link:hover svg {
+  color: #c4a7ff;
+}
+
+.roadmap-problem-link:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid #c4a7ff;
+  outline-offset: 2px;
+}
+
+.roadmap-task-info span {
+  overflow: hidden;
+  color: #92889f;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadmap-task-status {
+  width: 104px;
+  height: 30px;
+  padding: 0 5px;
+}
+
+.roadmap-task-status.in-progress {
+  color: #e2b875;
+}
+
+.roadmap-task-status.solved {
+  color: #a6d197;
+}
+
+.roadmap-complete {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 54px 20px;
+  color: #a6d197;
+  text-align: center;
+}
+
+.roadmap-complete strong {
+  color: #e7e0ef;
+  font-size: 13px;
+}
+
+.roadmap-complete p {
+  margin: 0;
+  color: #92889f;
+  font-size: 11px;
+}
+
+.calendar-card {
+  max-width: 1370px;
+  margin: 20px auto 0;
+  overflow: hidden;
+  border: 1px solid #30283b;
+  border-radius: 14px;
+  background: #191620;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-topline,
+.calendar-titlelockup,
+.calendar-controls,
+.calendar-footer,
+.calendar-legend,
+.calendar-streak-summary {
+  display: flex;
+  align-items: center;
+}
+
+.calendar-topline {
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 82px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #30283b;
+}
+
+.calendar-titlelockup {
+  min-width: 0;
+  gap: 12px;
+}
+
+.calendar-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #40364e;
+  border-radius: 9px;
+  background: #211b2b;
+  color: #c4a7ff;
+}
+
+.calendar-titlelockup h2 {
+  margin: 0;
+  color: #f1edf8;
+  font-size: 14px;
+}
+
+.calendar-titlelockup p {
+  margin: 4px 0 0;
+  color: #92889f;
+  font-size: 10px;
+}
+
+.calendar-controls {
+  flex: none;
+  gap: 12px;
+}
+
+.calendar-controls > strong {
+  min-width: 140px;
+  color: #e7e0ef;
+  font-size: 12px;
+  text-align: center;
+}
+
+.calendar-nav-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.calendar-body {
+  padding: 20px;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekdays {
+  margin-bottom: 8px;
+}
+
+.calendar-weekdays span {
+  padding: 6px 0;
+  color: #92889f;
+  font: 500 10px 'DM Mono', monospace;
+  text-align: center;
+}
+
+.calendar-grid {
+  grid-template-rows: repeat(6, minmax(68px, 1fr));
+}
+
+.calendar-day,
+.calendar-day-spacer {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 68px;
+  border: 1px solid #30283b;
+  border-radius: 8px;
+}
+
+.calendar-day {
+  background: #141119;
+  color: #d8d0e3;
+  font: 500 12px 'DM Mono', monospace;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.calendar-day:hover:not(:disabled) {
+  border-color: #685488;
+  background: #211b2b;
+}
+
+.calendar-day.active {
+  border-color: #526a47;
+  background: #202d24;
+  color: #e7f1dc;
+}
+
+.calendar-day.today {
+  box-shadow: inset 0 0 0 1px #c4a7ff;
+}
+
+.calendar-day.selected {
+  border-color: #e2b875;
+  box-shadow: inset 0 0 0 1px #e2b875;
+}
+
+.calendar-day:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.calendar-day-mood {
+  position: absolute;
+  bottom: 7px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.calendar-legend {
+  gap: 14px;
+}
+
+.calendar-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-legend > span > i {
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.calendar-day:focus-visible,
+.calendar-nav-button:focus-visible {
+  outline: 2px solid #c4a7ff;
+  outline-offset: 2px;
+}
+
+.calendar-footer {
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 14px 20px;
+  border-top: 1px solid #30283b;
+}
+
+.calendar-legend,
+.calendar-streak-summary {
+  gap: 8px;
+  color: #aaa1b8;
+  font-size: 10px;
+}
+
+.calendar-streak-summary svg {
+  color: #e5a74f;
+}
+
+.calendar-selection {
+  display: flex;
+  flex: 1 1 240px;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  color: #92889f;
+  font-size: 10px;
+  text-align: right;
+}
+
+.calendar-selection strong {
+  color: #e7e0ef;
+  font-weight: 600;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(270px, 0.8fr);
@@ -1553,8 +2009,89 @@ tbody tr:hover {
 
   .chat-card,
   .notebook-card,
-  .coach-card {
+  .coach-card,
+  .calendar-card,
+  .roadmap-card {
     margin: 16px;
+  }
+
+  .roadmap-heading {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .roadmap-controls {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .roadmap-load {
+    gap: 7px;
+    padding: 12px 14px;
+  }
+
+  .roadmap-load i {
+    margin: 0 2px;
+  }
+
+  .roadmap-weeks {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .roadmap-task {
+    grid-template-columns: 25px minmax(0, 1fr) 96px;
+    gap: 7px;
+  }
+
+  .roadmap-task-status {
+    width: 96px;
+  }
+
+  .calendar-topline {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .calendar-controls {
+    align-self: stretch;
+    justify-content: space-between;
+  }
+
+  .calendar-body {
+    padding: 12px;
+  }
+
+  .calendar-weekdays,
+  .calendar-grid {
+    gap: 4px;
+  }
+
+  .calendar-grid {
+    grid-template-rows: repeat(6, minmax(48px, 1fr));
+  }
+
+  .calendar-day,
+  .calendar-day-spacer {
+    min-height: 48px;
+  }
+
+  .calendar-day-mood {
+    bottom: 5px;
+  }
+
+  .calendar-footer {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 12px;
+  }
+
+  .calendar-selection {
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    text-align: left;
   }
 
   .chat-heading,
