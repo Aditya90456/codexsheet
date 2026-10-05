@@ -29,11 +29,16 @@ the RLS policies use the Clerk JWT `sub` claim as `user_id`.
 ## Database setup
 
 Run the complete `supabase.sql` script in Supabase Dashboard > SQL Editor. It
-creates or migrates the progress table, applies Clerk-based RLS, grants the
-authenticated role the required table/identity-sequence permissions, and
-configures profile synchronization, private notes, and shared group chat.
-Rerun it after pulling schema updates; its statements are written to be
-repeatable.
+creates or migrates the progress and profile tables, applies Clerk-based RLS,
+grants the authenticated role the required table/identity-sequence permissions,
+and configures profile synchronization, private notes, shared group chat, and
+per-message read receipts.
+For existing profiles, it adds and backfills the Clerk-compatible `user_id`
+column from the legacy UUID `id`. It migrates the private notebook to support
+multiple titled notes per user, preserving existing note content, and creates
+an initial empty note for each existing profile. New profiles automatically
+receive an initial private note. Rerun the complete script after pulling schema
+updates; its statements are written to be repeatable.
 
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
@@ -42,9 +47,14 @@ requests, policies, or deployed Edge Functions in your Supabase project.
 
 After running `supabase.sql`, every signed-in user can read and post in the
 shared DSA group chat. Row-level security restricts sending to the signed-in
-user's own Clerk ID, and Supabase Realtime broadcasts new messages. The personal
-notebook remains private to its owner. Group chat messages are visible to all
-signed-in users, so do not post sensitive information.
+user's own Clerk ID, and Supabase Realtime broadcasts new messages. Public
+profile metadata is readable to all signed-in users so the group chat can show
+member names instead of raw IDs. Each user can create and autosave multiple
+titled notes in their private notebook; notes remain private to their owner.
+The chat displays readers on messages you sent and tracks unread messages.
+Users can opt into browser notifications from the chat header; browser
+permission must be granted for notifications to appear. Group chat messages and
+readers are visible to all signed-in users, so do not post sensitive information.
 
 The app no longer uses Gemini. Existing private messages in the legacy
 `study_chat_messages` table are not deleted by the SQL script. The old

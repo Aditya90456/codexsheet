@@ -835,12 +835,46 @@ tbody tr:hover {
   color: #d2baff;
 }
 
+.chat-unread-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #a54a68;
+  color: #fff;
+  font: 700 10px 'DM Mono', monospace;
+}
+
+.chat-notification-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  margin-left: auto;
+}
+
+.chat-notification-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.chat-read-receipt {
+  display: block;
+  margin-top: 5px;
+  color: #9b91a9;
+  font-size: 9px;
+  text-align: right;
+}
+
 .footer-note {
   color: #827990;
 }
 
 .chat-card,
-.notebook-card {
+.notebook-card,
+.coach-card {
   max-width: 1370px;
   margin: 20px auto 0;
   border: 1px solid #30283b;
@@ -851,7 +885,8 @@ tbody tr:hover {
 }
 
 .chat-heading,
-.notebook-heading {
+.notebook-heading,
+.coach-heading {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -861,7 +896,8 @@ tbody tr:hover {
 }
 
 .group-chat-icon,
-.notebook-icon {
+.notebook-icon,
+.coach-icon {
   display: grid;
   place-items: center;
   flex: none;
@@ -874,17 +910,94 @@ tbody tr:hover {
 }
 
 .chat-heading h2,
-.notebook-heading h2 {
+.notebook-heading h2,
+.coach-heading h2 {
   margin: 0;
   color: #f1edf8;
   font-size: 14px;
 }
 
 .chat-heading p,
-.notebook-heading p {
+.notebook-heading p,
+.coach-heading p {
   margin: 4px 0 0;
   color: #92889f;
   font-size: 10px;
+}
+
+.coach-icon {
+  border-color: #475846;
+  background: #243228;
+  color: #cfe889;
+}
+
+.coach-open-link {
+  flex: none;
+  margin-left: auto;
+}
+
+.coach-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.78fr) minmax(0, 1.22fr);
+  min-height: 570px;
+}
+
+.coach-brief {
+  padding: 38px 30px;
+  color: #e7e0ef;
+}
+
+.coach-kicker {
+  color: #cfe889;
+  font: 500 10px 'DM Mono', monospace;
+}
+
+.coach-brief h2 {
+  max-width: 330px;
+  margin: 14px 0 10px;
+  color: #f1edf8;
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.coach-brief > p {
+  max-width: 360px;
+  margin: 0;
+  color: #aaa1b8;
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.coach-prompts {
+  display: grid;
+  margin-top: 28px;
+  border-top: 1px solid #30283b;
+}
+
+.coach-prompts span {
+  padding: 12px 0;
+  border-bottom: 1px solid #30283b;
+  color: #d8d0e3;
+  font-size: 11px;
+}
+
+.coach-brief > .coach-mic-note {
+  margin-top: 22px;
+  color: #827990;
+  font-size: 10px;
+}
+
+.coach-widget {
+  min-width: 0;
+  padding: 12px;
+  border-left: 1px solid #30283b;
+  background: #141119;
+}
+
+.coach-widget elevenlabs-convai {
+  display: block;
+  width: 100%;
+  min-height: 540px;
 }
 
 .chat-transcript {
@@ -1078,10 +1191,96 @@ tbody tr:hover {
   color: #a6d197;
 }
 
+.notes-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 0;
+}
+
+.notes-list {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.note-tab {
+  flex: none;
+  max-width: 220px;
+  padding: 8px 11px;
+  overflow: hidden;
+  border: 1px solid #3b3347;
+  border-radius: 8px;
+  background: #100e15;
+  color: #aaa1b8;
+  font: inherit;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.note-tab.active {
+  border-color: #7653bd;
+  background: #211b2b;
+  color: #d2baff;
+}
+
+.new-note-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.new-note-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.personal-note-title {
+  display: block;
+  width: calc(100% - 36px);
+  margin: 18px 18px 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  outline: none;
+  background: transparent;
+  color: #f1edf8;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.personal-note-title:focus {
+  border-color: #7653bd;
+}
+
+.notes-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 220px;
+  align-content: center;
+  margin: 18px;
+  border: 1px dashed #3b3347;
+  border-radius: 10px;
+  color: #aaa1b8;
+  font-size: 12px;
+  text-align: center;
+}
+
+.notes-empty-state p {
+  margin: 0;
+}
+
 .personal-notes-editor {
   display: block;
   min-height: min(58vh, 620px);
-  margin: 18px;
+  margin: 12px 18px 18px;
   padding: 16px;
   width: calc(100% - 36px);
 }
@@ -1353,13 +1552,46 @@ tbody tr:hover {
   }
 
   .chat-card,
-  .notebook-card {
+  .notebook-card,
+  .coach-card {
     margin: 16px;
   }
 
   .chat-heading,
-  .notebook-heading {
+  .notebook-heading,
+  .coach-heading {
     padding: 14px;
+  }
+
+  .coach-heading {
+    flex-wrap: wrap;
+  }
+
+  .coach-open-link {
+    margin-left: 48px;
+  }
+
+  .coach-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .coach-brief {
+    padding: 24px 18px;
+  }
+
+  .coach-brief h2 {
+    font-size: 21px;
+  }
+
+  .coach-widget {
+    min-height: 430px;
+    padding: 8px;
+    border-top: 1px solid #30283b;
+    border-left: 0;
+  }
+
+  .coach-widget elevenlabs-convai {
+    min-height: 410px;
   }
 
   .chat-transcript {
