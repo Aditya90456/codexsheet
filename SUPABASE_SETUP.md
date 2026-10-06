@@ -32,7 +32,8 @@ Run the complete `supabase.sql` script in Supabase Dashboard > SQL Editor. It
 creates or migrates the progress and profile tables, applies Clerk-based RLS,
 grants the authenticated role the required table/identity-sequence permissions,
 and configures profile synchronization, private notes, shared group chat, and
-per-message read receipts.
+per-message read receipts. It also adds public problem descriptions/examples
+and problem test-case data that is not readable with browser keys.
 For existing profiles, it adds and backfills the Clerk-compatible `user_id`
 column from the legacy UUID `id`. It migrates the private notebook to support
 multiple titled notes per user, preserving existing note content, and creates
@@ -42,6 +43,26 @@ updates; its statements are written to be repeatable.
 
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
+
+## Problem practice and code execution
+
+The SQL script seeds 50 original problem descriptions and examples, then creates
+a corresponding description and one test case for each of the 250 problem
+numbers in the current app. The app currently repeats its 50
+base problem patterns across those 250 entries. Add or edit rows in
+`public.dsa_problem_content` and `public.dsa_problem_test_cases` using the SQL
+Editor. The public table contains descriptions, constraints, and examples.
+Test-case data remains in Supabase for future judging support; it is not
+exposed to browser users or used by the current runner.
+
+The Monaco editor runs JavaScript locally in a sandboxed iframe and dedicated
+worker. The sandbox blocks network APIs and the parent page terminates the
+worker after five seconds.
+Only JavaScript can run; Python, Java, and C++ are available for editing only.
+This local runner prints `console.log()` output and does not compare code
+against the saved test-case data. It is not a substitute for a server-side
+sandbox for untrusted production workloads; users should only run code they
+trust.
 
 ## Group chat and personal notebook
 

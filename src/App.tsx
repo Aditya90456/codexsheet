@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import Editor from "@monaco-editor/react";
 import {
   SignInButton,
   SignUpButton,
@@ -24,6 +25,7 @@ import {
   Map as MapIcon,
   MessageCircle,
   NotebookPen,
+  Play,
   Plus,
   Bell,
   Rows3,
@@ -47,6 +49,27 @@ type Problem = {
   pattern: string;
   difficulty: "Easy" | "Medium" | "Hard";
   link: string;
+};
+type EditorLanguage = {
+  id: string;
+  label: string;
+  monacoId: string;
+  fileName: string;
+};
+type ProblemExample = {
+  input: string;
+  output: string;
+};
+type ProblemContent = {
+  description: string;
+  constraints: string[];
+  examples: ProblemExample[];
+};
+type ProblemContentState = {
+  problemNumber: number | null;
+  content: ProblemContent | null;
+  loading: boolean;
+  error: string;
 };
 type ProgressMap = Record<number, { status: Status; notes: string }>;
 type ChatMessage = {
@@ -149,6 +172,26 @@ const patterns = [
   "Heaps",
   "Bit Manipulation",
 ];
+const editorLanguages: EditorLanguage[] = [
+  { id: "javascript", label: "JavaScript", monacoId: "javascript", fileName: "main.js" },
+  { id: "python", label: "Python", monacoId: "python", fileName: "main.py" },
+  { id: "java", label: "Java", monacoId: "java", fileName: "Main.java" },
+  { id: "cpp", label: "C++", monacoId: "cpp", fileName: "main.cpp" },
+];
+
+function starterCode(languageId: string) {
+  switch (languageId) {
+    case "python":
+      return "# Write your solution here\n";
+    case "java":
+      return "public class Main {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n";
+    case "cpp":
+      return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n";
+    default:
+      return "// Write your solution here\n";
+  }
+}
+
 const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
   const seed = seeds[index % seeds.length];
   const cycle = Math.floor(index / seeds.length);
@@ -161,6 +204,31 @@ const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
     link: `https://leetcode.com/problemset/all/?search=${encodeURIComponent(seed[0])}`,
   };
 });
+
+function parseProblemContent(value: unknown): ProblemContent | null {
+  if (typeof value !== "object" || value === null || !("description" in value)) {
+    return null;
+  }
+  const row = value as {
+    description?: unknown;
+    constraints?: unknown;
+    examples?: unknown;
+  };
+  if (typeof row.description !== "string") return null;
+  const constraints = Array.isArray(row.constraints)
+    ? row.constraints.filter((item): item is string => typeof item === "string")
+    : [];
+  const examples = Array.isArray(row.examples)
+    ? row.examples.flatMap((example): ProblemExample[] => {
+        if (typeof example !== "object" || example === null) return [];
+        if (!("input" in example) || !("output" in example)) return [];
+        return typeof example.input === "string" && typeof example.output === "string"
+          ? [{ input: example.input, output: example.output }]
+          : [];
+      })
+    : [];
+  return { description: row.description, constraints, examples };
+}
 
 function localDateKey(date: Date) {
   const year = date.getFullYear();
@@ -236,6 +304,24 @@ function App() {
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
+  const [openEditorProblem, setOpenEditorProblem] = useState<number | null>(null);
+  const [editorLanguageId, setEditorLanguageId] = useState(editorLanguages[0].id);
+  const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>(
+    () =>
+      JSON.parse(
+        localStorage.getItem("codexsheet-code-drafts") ?? "{}",
+      ) as Record<string, string>,
+  );
+  const [editorInput, setEditorInput] = useState("");
+  const [editorOutput, setEditorOutput] = useState("");
+  const [editorError, setEditorError] = useState("");
+  const [editorRunning, setEditorRunning] = useState(false);
+  const [problemContentState, setProblemContentState] = useState<ProblemContentState>({
+    problemNumber: null,
+    content: null,
+    loading: false,
+    error: "",
+  });
   const [notice, setNotice] = useState("Saved locally");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatReadsByMessage, setChatReadsByMessage] = useState<Record<number, string[]>>({});
@@ -264,6 +350,8 @@ function App() {
   const currentUserIdRef = useRef<string | null>(user?.id ?? null);
   currentUserIdRef.current = user?.id ?? null;
   const selectedNote = personalNotes.find((note) => note.id === selectedNoteId) ?? null;
+  const activeEditorProblem =
+    problems.find((problem) => problem.number === openEditorProblem) ?? null;
   const calendarYear = calendarMonth.getFullYear();
   const calendarMonthIndex = calendarMonth.getMonth();
   const calendarMonthKey = `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, "0")}`;
@@ -865,6 +953,84 @@ function App() {
   }, [roadmapPreferences]);
 
   useEffect(() => {
+    localStorage.setItem("codexsheet-code-drafts", JSON.stringify(editorDrafts));
+  }, [editorDrafts]);
+
+  useEffect(() => {
+    const problemNumber = activeEditorProblem?.number ?? null;
+    if (problemNumber === null) {
+      setProblemContentState({
+        problemNumber: null,
+        content: null,
+        loading: false,
+        error: "",
+      });
+      return;
+    }
+
+    let cancelled = false;
+    setProblemContentState({
+      problemNumber,
+      content: null,
+      loading: true,
+      error: "",
+    });
+    if (!supabase) {
+      setProblemContentState({
+        problemNumber,
+        content: null,
+        loading: false,
+        error: "Supabase is not configured. Add problem content to load the challenge.",
+      });
+      return;
+    }
+
+    void Promise.resolve(
+      supabase
+        .from("dsa_problem_content")
+        .select("description, constraints, examples")
+        .eq("problem_number", problemNumber)
+        .maybeSingle(),
+    )
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setProblemContentState({
+            problemNumber,
+            content: null,
+            loading: false,
+            error: `Could not load the problem details. ${error.message}`,
+          });
+          return;
+        }
+        const content = parseProblemContent(data);
+        setProblemContentState({
+          problemNumber,
+          content,
+          loading: false,
+          error: content
+            ? ""
+            : "No description or examples have been added for this problem yet.",
+        });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setProblemContentState({
+          problemNumber,
+          content: null,
+          loading: false,
+          error: error instanceof Error
+            ? `Could not load the problem details. ${error.message}`
+            : "Could not load the problem details.",
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeEditorProblem?.number]);
+
+  useEffect(() => {
     localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
     if (!isLoaded) {
       setNotice("Loading account");
@@ -903,6 +1069,150 @@ function App() {
     if (nextStatus !== "Todo") {
       const today = localDateKey(new Date());
       setPracticeDays((current) => current.includes(today) ? current : [...current, today]);
+    }
+  }
+
+  function getEditorDraft(problemNumber: number, languageId: string) {
+    return editorDrafts[`${problemNumber}:${languageId}`] ?? starterCode(languageId);
+  }
+
+  function updateEditorDraft(problemNumber: number, languageId: string, code: string) {
+    setEditorDrafts((current) => ({
+      ...current,
+      [`${problemNumber}:${languageId}`]: code,
+    }));
+  }
+
+  async function runProblemCode(problem: Problem) {
+    if (editorRunning) return;
+    const language = editorLanguages.find((item) => item.id === editorLanguageId);
+    if (!language) {
+      setEditorError("Choose a supported language before running your code.");
+      return;
+    }
+    if (language.id !== "javascript") {
+      setEditorError("In-browser execution currently supports JavaScript only.");
+      return;
+    }
+
+    setEditorRunning(true);
+    setEditorError("");
+    setEditorOutput("");
+    const frame = document.createElement("iframe");
+    const requestId = crypto.randomUUID();
+    frame.title = "Isolated JavaScript runner";
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.position = "fixed";
+    frame.style.width = "1px";
+    frame.style.height = "1px";
+    frame.style.left = "-10000px";
+    frame.srcdoc = `<!doctype html>
+      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; worker-src blob:; connect-src 'none'; img-src data:; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'; object-src 'none'">
+      <script>
+        const workerSource = [
+          "self.onmessage = async (event) => {",
+          "  const { requestId, sourceCode, input } = event.data;",
+          "  const lines = [];",
+          "  const stringify = (value) => {",
+          "    if (typeof value === 'string') return value;",
+          "    try { return JSON.stringify(value); } catch { return String(value); }",
+          "  };",
+          "  const safeConsole = {",
+          "    log: (...values) => lines.push(values.map(stringify).join(' ')),",
+          "    info: (...values) => lines.push(values.map(stringify).join(' ')),",
+          "    warn: (...values) => lines.push(values.map(stringify).join(' ')),",
+          "    error: (...values) => lines.push(values.map(stringify).join(' ')),",
+          "  };",
+          "  try {",
+          "    const execute = new Function('input', 'console', 'print',",
+          "      '\\\"use strict\\\"; return (async () => {\\\\n' + sourceCode + '\\\\n})();');",
+          "    await execute(input, safeConsole, (...values) => lines.push(values.map(stringify).join(' ')));",
+          "    self.postMessage({ requestId, output: lines.join('\\\\n') });",
+          "  } catch (error) {",
+          "    self.postMessage({ requestId, error: error && error.stack ? String(error.stack) : String(error) });",
+          "  }",
+          "};",
+        ].join("\\n");
+        window.addEventListener("message", (event) => {
+          if (event.source !== parent || !event.data || event.data.type !== "codexsheet-run") return;
+          const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+          const worker = new Worker(workerUrl);
+          const finish = (result) => {
+            worker.terminate();
+            URL.revokeObjectURL(workerUrl);
+            parent.postMessage({ type: "codexsheet-result", ...result }, "*");
+          };
+          worker.onmessage = (result) => finish(result.data);
+          worker.onerror = (error) => finish({ requestId: event.data.requestId, error: error.message });
+          worker.postMessage(event.data);
+        });
+      <\/script>`;
+
+    let timeoutId = 0;
+    let resolveResult: (result: { output?: unknown; error?: unknown }) => void = () => {};
+    const resultPromise = new Promise<{ output?: unknown; error?: unknown }>((resolve) => {
+      resolveResult = resolve;
+    });
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+      timeoutId = window.setTimeout(
+        () => reject(new Error("Execution stopped after 5 seconds.")),
+        5_000,
+      );
+    });
+    const onMessage = (event: MessageEvent<unknown>) => {
+      if (
+        event.source !== frame.contentWindow ||
+        typeof event.data !== "object" ||
+        event.data === null ||
+        !("type" in event.data) ||
+        event.data.type !== "codexsheet-result" ||
+        !("requestId" in event.data) ||
+        event.data.requestId !== requestId
+      ) return;
+
+      resolveResult(event.data as { output?: unknown; error?: unknown });
+    };
+
+    window.addEventListener("message", onMessage);
+
+    try {
+      const frameLoaded = new Promise<void>((resolve, reject) => {
+        frame.addEventListener("load", () => resolve(), { once: true });
+        frame.addEventListener(
+          "error",
+          () => reject(new Error("Could not start the isolated JavaScript runner.")),
+          { once: true },
+        );
+      });
+      document.body.append(frame);
+      await Promise.race([frameLoaded, timeoutPromise]);
+      frame.contentWindow?.postMessage(
+        {
+          type: "codexsheet-run",
+          requestId,
+          sourceCode: getEditorDraft(problem.number, language.id),
+          input: editorInput,
+        },
+        "*",
+      );
+      const result = await Promise.race([resultPromise, timeoutPromise]);
+      if (typeof result.error === "string") {
+        setEditorError(result.error);
+      } else {
+        setEditorOutput(
+          typeof result.output === "string" && result.output
+            ? result.output
+            : "Execution completed with no output.",
+        );
+      }
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : "Could not run code.");
+    } finally {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("message", onMessage);
+      frame.remove();
+      setEditorRunning(false);
     }
   }
 
@@ -1767,7 +2077,7 @@ function App() {
                 <th>Pattern</th>
                 <th>Level</th>
                 <th>Status</th>
-                <th>Link</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1811,15 +2121,31 @@ function App() {
                       </select>
                     </td>
                     <td>
-                      <a
-                        className="external-link"
-                        href={problem.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Open ${problem.title}`}
-                      >
-                        <ExternalLink size={15} />
-                      </a>
+                      <div className="problem-actions">
+                        <button
+                          className="editor-toggle"
+                          type="button"
+                          aria-expanded={openEditorProblem === problem.number}
+                          onClick={() => {
+                            const isClosing = openEditorProblem === problem.number;
+                            setOpenEditorProblem(isClosing ? null : problem.number);
+                            setEditorOutput("");
+                            setEditorError("");
+                          }}
+                        >
+                          <Code2 size={14} />{" "}
+                          Code
+                        </button>
+                        <a
+                          className="external-link"
+                          href={problem.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`Open ${problem.title}`}
+                        >
+                          <ExternalLink size={15} />
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1838,6 +2164,180 @@ function App() {
           </span>
         </div>
       </section>}
+      {activeEditorProblem && (
+        <section
+          className="practice-workspace"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="practice-workspace-title"
+        >
+          <header className="practice-workspace-header">
+            <button
+              className="practice-back-button"
+              type="button"
+              onClick={() => setOpenEditorProblem(null)}
+            >
+              <ChevronLeft size={18} /> All problems
+            </button>
+            <span className="practice-workspace-brand">
+              <Code2 size={16} /> CodexSheet Practice
+            </span>
+            <span className="practice-saved-label">
+              Draft saved in this browser
+            </span>
+          </header>
+          <div className="practice-workspace-layout">
+            <aside className="practice-problem-pane">
+              <div className="practice-problem-meta">
+                <span>Problem {String(activeEditorProblem.number).padStart(3, "0")}</span>
+                <span className={`difficulty ${activeEditorProblem.difficulty.toLowerCase()}`}>
+                  {activeEditorProblem.difficulty}
+                </span>
+              </div>
+              <h1 id="practice-workspace-title">{activeEditorProblem.title}</h1>
+              <span className="pattern-pill">{activeEditorProblem.pattern}</span>
+              <h2>Problem description</h2>
+              {problemContentState.problemNumber !== activeEditorProblem.number ||
+              problemContentState.loading ? (
+                <p>Loading problem description…</p>
+              ) : problemContentState.error ? (
+                <p className="problem-content-message" role="status">
+                  {problemContentState.error}
+                </p>
+              ) : (
+                <>
+                  <p>{problemContentState.content?.description}</p>
+                  {(problemContentState.content?.examples.length ?? 0) > 0 && (
+                    <div className="practice-example-list">
+                      <h3>Examples</h3>
+                      {problemContentState.content?.examples.map((example, index) => (
+                        <div className="practice-example" key={index}>
+                          <strong>Example {index + 1}</strong>
+                          <pre>{`Input:\n${example.input}\n\nOutput:\n${example.output}`}</pre>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(problemContentState.content?.constraints.length ?? 0) > 0 && (
+                    <div className="practice-problem-note">
+                      <strong>Constraints</strong>
+                      <ul>
+                        {problemContentState.content?.constraints.map((constraint) => (
+                          <li key={constraint}>{constraint}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="practice-problem-note">
+                <strong>Test case guidance</strong>
+                <ul>
+                  <li>Try the displayed examples in the input box below.</li>
+                  <li>Enter custom input to test additional cases.</li>
+                </ul>
+              </div>
+              <a
+                className="practice-reference-link"
+                href={activeEditorProblem.link}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open problem reference <ExternalLink size={14} />
+              </a>
+            </aside>
+            <section className="practice-editor-pane" aria-label="Code editor">
+              <div className="practice-editor-toolbar">
+                <label className="code-language-picker">
+                  <span>Language</span>
+                  <select
+                    value={editorLanguageId}
+                    onChange={(event) => {
+                      setEditorLanguageId(event.target.value);
+                      setEditorOutput("");
+                      setEditorError("");
+                    }}
+                  >
+                    {editorLanguages.map((language) => (
+                      <option key={language.id} value={language.id}>
+                        {language.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span className="practice-file-name">
+                  {editorLanguages.find((language) => language.id === editorLanguageId)?.fileName}
+                </span>
+              </div>
+              <Editor
+                className="monaco-editor-container"
+                height="100%"
+                language={
+                  editorLanguages.find((language) => language.id === editorLanguageId)?.monacoId ??
+                  "javascript"
+                }
+                theme="vs-dark"
+                value={getEditorDraft(activeEditorProblem.number, editorLanguageId)}
+                onChange={(value: string | undefined) =>
+                  updateEditorDraft(
+                    activeEditorProblem.number,
+                    editorLanguageId,
+                    value ?? "",
+                  )
+                }
+                options={{
+                  automaticLayout: true,
+                  fontSize: 13,
+                  fontFamily: "'DM Mono', monospace",
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  tabSize: 2,
+                  wordWrap: "on",
+                  padding: { top: 14 },
+                }}
+              />
+              <div className="practice-io-pane">
+                <label>
+                  <span>Input (available as `input`)</span>
+                  <textarea
+                    value={editorInput}
+                    onChange={(event) => setEditorInput(event.target.value)}
+                    placeholder="Enter input for your program"
+                  />
+                </label>
+                <div className="practice-output-pane" aria-live="polite">
+                  <span>{editorError ? "Execution issue" : "Output"}</span>
+                  {editorError || editorOutput ? (
+                    <pre className={editorError ? "has-error" : ""}>
+                      {[editorError, editorOutput].filter(Boolean).join("\n")}
+                    </pre>
+                  ) : (
+                    <p>Run your code to see the output here.</p>
+                  )}
+                </div>
+              </div>
+              <div className="practice-editor-footer">
+                <button
+                  className="run-code-button"
+                  type="button"
+                  onClick={() => void runProblemCode(activeEditorProblem)}
+                  disabled={editorRunning || editorLanguageId !== "javascript"}
+                >
+                  {editorRunning ? (
+                    <LoaderCircle className="spin" size={15} />
+                  ) : (
+                    <Play size={14} />
+                  )}
+                  {editorRunning ? "Running…" : "Run code"}
+                </button>
+              </div>
+              <p className="browser-runner-note">
+                JavaScript runs locally in a restricted sandbox and stops after 5 seconds. Use `console.log()` to show output; read custom input from the `input` variable. Run only code you trust. Other languages are editor-only, and automated test-case judging is not available.
+              </p>
+            </section>
+          </div>
+        </section>
+      )}
       <footer className="footer-note">
         Use the patterns, then make the problem yours.
       </footer>
