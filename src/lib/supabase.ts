@@ -1,14 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? "";
+const supabaseAnonKey = (
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY
+)?.trim() ?? "";
 
 export const supabaseConfigurationError = !supabaseUrl
   ? "Set VITE_SUPABASE_URL in your .env file."
   : !supabaseUrl.startsWith("https://") || /your|replace|placeholder/i.test(supabaseUrl)
     ? "VITE_SUPABASE_URL must be an https:// Supabase project URL."
     : !supabaseAnonKey || /your|replace|placeholder/i.test(supabaseAnonKey)
-      ? "Set VITE_SUPABASE_ANON_KEY to your Supabase publishable/anon key."
+      ? "Set VITE_SUPABASE_PUBLISHABLE_KEY to your Supabase publishable key."
       : null;
 
 type ClerkTokenOptions = { skipCache?: boolean };

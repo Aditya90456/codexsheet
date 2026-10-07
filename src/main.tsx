@@ -12,18 +12,7 @@ const hasClerkPublishableKey =
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     {hasClerkPublishableKey ? (
-      <ClerkProvider
-        publishableKey={clerkPublishableKey}
-        appearance={{
-          variables: {
-            colorPrimary: "#a78bfa",
-            colorBackground: "#191620",
-            colorText: "#f3eefb",
-            colorInputBackground: "#100e15",
-            colorInputText: "#f3eefb",
-          },
-        }}
-      >
+      <ClerkProvider publishableKey={clerkPublishableKey!}>
         <App />
       </ClerkProvider>
     ) : (

@@ -12,6 +12,7 @@
     "@clerk/clerk-react": "^5.61.10",
     "@supabase/supabase-js": "^2.117.2",
     "@vitejs/plugin-react": "latest",
+    "gsap": "^3.15.0",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",

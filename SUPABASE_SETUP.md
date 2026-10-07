@@ -1,30 +1,24 @@
-# Clerk and Supabase Setup
+# Supabase Setup
 
 ## Local environment
 
 Copy `.env.example` to `.env` and set:
 
-- `VITE_CLERK_PUBLISHABLE_KEY` from Clerk Dashboard > API Keys.
 - `VITE_SUPABASE_URL` from Supabase Dashboard > Project Settings > API.
-- `VITE_SUPABASE_ANON_KEY` to the project's publishable key or legacy anon key.
+- `VITE_SUPABASE_PUBLISHABLE_KEY` from Supabase Dashboard > Project Settings > API.
 
 These are browser-facing keys. Never put a Supabase `service_role` key in a
 `VITE_` variable or client code. Restart the Vite dev server after changing
 `.env`.
 
-## Clerk integration
+## Authentication
 
-1. In Clerk Dashboard, open **Configure > Integrations > Supabase** (or visit
-   Clerk's **Connect with Supabase** setup), activate the native integration,
-   and copy the Clerk domain it provides.
-2. In Supabase Dashboard, open **Authentication > Sign In / Providers >
-   Third-Party Auth Providers**, add **Clerk**, and enter that Clerk domain.
-3. Confirm the Supabase project and Clerk application use the same Clerk
-   instance/environment (development or production).
-
-The app passes Clerk's default session token to Supabase. No Clerk JWT template
-is needed. The native integration supplies the `authenticated` role claim, and
-the RLS policies use the Clerk JWT `sub` claim as `user_id`.
+Clerk handles sign-up, email verification, sign-in, and account sessions. In
+Clerk, use **Connect with Supabase** to configure the instance, then add Clerk
+under **Supabase > Authentication > Third-Party Auth Providers**. The app
+passes Clerk session tokens to Supabase; RLS policies authorize the JWT subject
+as the row's `user_id`. Supabase's email SMTP settings do not send Clerk
+verification emails.
 
 ## Peer video rooms
 
@@ -36,7 +30,7 @@ have joined that room.
 ## Database setup
 
 Run the complete `supabase.sql` script in Supabase Dashboard > SQL Editor. It
-creates or migrates the progress and profile tables, applies Clerk-based RLS,
+creates or migrates the progress and profile tables, applies Supabase Auth RLS,
 grants the authenticated role the required table/identity-sequence permissions,
 and configures profile synchronization, private notes, shared group chat,
 per-message read receipts, and peer video rooms. Signed-in users create a room
@@ -45,7 +39,7 @@ membership tables, join/leave functions, and private Realtime signaling policies
 are included in `supabase.sql`; apply the updated script before using peer rooms.
 It also adds public problem descriptions/examples
 and problem test-case data that is not readable with browser keys.
-For existing profiles, it adds and backfills the Clerk-compatible `user_id`
+For existing profiles, it adds and backfills the `user_id`
 column from the legacy UUID `id`. It migrates the private notebook to support
 multiple titled notes per user, preserving existing note content, and creates
 an initial empty note for each existing profile. New profiles automatically
@@ -79,7 +73,7 @@ trust.
 
 After running `supabase.sql`, every signed-in user can read and post in the
 shared DSA group chat. Row-level security restricts sending to the signed-in
-user's own Clerk ID, and Supabase Realtime broadcasts new messages. Public
+user's own Supabase Auth ID, and Supabase Realtime broadcasts new messages. Public
 profile metadata is readable to all signed-in users so the group chat can show
 member names instead of raw IDs. Each user can create and autosave multiple
 titled notes in their private notebook; notes remain private to their owner.

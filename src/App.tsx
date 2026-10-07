@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Flame,
   GitBranch,
+  House,
   LayoutDashboard,
   LoaderCircle,
   Map as MapIcon,
@@ -45,11 +46,7 @@ import {
   MonitorUp,
   ShieldCheck,
 } from "lucide-react";
-import {
-  refreshRealtimeAuth,
-  setClerkTokenGetter,
-  supabase,
-} from "./lib/supabase";
+import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -80,7 +77,147 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls";
+type WorkspaceView = "home" | "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls";
+
+const viewPaths: Record<WorkspaceView, string> = {
+  home: "/",
+  dashboard: "/dashboard",
+  problems: "/problems",
+  calendar: "/calendar",
+  roadmap: "/roadmap",
+  chat: "/chat",
+  notes: "/notes",
+  coach: "/coach",
+  calls: "/calls",
+};
+
+function viewFromLocation(): WorkspaceView {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("room") || params.has("schedule")) return "calls";
+  const path = window.location.pathname.replace(/\/$/, "") || "/";
+  const match = (Object.entries(viewPaths) as Array<[WorkspaceView, string]>).find(([, route]) => route === path);
+  return match?.[0] ?? "dashboard";
+}
+
+function HomePage({
+  solved,
+  inProgress,
+  streak,
+  percent,
+  patterns,
+  onNavigate,
+}: {
+  solved: number;
+  inProgress: number;
+  streak: number;
+  percent: number;
+  patterns: Array<{ name: string; completed: number; total: number }>;
+  onNavigate: (view: WorkspaceView) => void;
+}) {
+  const pageRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let revertAnimations: (() => void) | undefined;
+    void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
+      if (cancelled || !pageRef.current) return;
+      const engine = gsapModule.gsap;
+      engine.registerPlugin(triggerModule.ScrollTrigger);
+      const context = engine.context(() => {
+        const motion = engine.matchMedia();
+        motion.add("(prefers-reduced-motion: no-preference)", () => {
+          const intro = engine.timeline({ defaults: { ease: "power3.out" } });
+          intro
+            .from(".home-copy > *", { y: 24, opacity: 0, duration: 0.7, stagger: 0.1 })
+            .from(".home-flow-node", { y: 28, opacity: 0, duration: 0.65, stagger: 0.13 }, "-=0.35")
+            .from(".home-flow-link", { scaleX: 0, duration: 0.45, stagger: 0.12, transformOrigin: "left center" }, "-=0.3")
+            .from(".home-lab-foot", { y: 10, opacity: 0, duration: 0.45 }, "-=0.2");
+
+          engine.from(".home-loop-step", {
+            y: 24,
+            opacity: 0,
+            duration: 0.65,
+            stagger: 0.14,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".home-loop", start: "top 78%", once: true },
+          });
+          engine.from(".home-progress-fill", {
+            scaleX: 0,
+            duration: 1.1,
+            ease: "power2.out",
+            transformOrigin: "left center",
+            scrollTrigger: { trigger: ".home-progress", start: "top 82%", once: true },
+          });
+          engine.to(".home-mark-orbit", { rotate: 360, duration: 32, ease: "none", repeat: -1 });
+        });
+        return () => motion.revert();
+      }, pageRef);
+      revertAnimations = () => context.revert();
+    });
+    return () => {
+      cancelled = true;
+      revertAnimations?.();
+    };
+  }, []);
+
+  return (
+    <main className="home-page" ref={pageRef}>
+      <section className="home-hero">
+        <div className="home-hero-inner">
+          <div className="home-copy">
+            <span className="home-eyebrow"><span className="home-live-dot" /> YOUR NEXT INTERVIEW STARTS HERE</span>
+            <h1>DSA interview practice <em>with a plan.</em></h1>
+            <p>Build problem-solving fluency one pattern at a time. Keep your practice, progress, and study group in one focused workspace.</p>
+            <div className="home-actions">
+              <button className="home-primary" type="button" onClick={() => onNavigate("problems")}>Start practicing <ArrowRight size={16} /></button>
+              <button className="home-secondary" type="button" onClick={() => onNavigate("dashboard")}>View my progress</button>
+            </div>
+            <div className="home-proof"><span><Check size={14} /> 250 curated problems</span><span><Check size={14} /> 18 core patterns</span></div>
+          </div>
+
+          <div className="home-lab" aria-label="A problem-solving path from problem to pattern to solution">
+            <div className="home-lab-head"><span>THE PRACTICE LOOP</span><span>01 — 03</span></div>
+            <div className="home-flow">
+              <div className="home-flow-node node-problem"><span className="home-node-index">01</span><span className="home-node-title">Read the problem</span><strong>Two Sum</strong><small>Find a matching pair</small></div>
+              <i className="home-flow-link" />
+              <div className="home-flow-node node-pattern"><span className="home-node-index">02</span><span className="home-node-title">Spot the pattern</span><strong>Hash map</strong><small>Trade space for time</small></div>
+              <i className="home-flow-link" />
+              <div className="home-flow-node node-solve"><span className="home-node-index">03</span><span className="home-node-title">Build the solution</span><strong>O(n)</strong><small>One clear pass</small></div>
+            </div>
+            <div className="home-lab-foot"><span><span className="home-success-dot" /> A repeatable way to think</span><div className="home-mark-orbit"><i /><i /><i /></div></div>
+          </div>
+        </div>
+        <div className="home-hero-bottom"><span>START WITH ONE PROBLEM</span><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div>
+      </section>
+
+      <section className="home-loop" aria-labelledby="home-loop-title">
+        <div className="home-section-heading">
+          <div><span className="home-section-kicker">A SIMPLE SYSTEM, USED DAILY</span><h2 id="home-loop-title">Practice that <em>adds up.</em></h2></div>
+          <p>Small, deliberate reps build the instincts that interviews ask for.</p>
+        </div>
+        <div className="home-loop-grid">
+          <button className="home-loop-step" type="button" onClick={() => onNavigate("roadmap")}>
+            <span className="home-loop-number">01</span><strong>Follow a roadmap</strong><span>Set your timeline and focus on the patterns you need most.</span><span className="home-step-link">Build your plan <ArrowRight size={14} /></span>
+          </button>
+          <button className="home-loop-step" type="button" onClick={() => onNavigate("problems")}>
+            <span className="home-loop-number">02</span><strong>Solve with intent</strong><span>Practice a curated problem set, then mark what you have learned.</span><span className="home-step-link">Browse problems <ArrowRight size={14} /></span>
+          </button>
+          <button className="home-loop-step" type="button" onClick={() => onNavigate("calendar")}>
+            <span className="home-loop-number">03</span><strong>Keep your rhythm</strong><span>See your progress take shape and make the next session count.</span><span className="home-step-link">View calendar <ArrowRight size={14} /></span>
+          </button>
+        </div>
+      </section>
+
+      <section className="home-progress" aria-label="Your current study progress">
+        <div className="home-progress-copy"><span className="home-section-kicker">YOUR WORKSPACE IS READY</span><h2>Pick up where <em>you are.</em></h2><p>Your practice stays yours. Sign in to sync progress and study with your peers.</p><button className="home-progress-link" type="button" onClick={() => onNavigate("dashboard")}>Open your dashboard <ArrowRight size={15} /></button></div>
+        <div className="home-progress-stats"><div><span>PROBLEMS SOLVED</span><strong>{solved}<small> / 250</small></strong></div><div><span>IN PROGRESS</span><strong>{inProgress}</strong></div><div><span>DAY STREAK</span><strong>{streak}</strong></div><div className="home-progress-bar" aria-label={`${percent}% of problems solved`}><i className="home-progress-fill" style={{ width: `${percent}%` }} /></div>
+          <div className="home-pattern-list">{patterns.slice(0, 3).map((item) => <span key={item.name}>{item.name}<small>{item.completed}/{item.total}</small></span>)}</div>
+        </div>
+      </section>
+      <footer className="home-footer"><span>codexsheet</span><span>One pattern. One problem. One step forward.</span><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
+    </main>
+  );
+}
 
 const elevenLabsAgentId = "agent_6801m0q9g55pe3vr0eb8y4sgkby7";
 const elevenLabsVoiceId = "C2S5J6WvmHnrQWjUu6Rg";
@@ -474,15 +611,18 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
-  const user =
-    isSignedIn && userId
-      ? { id: userId, email: clerkUser?.primaryEmailAddress?.emailAddress }
-      : null;
+  const user = isSignedIn && userId
+    ? { id: userId, email: clerkUser?.primaryEmailAddress?.emailAddress }
+    : null;
   const clerkDisplayName =
     clerkUser?.fullName?.trim() ||
     clerkUser?.username?.trim() ||
     clerkUser?.primaryEmailAddress?.emailAddress.split("@")[0]?.trim() ||
     "Codexsheet member";
+  useEffect(() => {
+    setClerkTokenGetter((options) => getToken(options));
+    return () => setClerkTokenGetter(null);
+  }, [getToken]);
   const [progress, setProgress] = useState<ProgressMap>(
     () =>
       JSON.parse(
@@ -499,10 +639,27 @@ function App() {
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [activeView, setActiveView] = useState<WorkspaceView>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.has("room") || params.has("schedule") ? "calls" : "dashboard";
-  });
+  const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  const navigateToView = (view: WorkspaceView) => {
+    const url = new URL(window.location.href);
+    url.pathname = viewPaths[view];
+    if (view !== "calls") {
+      url.searchParams.delete("room");
+      url.searchParams.delete("schedule");
+      url.searchParams.delete("call");
+    }
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setActiveView(view);
+  };
+  useEffect(() => {
+    const handlePopState = () => setActiveView(viewFromLocation());
+    const canonicalPath = viewPaths[viewFromLocation()];
+    if (window.location.pathname !== canonicalPath) {
+      window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -603,6 +760,12 @@ function App() {
         .filter((item) => item.total > 0),
     [progress],
   );
+  const weakestPattern = useMemo(
+    () => [...patternStats].sort((left, right) =>
+      (left.completed / left.total) - (right.completed / right.total) || left.name.localeCompare(right.name),
+    )[0],
+    [patternStats],
+  );
   const roadmapProblems = useMemo(() => {
     const completionByPattern = new Map(
       patternStats.map((item) => [item.name, item.completed / item.total]),
@@ -636,11 +799,6 @@ function App() {
       problems: roadmapProblems.slice(index * problemsPerWeek, (index + 1) * problemsPerWeek),
     }));
   }, [roadmapPreferences.targetWeeks, roadmapProblems]);
-  useEffect(() => {
-    setClerkTokenGetter((options) => getToken(options));
-    return () => setClerkTokenGetter(null);
-  }, [getToken]);
-
   function getDisplayName(userId: string) {
     if (userId === user?.id) return "You";
     const profile = profileByUserId[userId];
@@ -771,7 +929,7 @@ function App() {
                   });
                   notification.onclick = () => {
                     window.focus();
-                    setActiveView("chat");
+                    navigateToView("chat");
                     notification.close();
                   };
                 } catch (error) {
@@ -1253,20 +1411,20 @@ function App() {
           <CircleHelp size={18} className="muted-icon" />
             {isLoaded ? user ? (
               <UserButton />
-          ) : (
-            <>
+            ) : (
+              <>
                 <SignInButton mode="modal">
                   <button className="secondary-button">Sign in</button>
                 </SignInButton>
                 <SignUpButton mode="modal">
                   <button className="primary-button">Create account</button>
                 </SignUpButton>
-            </>
+              </>
             ) : null}
         </div>
       </header>
       <section className="workspace-header">
-        <div className="title-row">
+        {activeView !== "home" && <div className="title-row">
           <div>
             <div className="breadcrumb">
               <span>Library</span>
@@ -1330,19 +1488,26 @@ function App() {
               <GitBranch size={16} /> View repo
             </button>
           </div>
-        </div>
+        </div>}
         <nav className="view-switcher" aria-label="Workspace views">
+          <button
+            className={activeView === "home" ? "active" : ""}
+            aria-pressed={activeView === "home"}
+            onClick={() => navigateToView("home")}
+          >
+            <House size={16} /> Home
+          </button>
           <button
             className={activeView === "dashboard" ? "active" : ""}
             aria-pressed={activeView === "dashboard"}
-            onClick={() => setActiveView("dashboard")}
+            onClick={() => navigateToView("dashboard")}
           >
             <LayoutDashboard size={16} /> Dashboard
           </button>
           <button
             className={activeView === "problems" ? "active" : ""}
             aria-pressed={activeView === "problems"}
-            onClick={() => setActiveView("problems")}
+            onClick={() => navigateToView("problems")}
           >
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
@@ -1350,21 +1515,21 @@ function App() {
           <button
             className={activeView === "calendar" ? "active" : ""}
             aria-pressed={activeView === "calendar"}
-            onClick={() => setActiveView("calendar")}
+            onClick={() => navigateToView("calendar")}
           >
             <CalendarDays size={16} /> Calendar
           </button>
           <button
             className={activeView === "roadmap" ? "active" : ""}
             aria-pressed={activeView === "roadmap"}
-            onClick={() => setActiveView("roadmap")}
+            onClick={() => navigateToView("roadmap")}
           >
             <MapIcon size={16} /> Roadmap
           </button>
           <button
             className={activeView === "chat" ? "active" : ""}
             aria-pressed={activeView === "chat"}
-            onClick={() => setActiveView("chat")}
+            onClick={() => navigateToView("chat")}
           >
             <MessageCircle size={16} /> Group chat
             {chatUnreadIds.length > 0 && (
@@ -1376,26 +1541,34 @@ function App() {
           <button
             className={activeView === "calls" ? "active" : ""}
             aria-pressed={activeView === "calls"}
-            onClick={() => setActiveView("calls")}
+            onClick={() => navigateToView("calls")}
           >
             <Video size={16} /> Video calls
           </button>
           <button
             className={activeView === "coach" ? "active" : ""}
             aria-pressed={activeView === "coach"}
-            onClick={() => setActiveView("coach")}
+            onClick={() => navigateToView("coach")}
           >
             <AudioLines size={16} /> AI coach
           </button>
           <button
             className={activeView === "notes" ? "active" : ""}
             aria-pressed={activeView === "notes"}
-            onClick={() => setActiveView("notes")}
+            onClick={() => navigateToView("notes")}
           >
             <NotebookPen size={16} /> Notes
           </button>
         </nav>
       </section>
+      {activeView === "home" && <HomePage
+        solved={solved}
+        inProgress={inProgress}
+        streak={practiceStreak.current}
+        percent={percent}
+        patterns={patternStats}
+        onNavigate={navigateToView}
+      />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
@@ -1441,7 +1614,7 @@ function App() {
                   <span className="insight-label">Study queue</span>
                   <h2>{inProgress ? "Pick up where you left off" : "Start with a classic"}</h2>
                 </div>
-                <button className="panel-link" onClick={() => setActiveView("problems")}>
+                <button className="panel-link" onClick={() => navigateToView("problems")}>
                   All problems <ArrowRight size={15} />
                 </button>
               </header>
@@ -1505,8 +1678,9 @@ function App() {
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
             <div>
-              <h2>Your study plan</h2>
-              <p>Adjust your timeline and focus. Your unsolved problems will be reordered automatically.</p>
+              <span className="roadmap-eyebrow">ADAPTIVE PREPARATION</span>
+              <h2>Your DSA roadmap</h2>
+              <p>A focused plan built around your progress and weekly availability.</p>
             </div>
           </header>
           <div className="roadmap-controls">
@@ -1554,15 +1728,21 @@ function App() {
               </select>
             </label>
           </div>
+          <div className="roadmap-insight" aria-live="polite">
+            <div className="roadmap-insight-mark"><Target size={17} /></div>
+            <div className="roadmap-insight-copy">
+              <span className="roadmap-insight-label">YOUR NEXT FOCUS</span>
+            {weakestPattern ? (
+              <p><strong>{weakestPattern.name}</strong> is your least-practiced pattern ({weakestPattern.completed} of {weakestPattern.total} solved). {roadmapPreferences.focusPattern === "Build weak areas" ? "It is prioritized in your plan." : "Choose Build weak areas to prioritize it."}</p>
+            ) : (
+              <p>As you solve problems, the plan will identify patterns where you need more practice and adjust the order.</p>
+            )}
+            </div>
+          </div>
           <div className="roadmap-load" aria-live="polite">
-            <strong>{roadmapProblems.length}</strong>
-            <span>problems remaining</span>
-            <i />
-            <strong>{Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong>
-            <span>per study day</span>
-            <i />
-            <strong>{roadmapPreferences.sessionsPerWeek}</strong>
-            <span>days each week</span>
+            <div className="roadmap-stat"><strong>{roadmapProblems.length}</strong><span>problems remaining</span></div>
+            <div className="roadmap-stat"><strong>{Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong><span>problems per study day</span></div>
+            <div className="roadmap-stat"><strong>{roadmapPreferences.sessionsPerWeek}</strong><span>study days each week</span></div>
           </div>
           {roadmapWeeks.length === 0 ? (
             <div className="roadmap-complete">
@@ -1592,6 +1772,14 @@ function App() {
                   <div className="roadmap-task-list">
                     {week.problems.map((problem) => {
                       const current = progress[problem.number]?.status ?? "Todo";
+                      const problemPatternStats = patternStats.find((item) => item.name === problem.pattern);
+                      const reason = current === "In progress"
+                        ? "Continue where you left off"
+                        : roadmapPreferences.focusPattern !== "All patterns" && roadmapPreferences.focusPattern !== "Build weak areas"
+                          ? `Matches your ${problem.pattern} focus`
+                          : problem.pattern === weakestPattern?.name
+                            ? "Targets your least-practiced pattern"
+                            : `${problemPatternStats?.completed ?? 0}/${problemPatternStats?.total ?? 0} in this pattern solved`;
                       return (
                         <div className="roadmap-task" key={problem.number}>
                           <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
@@ -1606,6 +1794,7 @@ function App() {
                               <ExternalLink size={12} />
                             </a>
                             <span>{problem.pattern} · {problem.difficulty}</span>
+                            <span className="roadmap-reason">{reason}</span>
                           </div>
                           <select
                             className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
@@ -1748,9 +1937,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to join the shared study group and chat with other learners.</p>
-              <SignInButton mode="modal">
-                <button className="primary-button">Sign in</button>
-              </SignInButton>
+              <SignInButton mode="modal"><button className="primary-button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
@@ -1900,9 +2087,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to create a private notebook that syncs with your account.</p>
-              <SignInButton mode="modal">
-                <button className="primary-button">Sign in</button>
-              </SignInButton>
+              <SignInButton mode="modal"><button className="primary-button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
