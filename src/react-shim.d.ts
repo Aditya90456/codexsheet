@@ -1,6 +1,7 @@
 declare module "react" {
   export type ReactNode = unknown;
   export type FormEvent<T = HTMLFormElement> = { preventDefault(): void; target: T };
+  export function useRef<T>(initialValue: T): { current: T };
   export function useRef<T>(initialValue: T | null): { current: T | null };
   export function useState<S>(initialState: S | (() => S)): [S, (next: S | ((current: S) => S)) => void];
   export function useEffect(effect: () => void | (() => void), dependencies?: readonly unknown[]): void;
@@ -19,6 +20,7 @@ declare module "react/jsx-runtime" {
 }
 
 declare namespace JSX {
+  interface IntrinsicAttributes { key?: string | number }
   interface IntrinsicElements {
     [element: string]: {
       [property: string]: unknown;

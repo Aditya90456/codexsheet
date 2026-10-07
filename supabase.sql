@@ -487,6 +487,157 @@ create policy "Users can create their own group chat receipts"
 
 grant select, insert on public.group_chat_reads to authenticated;
 
+create table if not exists public.call_availability (
+  id uuid primary key default gen_random_uuid(),
+  host_id text not null,
+  starts_at timestamptz not null,
+  duration_minutes smallint not null default 30 check (duration_minutes between 15 and 120),
+  is_open boolean not null default true,
+  created_at timestamptz not null default now(),
+  unique (host_id, starts_at)
+);
+
+create table if not exists public.call_requests (
+  id uuid primary key default gen_random_uuid(),
+  availability_id uuid references public.call_availability(id) on delete cascade,
+  host_id text not null,
+  student_id text not null,
+  message text not null default '' check (char_length(message) <= 500),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'declined')),
+  room_id text unique,
+  created_at timestamptz not null default now(),
+  unique (availability_id, student_id)
+);
+
+create table if not exists public.call_rooms (
+  id uuid primary key default gen_random_uuid(),
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.call_room_members (
+  room_id uuid not null references public.call_rooms(id) on delete cascade,
+  user_id text not null,
+  joined_at timestamptz not null default now(),
+  primary key (room_id, user_id)
+);
+
+alter table public.call_requests alter column availability_id drop not null;
+
+drop index if exists public.call_requests_one_pending_room_per_student;
+drop index if exists public.call_requests_one_approval_per_slot;
+
+alter table public.call_availability enable row level security;
+alter table public.call_requests enable row level security;
+alter table public.call_rooms enable row level security;
+alter table public.call_room_members enable row level security;
+
+drop policy if exists "Room creators and members can read a room" on public.call_rooms;
+create policy "Room creators and members can read a room"
+  on public.call_rooms for select to authenticated
+  using (
+    created_by = (auth.jwt() ->> 'sub')
+    or exists (
+      select 1 from public.call_room_members member
+      where member.room_id = call_rooms.id and member.user_id = (auth.jwt() ->> 'sub')
+    )
+  );
+
+drop policy if exists "Users can create their own peer rooms" on public.call_rooms;
+create policy "Users can create their own peer rooms"
+  on public.call_rooms for insert to authenticated
+  with check (created_by = (auth.jwt() ->> 'sub'));
+
+drop policy if exists "Peers can read their own room membership" on public.call_room_members;
+create policy "Peers can read their own room membership"
+  on public.call_room_members for select to authenticated
+  using (user_id = (auth.jwt() ->> 'sub'));
+
+drop policy if exists "Peers can leave their own rooms" on public.call_room_members;
+create policy "Peers can leave their own rooms"
+  on public.call_room_members for delete to authenticated
+  using (user_id = (auth.jwt() ->> 'sub'));
+
+create or replace function public.join_call_room(p_room_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id text := auth.jwt() ->> 'sub';
+begin
+  if v_user_id is null then
+    raise exception 'Sign in to join a peer room.';
+  end if;
+  if not exists (select 1 from public.call_rooms room where room.id = p_room_id) then
+    raise exception 'Peer room not found.';
+  end if;
+  insert into public.call_room_members (room_id, user_id)
+  values (p_room_id, v_user_id)
+  on conflict (room_id, user_id) do nothing;
+  return p_room_id;
+end;
+$$;
+
+create or replace function public.leave_call_room(p_room_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id text := auth.jwt() ->> 'sub';
+begin
+  if v_user_id is null then
+    raise exception 'Sign in to leave a peer room.';
+  end if;
+  delete from public.call_room_members
+  where room_id = p_room_id and user_id = v_user_id;
+end;
+$$;
+
+revoke all on function public.join_call_room(uuid) from public, anon;
+revoke all on function public.leave_call_room(uuid) from public, anon;
+grant execute on function public.join_call_room(uuid) to authenticated;
+grant execute on function public.leave_call_room(uuid) to authenticated;
+grant select, insert on public.call_rooms to authenticated;
+grant select, delete on public.call_room_members to authenticated;
+
+-- Keep historical request and availability rows, but turn off the old approval flow.
+drop policy if exists "Anyone signed in can view open call slots" on public.call_availability;
+drop policy if exists "Hosts manage their own call slots" on public.call_availability;
+drop policy if exists "Students and hosts can read their call requests" on public.call_requests;
+drop policy if exists "Students can request an open host slot" on public.call_requests;
+drop policy if exists "Students can request a host room" on public.call_requests;
+drop policy if exists "Hosts can approve or decline their requests" on public.call_requests;
+
+drop policy if exists "Approved participants can receive call signaling" on realtime.messages;
+drop policy if exists "Peer room members can receive call signaling" on realtime.messages;
+create policy "Peer room members can receive call signaling"
+  on realtime.messages for select to authenticated
+  using (
+    exists (
+      select 1 from public.call_room_members member
+      where member.room_id::text = split_part(realtime.topic(), 'video-call-', 2)
+        and member.user_id = (auth.jwt() ->> 'sub')
+    )
+  );
+
+drop policy if exists "Peer room members can send call signaling" on realtime.messages;
+create policy "Peer room members can send call signaling"
+  on realtime.messages for insert to authenticated
+  with check (
+    exists (
+      select 1 from public.call_room_members member
+      where member.room_id::text = split_part(realtime.topic(), 'video-call-', 2)
+        and member.user_id = (auth.jwt() ->> 'sub')
+    )
+  );
+
+revoke all on public.call_availability from anon, authenticated;
+revoke all on public.call_requests from anon, authenticated;
+
 do $$
 begin
   if not exists (
@@ -506,6 +657,18 @@ begin
       and tablename = 'group_chat_reads'
   ) then
     alter publication supabase_realtime add table public.group_chat_reads;
+  end if;
+  if exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'call_availability'
+  ) then
+    alter publication supabase_realtime drop table public.call_availability;
+  end if;
+  if exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'call_requests'
+  ) then
+    alter publication supabase_realtime drop table public.call_requests;
   end if;
 end;
 $$;

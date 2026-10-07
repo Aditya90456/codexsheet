@@ -26,13 +26,24 @@ The app passes Clerk's default session token to Supabase. No Clerk JWT template
 is needed. The native integration supplies the `authenticated` role claim, and
 the RLS policies use the Clerk JWT `sub` claim as `user_id`.
 
+## Peer video rooms
+
+Signed-in users can create peer rooms and invite others with a private room
+link. Anyone with the link can join directly; there is no request approval
+step and no email notification. Realtime signaling is limited to users who
+have joined that room.
+
 ## Database setup
 
 Run the complete `supabase.sql` script in Supabase Dashboard > SQL Editor. It
 creates or migrates the progress and profile tables, applies Clerk-based RLS,
 grants the authenticated role the required table/identity-sequence permissions,
-and configures profile synchronization, private notes, shared group chat, and
-per-message read receipts. It also adds public problem descriptions/examples
+and configures profile synchronization, private notes, shared group chat,
+per-message read receipts, and peer video rooms. Signed-in users create a room
+and share its private link; peers with the link can join directly. The room
+membership tables, join/leave functions, and private Realtime signaling policies
+are included in `supabase.sql`; apply the updated script before using peer rooms.
+It also adds public problem descriptions/examples
 and problem test-case data that is not readable with browser keys.
 For existing profiles, it adds and backfills the Clerk-compatible `user_id`
 column from the legacy UUID `id`. It migrates the private notebook to support

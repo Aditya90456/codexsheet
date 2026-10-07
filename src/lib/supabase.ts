@@ -11,10 +11,18 @@ export const supabaseConfigurationError = !supabaseUrl
       ? "Set VITE_SUPABASE_ANON_KEY to your Supabase publishable/anon key."
       : null;
 
-let clerkTokenGetter: (() => Promise<string | null>) | null = null;
+type ClerkTokenOptions = { skipCache?: boolean };
+let clerkTokenGetter: ((options?: ClerkTokenOptions) => Promise<string | null>) | null = null;
 
-export function setClerkTokenGetter(getter: (() => Promise<string | null>) | null) {
+export function setClerkTokenGetter(getter: ((options?: ClerkTokenOptions) => Promise<string | null>) | null) {
   clerkTokenGetter = getter;
+}
+
+export async function refreshRealtimeAuth() {
+  if (!supabase || !clerkTokenGetter) throw new Error("Your sign-in session is unavailable. Sign in again and retry.");
+  const token = await clerkTokenGetter({ skipCache: true });
+  if (!token) throw new Error("Your sign-in session expired. Sign in again and retry.");
+  await supabase.realtime.setAuth(token);
 }
 
 const supabase = !supabaseConfigurationError

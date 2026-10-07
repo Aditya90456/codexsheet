@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import Editor from "@monaco-editor/react";
 import {
   SignInButton,
   SignUpButton,
@@ -25,7 +24,6 @@ import {
   Map as MapIcon,
   MessageCircle,
   NotebookPen,
-  Play,
   Plus,
   Bell,
   Rows3,
@@ -36,8 +34,19 @@ import {
   UsersRound,
   Wifi,
   WifiOff,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Copy,
+  Users,
+  Link2,
+  MonitorUp,
+  ShieldCheck,
 } from "lucide-react";
 import {
+  refreshRealtimeAuth,
   setClerkTokenGetter,
   supabase,
 } from "./lib/supabase";
@@ -49,27 +58,6 @@ type Problem = {
   pattern: string;
   difficulty: "Easy" | "Medium" | "Hard";
   link: string;
-};
-type EditorLanguage = {
-  id: string;
-  label: string;
-  monacoId: string;
-  fileName: string;
-};
-type ProblemExample = {
-  input: string;
-  output: string;
-};
-type ProblemContent = {
-  description: string;
-  constraints: string[];
-  examples: ProblemExample[];
-};
-type ProblemContentState = {
-  problemNumber: number | null;
-  content: ProblemContent | null;
-  loading: boolean;
-  error: string;
 };
 type ProgressMap = Record<number, { status: Status; notes: string }>;
 type ChatMessage = {
@@ -92,7 +80,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach";
+type WorkspaceView = "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls";
 
 const elevenLabsAgentId = "agent_6801m0q9g55pe3vr0eb8y4sgkby7";
 const elevenLabsVoiceId = "C2S5J6WvmHnrQWjUu6Rg";
@@ -172,26 +160,6 @@ const patterns = [
   "Heaps",
   "Bit Manipulation",
 ];
-const editorLanguages: EditorLanguage[] = [
-  { id: "javascript", label: "JavaScript", monacoId: "javascript", fileName: "main.js" },
-  { id: "python", label: "Python", monacoId: "python", fileName: "main.py" },
-  { id: "java", label: "Java", monacoId: "java", fileName: "Main.java" },
-  { id: "cpp", label: "C++", monacoId: "cpp", fileName: "main.cpp" },
-];
-
-function starterCode(languageId: string) {
-  switch (languageId) {
-    case "python":
-      return "# Write your solution here\n";
-    case "java":
-      return "public class Main {\n    public static void main(String[] args) {\n        // Write your solution here\n    }\n}\n";
-    case "cpp":
-      return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}\n";
-    default:
-      return "// Write your solution here\n";
-  }
-}
-
 const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
   const seed = seeds[index % seeds.length];
   const cycle = Math.floor(index / seeds.length);
@@ -201,34 +169,9 @@ const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
     pattern:
       cycle === 0 ? seed[1] : patterns[(index + cycle) % patterns.length],
     difficulty: seed[2],
-    link: `https://leetcode.com/problemset/all/?search=${encodeURIComponent(seed[0])}`,
+    link: `https://leetcode.com/problems/${seed[0].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}/description/?search=${encodeURIComponent(seed[0])}`,
   };
 });
-
-function parseProblemContent(value: unknown): ProblemContent | null {
-  if (typeof value !== "object" || value === null || !("description" in value)) {
-    return null;
-  }
-  const row = value as {
-    description?: unknown;
-    constraints?: unknown;
-    examples?: unknown;
-  };
-  if (typeof row.description !== "string") return null;
-  const constraints = Array.isArray(row.constraints)
-    ? row.constraints.filter((item): item is string => typeof item === "string")
-    : [];
-  const examples = Array.isArray(row.examples)
-    ? row.examples.flatMap((example): ProblemExample[] => {
-        if (typeof example !== "object" || example === null) return [];
-        if (!("input" in example) || !("output" in example)) return [];
-        return typeof example.input === "string" && typeof example.output === "string"
-          ? [{ input: example.input, output: example.output }]
-          : [];
-      })
-    : [];
-  return { description: row.description, constraints, examples };
-}
 
 function localDateKey(date: Date) {
   const year = date.getFullYear();
@@ -266,6 +209,268 @@ function getPracticeStreak(practiceDays: string[]) {
   return { current, best };
 }
 
+type CallSignal = {
+  from: string;
+  to?: string;
+  description?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+  name?: string;
+};
+
+function CallVideo({ stream, muted, label, self = false }: { stream: MediaStream | null; muted?: boolean; label: string; self?: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.srcObject = stream;
+  }, [stream]);
+  return (
+    <div className={`call-video-tile${self ? " self" : ""}`}>
+      {stream ? <video ref={videoRef} autoPlay playsInline muted={muted} /> : <div className="call-avatar">{label.slice(0, 1).toUpperCase()}</div>}
+      <span className="call-video-name">{label}{self ? " (You)" : ""}</span>
+    </div>
+  );
+}
+
+function VideoCalls({ userId, userName }: { userId: string | null; userName: string }) {
+  const [inviteRoomId, setInviteRoomId] = useState(() => new URLSearchParams(window.location.search).get("room") ?? "");
+  const [joinRoomInput, setJoinRoomInput] = useState("");
+  const [sharedRoomId, setSharedRoomId] = useState("");
+  const [roomCreatorId, setRoomCreatorId] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [joined, setJoined] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<Record<string, { stream: MediaStream; name: string }>>({});
+  const [muted, setMuted] = useState(false);
+  const [cameraOff, setCameraOff] = useState(false);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [connectingLabel, setConnectingLabel] = useState("Connecting to room…");
+  const localId = useRef(crypto.randomUUID());
+  const streamRef = useRef<MediaStream | null>(null);
+  const displayStreamRef = useRef<MediaStream | null>(null);
+  const peers = useRef(new Map<string, RTCPeerConnection>());
+  const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
+  useEffect(() => {
+    if (!inviteRoomId || !supabase || !userId) return;
+    void supabase.from("call_rooms").select("created_by").eq("id", inviteRoomId).maybeSingle().then(({ data }) => {
+      if (data?.created_by) setRoomCreatorId(data.created_by);
+    });
+  }, [inviteRoomId, userId]);
+
+  async function createRoom() {
+    if (!supabase || !userId) { setError("Sign in to create a peer room."); return; }
+    const { data, error: createError } = await supabase.from("call_rooms").insert({ created_by: userId }).select("id").single();
+    if (createError || !data) { setError(`Could not create the room. ${createError?.message ?? "Please try again."}`); return; }
+    setSharedRoomId(data.id); setInviteRoomId(data.id); setRoomCreatorId(userId);
+    const url = new URL(window.location.href); url.searchParams.delete("schedule"); url.searchParams.delete("call"); url.searchParams.set("room", data.id); window.history.replaceState({}, "", url);
+  }
+
+  function openRoomInvite() {
+    if (!userId) { setError("Sign in to join a peer room."); return; }
+    const value = joinRoomInput.trim();
+    let targetRoomId = value;
+    try { targetRoomId = new URL(value).searchParams.get("room") ?? value; } catch { /* A raw room ID is also accepted. */ }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetRoomId)) {
+      setError("Paste a valid peer room link or room ID."); return;
+    }
+    setRoomCreatorId(""); setSharedRoomId(""); setInviteRoomId(targetRoomId); setJoinRoomInput(""); setError("");
+    const url = new URL(window.location.href); url.searchParams.delete("schedule"); url.searchParams.delete("call"); url.searchParams.set("room", targetRoomId); window.history.replaceState({}, "", url);
+  }
+
+  async function invitePeers(url: URL) {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Join my Codexsheet peer room", text: "Join me for a peer video call.", url: url.toString() });
+      } else {
+        await navigator.clipboard.writeText(url.toString());
+        setCopied(true); window.setTimeout(() => setCopied(false), 1800);
+      }
+    } catch (cause) {
+      if (cause instanceof Error && cause.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(url.toString());
+        setCopied(true); window.setTimeout(() => setCopied(false), 1800);
+      } catch { setError("Could not share the peer room link. Copy the link above instead."); }
+    }
+  }
+
+  async function startRoom(targetRoomId: string) {
+    if (!supabase || !userId) { setError("Sign in to join this peer room."); return; }
+    if (connecting) return;
+    setConnecting(true); setConnectingLabel("Joining room…"); setError("");
+    try {
+      const { error: joinError } = await supabase.rpc("join_call_room", { p_room_id: targetRoomId });
+      if (joinError) throw new Error(joinError.message);
+      const { data: room, error: roomError } = await supabase.from("call_rooms").select("created_by").eq("id", targetRoomId).single();
+      if (roomError || !room) throw new Error("That room link is no longer available.");
+      setRoomCreatorId(room.created_by);
+      setRoomId(targetRoomId);
+      setConnectingLabel("Allow camera and microphone access…");
+      const media = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      streamRef.current = media;
+      setConnectingLabel("Refreshing sign-in for the call…");
+      await refreshRealtimeAuth();
+      setStream(media); setJoined(true);
+    } catch (cause) {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      await supabase.rpc("leave_call_room", { p_room_id: targetRoomId });
+      setConnecting(false);
+      setConnectingLabel("Connecting to room…");
+      const message = cause instanceof Error ? cause.message : "Please try again.";
+      const mediaIssue = cause instanceof DOMException || /camera|microphone|media|permission|secure context/i.test(message);
+      setError(mediaIssue
+        ? `Camera or microphone unavailable: ${message}. Check browser permissions and use HTTPS, then try again.`
+        : `Could not join the peer room: ${message}`);
+    }
+  }
+
+  useEffect(() => {
+    if (!joined || !supabase || !roomId) return;
+    let active = true;
+    const channel = supabase.channel(`video-call-${roomId}`, { config: { private: true, broadcast: { self: false } } });
+    channelRef.current = channel;
+    const send = async (event: string, payload: CallSignal) => {
+      const status = await channel.send({ type: "broadcast", event, payload });
+      if (status !== "ok") {
+        console.error(`Peer room ${event} signal failed:`, status);
+        setError(`Call signaling failed (${status}). Rejoin the room and check your connection.`);
+      }
+      return status;
+    };
+    const connectPresentPeers = () => {
+      const present = Object.values(channel.presenceState()).flat() as Array<{ peerId?: string; name?: string }>;
+      for (const participant of present) {
+        const remoteId = participant.peerId;
+        if (!remoteId || remoteId === localId.current || localId.current < remoteId || peers.current.has(remoteId)) continue;
+        const peer = createPeer(remoteId, participant.name || "Peer");
+        void peer.createOffer().then((offer) => peer.setLocalDescription(offer)).then(() => send("offer", { from: localId.current, to: remoteId, name: userName, description: peer.localDescription?.toJSON() }));
+      }
+    };
+    const createPeer = (remoteId: string, name = "Guest") => {
+      const existing = peers.current.get(remoteId);
+      if (existing) return existing;
+      const peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      peers.current.set(remoteId, peer);
+      streamRef.current?.getTracks().forEach((track) => peer.addTrack(track, streamRef.current!));
+      peer.ontrack = (event) => {
+        if (!active) return;
+        const incoming = event.streams[0];
+        if (incoming) setRemoteStreams((current) => ({ ...current, [remoteId]: { stream: incoming, name } }));
+      };
+      peer.onicecandidate = (event) => { if (event.candidate) void send("ice", { from: localId.current, to: remoteId, candidate: event.candidate.toJSON() }); };
+      peer.onconnectionstatechange = () => {
+        if (["failed", "closed", "disconnected"].includes(peer.connectionState)) {
+          setRemoteStreams((current) => { const next = { ...current }; delete next[remoteId]; return next; });
+        }
+      };
+      return peer;
+    };
+    channel.on("presence", { event: "sync" }, connectPresentPeers);
+    channel.on("presence", { event: "join" }, connectPresentPeers);
+    channel.on("broadcast", { event: "offer" }, async ({ payload }: { payload: CallSignal }) => {
+      if (payload.to !== localId.current || !payload.description) return;
+      const peer = createPeer(payload.from, payload.name || "Peer");
+      await peer.setRemoteDescription(payload.description);
+      const answer = await peer.createAnswer(); await peer.setLocalDescription(answer);
+      await send("answer", { from: localId.current, to: payload.from, description: peer.localDescription?.toJSON() });
+    });
+    channel.on("broadcast", { event: "answer" }, async ({ payload }: { payload: CallSignal }) => {
+      if (payload.to !== localId.current || !payload.description) return;
+      await peers.current.get(payload.from)?.setRemoteDescription(payload.description);
+    });
+    channel.on("broadcast", { event: "ice" }, async ({ payload }: { payload: CallSignal }) => {
+      if (payload.to !== localId.current || !payload.candidate) return;
+      try { await peers.current.get(payload.from)?.addIceCandidate(payload.candidate); } catch { /* ICE may arrive before negotiation. */ }
+    });
+    channel.on("broadcast", { event: "leave" }, ({ payload }: { payload: CallSignal }) => {
+      peers.current.get(payload.from)?.close(); peers.current.delete(payload.from);
+      setRemoteStreams((current) => { const next = { ...current }; delete next[payload.from]; return next; });
+    });
+    channel.subscribe((status, subscriptionError) => {
+      if (status === "SUBSCRIBED") {
+        void channel.track({ peerId: localId.current, userId, name: userName }).then((trackStatus) => {
+          setConnecting(false);
+          if (trackStatus !== "ok") {
+            setError(`Joined the room, but could not announce your presence (${trackStatus}). Check Realtime permissions and rejoin.`);
+            return;
+          }
+          connectPresentPeers();
+        }).catch((cause: unknown) => {
+          setConnecting(false);
+          setError(`Joined the room, but could not announce your presence: ${cause instanceof Error ? cause.message : "Realtime error"}`);
+        });
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        setError(`Could not connect to the call room${subscriptionError instanceof Error ? `: ${subscriptionError.message}` : ". Check Supabase Realtime authorization and your connection."}`); setConnecting(false);
+      }
+    });
+    return () => {
+      active = false;
+      void send("leave", { from: localId.current });
+      channel.unsubscribe(); channelRef.current = null;
+      peers.current.forEach((peer) => peer.close()); peers.current.clear();
+    };
+  }, [joined, roomId, userId, userName]);
+
+  function leaveCall() {
+    void channelRef.current?.send({ type: "broadcast", event: "leave", payload: { from: localId.current } });
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    displayStreamRef.current?.getTracks().forEach((track) => track.stop());
+    displayStreamRef.current = null; setScreenSharing(false);
+    streamRef.current = null; setStream(null); setRemoteStreams({}); setJoined(false); setConnecting(false);
+    peers.current.forEach((peer) => peer.close()); peers.current.clear();
+    setRoomId("");
+    if (supabase && userId && roomId) void supabase.rpc("leave_call_room", { p_room_id: roomId });
+  }
+
+  async function toggleScreenShare() {
+    if (screenSharing) {
+      const cameraTrack = streamRef.current?.getVideoTracks()[0] ?? null;
+      for (const peer of peers.current.values()) {
+        const sender = peer.getSenders().find((item) => item.track?.kind === "video");
+        if (sender && cameraTrack) await sender.replaceTrack(cameraTrack);
+      }
+      displayStreamRef.current?.getTracks().forEach((track) => track.stop());
+      displayStreamRef.current = null;
+      setStream(streamRef.current); setScreenSharing(false);
+      return;
+    }
+    if (!navigator.mediaDevices.getDisplayMedia) { setError("Screen sharing is not supported by this browser."); return; }
+    try {
+      const display = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const displayTrack = display.getVideoTracks()[0];
+      displayStreamRef.current = display;
+      for (const peer of peers.current.values()) {
+        const sender = peer.getSenders().find((item) => item.track?.kind === "video");
+        if (sender) await sender.replaceTrack(displayTrack);
+      }
+      setStream(display); setScreenSharing(true);
+      displayTrack.onended = () => { if (displayStreamRef.current) void toggleScreenShare(); };
+    } catch (cause) {
+      if (cause instanceof Error && cause.name !== "NotAllowedError") setError(`Could not share your screen: ${cause.message}`);
+    }
+  }
+
+  if (!joined) {
+    const roomToShare = sharedRoomId || inviteRoomId;
+    const isRoomOwner = Boolean(userId && roomCreatorId === userId);
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.delete("schedule"); shareUrl.searchParams.delete("call");
+    if (roomToShare) shareUrl.searchParams.set("room", roomToShare);
+    return <section className="calls-page">
+      {!roomToShare ? <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>Meet your peers.<br/><em>Face to face.</em></h2><p>Create a private video room and share its link with classmates. Peers with the link can join directly, and you can talk together in real time.</p>{userId ? <><button className="request-room-button create-room-button" onClick={() => void createRoom()}><Video size={17}/> Create a peer room <ArrowRight size={15}/></button><div className="join-room-divider"><span>OR JOIN A ROOM</span></div><form className="join-room-form" onSubmit={(event) => { event.preventDefault(); openRoomInvite(); }}><input aria-label="Room invite link or ID" value={joinRoomInput} onChange={(event) => setJoinRoomInput(event.target.value)} placeholder="Paste an invite link or room ID"/><button type="submit"><ArrowRight size={15}/> Join room</button></form></> : <div className="share-link-hint"><ShieldCheck size={14}/> Sign in to create or join a room.</div>}</div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Users size={23}/></div><span>PEER TO PEER</span><strong>Study together</strong><small>Open link · Join · Connect</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section> : <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>{isRoomOwner ? <>Your peer room.<br/><em>Ready when you are.</em></> : <>You’re invited.<br/><em>Join the room.</em></>}</h2><p>{isRoomOwner ? "Share this private link with anyone you’d like to meet. Peers can join directly." : "Join the shared room to meet the host and other peers. No request or approval needed."}</p><div className="share-link-field"><Link2 size={17}/><span title={shareUrl.toString()}>{shareUrl.toString()}</span><button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl.toString()); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setError("Could not copy the peer room link."); } }}><Copy size={15}/>{copied ? "Copied" : "Copy link"}</button></div><div className="share-link-hint"><ShieldCheck size={14}/> Anyone with this link can join while signed in.</div></div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Video size={23}/></div><span>LIVE PEER ROOM</span><strong>Room for everyone</strong><small>Share · Join · Talk</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section>}
+      {roomToShare && userId && <div className="schedule-layout room-meeting-layout"><div className="schedule-main-card room-request-card"><div className="room-card-icon"><Video size={22}/></div><span className="schedule-kicker">{isRoomOwner ? "YOUR PEER ROOM" : "PEER ROOM INVITE"}</span><h3>{isRoomOwner ? "Start the call" : "Join the conversation"}</h3><p>{isRoomOwner ? "Start your camera and microphone, then your peers can connect through the link above." : "Your camera and microphone turn on only after you join."}</p><div className="room-card-steps"><span><i>01</i> Share the room link</span><span><i>02</i> Peers join directly</span><span><i>03</i> Talk face to face</span></div><div className="peer-room-actions"><button className="request-room-button" disabled={connecting} onClick={() => void startRoom(roomToShare)}><Video size={16}/>{connecting ? "Joining…" : isRoomOwner ? "Start call" : "Join call"}<ArrowRight size={15}/></button><button className="invite-peers-button" onClick={() => void invitePeers(shareUrl)}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button></div></div><aside className="schedule-side-card"><div className="schedule-side-heading"><span className="schedule-kicker">PEER ROOM</span><span className="approval-count"><Users size={13}/></span></div><h3>Bring your study group</h3><p>Share the room link with peers. Everyone who joins appears in the call.</p><div className="request-empty"><div className="request-empty-icon"><Link2 size={20}/></div><strong>One link, shared conversation</strong><span>Peer-to-peer video, microphone, and screen sharing.</span></div><div className="approval-footnote"><ShieldCheck size={15}/> Calls stay private to people with the room link.</div></aside></div>}
+      {connecting && <div className="call-connecting">{connectingLabel}</div>}
+      {(error) && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}
+      <div className="call-footnote"><span><span className="status-dot"/> PEER ROOM</span><span>Private peer-to-peer calls · No recording</span></div>
+    </section>;
+  }
+
+  const participants = Object.entries(remoteStreams);
+  return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
+}
+
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
@@ -294,7 +499,10 @@ function App() {
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [activeView, setActiveView] = useState<WorkspaceView>("dashboard");
+  const [activeView, setActiveView] = useState<WorkspaceView>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has("room") || params.has("schedule") ? "calls" : "dashboard";
+  });
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -304,24 +512,6 @@ function App() {
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
-  const [openEditorProblem, setOpenEditorProblem] = useState<number | null>(null);
-  const [editorLanguageId, setEditorLanguageId] = useState(editorLanguages[0].id);
-  const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>(
-    () =>
-      JSON.parse(
-        localStorage.getItem("codexsheet-code-drafts") ?? "{}",
-      ) as Record<string, string>,
-  );
-  const [editorInput, setEditorInput] = useState("");
-  const [editorOutput, setEditorOutput] = useState("");
-  const [editorError, setEditorError] = useState("");
-  const [editorRunning, setEditorRunning] = useState(false);
-  const [problemContentState, setProblemContentState] = useState<ProblemContentState>({
-    problemNumber: null,
-    content: null,
-    loading: false,
-    error: "",
-  });
   const [notice, setNotice] = useState("Saved locally");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatReadsByMessage, setChatReadsByMessage] = useState<Record<number, string[]>>({});
@@ -350,8 +540,6 @@ function App() {
   const currentUserIdRef = useRef<string | null>(user?.id ?? null);
   currentUserIdRef.current = user?.id ?? null;
   const selectedNote = personalNotes.find((note) => note.id === selectedNoteId) ?? null;
-  const activeEditorProblem =
-    problems.find((problem) => problem.number === openEditorProblem) ?? null;
   const calendarYear = calendarMonth.getFullYear();
   const calendarMonthIndex = calendarMonth.getMonth();
   const calendarMonthKey = `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, "0")}`;
@@ -449,7 +637,7 @@ function App() {
     }));
   }, [roadmapPreferences.targetWeeks, roadmapProblems]);
   useEffect(() => {
-    setClerkTokenGetter(() => getToken());
+    setClerkTokenGetter((options) => getToken(options));
     return () => setClerkTokenGetter(null);
   }, [getToken]);
 
@@ -952,83 +1140,7 @@ function App() {
     localStorage.setItem("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
   }, [roadmapPreferences]);
 
-  useEffect(() => {
-    localStorage.setItem("codexsheet-code-drafts", JSON.stringify(editorDrafts));
-  }, [editorDrafts]);
 
-  useEffect(() => {
-    const problemNumber = activeEditorProblem?.number ?? null;
-    if (problemNumber === null) {
-      setProblemContentState({
-        problemNumber: null,
-        content: null,
-        loading: false,
-        error: "",
-      });
-      return;
-    }
-
-    let cancelled = false;
-    setProblemContentState({
-      problemNumber,
-      content: null,
-      loading: true,
-      error: "",
-    });
-    if (!supabase) {
-      setProblemContentState({
-        problemNumber,
-        content: null,
-        loading: false,
-        error: "Supabase is not configured. Add problem content to load the challenge.",
-      });
-      return;
-    }
-
-    void Promise.resolve(
-      supabase
-        .from("dsa_problem_content")
-        .select("description, constraints, examples")
-        .eq("problem_number", problemNumber)
-        .maybeSingle(),
-    )
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          setProblemContentState({
-            problemNumber,
-            content: null,
-            loading: false,
-            error: `Could not load the problem details. ${error.message}`,
-          });
-          return;
-        }
-        const content = parseProblemContent(data);
-        setProblemContentState({
-          problemNumber,
-          content,
-          loading: false,
-          error: content
-            ? ""
-            : "No description or examples have been added for this problem yet.",
-        });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setProblemContentState({
-          problemNumber,
-          content: null,
-          loading: false,
-          error: error instanceof Error
-            ? `Could not load the problem details. ${error.message}`
-            : "Could not load the problem details.",
-        });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeEditorProblem?.number]);
 
   useEffect(() => {
     localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
@@ -1069,150 +1181,6 @@ function App() {
     if (nextStatus !== "Todo") {
       const today = localDateKey(new Date());
       setPracticeDays((current) => current.includes(today) ? current : [...current, today]);
-    }
-  }
-
-  function getEditorDraft(problemNumber: number, languageId: string) {
-    return editorDrafts[`${problemNumber}:${languageId}`] ?? starterCode(languageId);
-  }
-
-  function updateEditorDraft(problemNumber: number, languageId: string, code: string) {
-    setEditorDrafts((current) => ({
-      ...current,
-      [`${problemNumber}:${languageId}`]: code,
-    }));
-  }
-
-  async function runProblemCode(problem: Problem) {
-    if (editorRunning) return;
-    const language = editorLanguages.find((item) => item.id === editorLanguageId);
-    if (!language) {
-      setEditorError("Choose a supported language before running your code.");
-      return;
-    }
-    if (language.id !== "javascript") {
-      setEditorError("In-browser execution currently supports JavaScript only.");
-      return;
-    }
-
-    setEditorRunning(true);
-    setEditorError("");
-    setEditorOutput("");
-    const frame = document.createElement("iframe");
-    const requestId = crypto.randomUUID();
-    frame.title = "Isolated JavaScript runner";
-    frame.setAttribute("sandbox", "allow-scripts");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.position = "fixed";
-    frame.style.width = "1px";
-    frame.style.height = "1px";
-    frame.style.left = "-10000px";
-    frame.srcdoc = `<!doctype html>
-      <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval'; worker-src blob:; connect-src 'none'; img-src data:; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'; object-src 'none'">
-      <script>
-        const workerSource = [
-          "self.onmessage = async (event) => {",
-          "  const { requestId, sourceCode, input } = event.data;",
-          "  const lines = [];",
-          "  const stringify = (value) => {",
-          "    if (typeof value === 'string') return value;",
-          "    try { return JSON.stringify(value); } catch { return String(value); }",
-          "  };",
-          "  const safeConsole = {",
-          "    log: (...values) => lines.push(values.map(stringify).join(' ')),",
-          "    info: (...values) => lines.push(values.map(stringify).join(' ')),",
-          "    warn: (...values) => lines.push(values.map(stringify).join(' ')),",
-          "    error: (...values) => lines.push(values.map(stringify).join(' ')),",
-          "  };",
-          "  try {",
-          "    const execute = new Function('input', 'console', 'print',",
-          "      '\\\"use strict\\\"; return (async () => {\\\\n' + sourceCode + '\\\\n})();');",
-          "    await execute(input, safeConsole, (...values) => lines.push(values.map(stringify).join(' ')));",
-          "    self.postMessage({ requestId, output: lines.join('\\\\n') });",
-          "  } catch (error) {",
-          "    self.postMessage({ requestId, error: error && error.stack ? String(error.stack) : String(error) });",
-          "  }",
-          "};",
-        ].join("\\n");
-        window.addEventListener("message", (event) => {
-          if (event.source !== parent || !event.data || event.data.type !== "codexsheet-run") return;
-          const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
-          const worker = new Worker(workerUrl);
-          const finish = (result) => {
-            worker.terminate();
-            URL.revokeObjectURL(workerUrl);
-            parent.postMessage({ type: "codexsheet-result", ...result }, "*");
-          };
-          worker.onmessage = (result) => finish(result.data);
-          worker.onerror = (error) => finish({ requestId: event.data.requestId, error: error.message });
-          worker.postMessage(event.data);
-        });
-      <\/script>`;
-
-    let timeoutId = 0;
-    let resolveResult: (result: { output?: unknown; error?: unknown }) => void = () => {};
-    const resultPromise = new Promise<{ output?: unknown; error?: unknown }>((resolve) => {
-      resolveResult = resolve;
-    });
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      timeoutId = window.setTimeout(
-        () => reject(new Error("Execution stopped after 5 seconds.")),
-        5_000,
-      );
-    });
-    const onMessage = (event: MessageEvent<unknown>) => {
-      if (
-        event.source !== frame.contentWindow ||
-        typeof event.data !== "object" ||
-        event.data === null ||
-        !("type" in event.data) ||
-        event.data.type !== "codexsheet-result" ||
-        !("requestId" in event.data) ||
-        event.data.requestId !== requestId
-      ) return;
-
-      resolveResult(event.data as { output?: unknown; error?: unknown });
-    };
-
-    window.addEventListener("message", onMessage);
-
-    try {
-      const frameLoaded = new Promise<void>((resolve, reject) => {
-        frame.addEventListener("load", () => resolve(), { once: true });
-        frame.addEventListener(
-          "error",
-          () => reject(new Error("Could not start the isolated JavaScript runner.")),
-          { once: true },
-        );
-      });
-      document.body.append(frame);
-      await Promise.race([frameLoaded, timeoutPromise]);
-      frame.contentWindow?.postMessage(
-        {
-          type: "codexsheet-run",
-          requestId,
-          sourceCode: getEditorDraft(problem.number, language.id),
-          input: editorInput,
-        },
-        "*",
-      );
-      const result = await Promise.race([resultPromise, timeoutPromise]);
-      if (typeof result.error === "string") {
-        setEditorError(result.error);
-      } else {
-        setEditorOutput(
-          typeof result.output === "string" && result.output
-            ? result.output
-            : "Execution completed with no output.",
-        );
-      }
-    } catch (error) {
-      setEditorError(error instanceof Error ? error.message : "Could not run code.");
-    } finally {
-      window.clearTimeout(timeoutId);
-      window.removeEventListener("message", onMessage);
-      frame.remove();
-      setEditorRunning(false);
     }
   }
 
@@ -1316,6 +1284,8 @@ function App() {
                       ? "Group chat"
                         : activeView === "notes"
                           ? "Personal notes"
+                          : activeView === "calls"
+                            ? "Video calls"
                           : "AI coach"}
               </span>
             </div>
@@ -1332,6 +1302,8 @@ function App() {
                     ? "Group chat"
                       : activeView === "notes"
                         ? "Personal notebook"
+                        : activeView === "calls"
+                          ? "Video calls"
                         : "AI study coach"}{" "}
               <span className="private-pill">DSA 250</span>
             </h1>
@@ -1348,6 +1320,8 @@ function App() {
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
                         ? "Keep private study notes that sync with your account."
+                        : activeView === "calls"
+                          ? "Meet your study group face to face, right from your workspace."
                         : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
@@ -1400,6 +1374,13 @@ function App() {
             )}
           </button>
           <button
+            className={activeView === "calls" ? "active" : ""}
+            aria-pressed={activeView === "calls"}
+            onClick={() => setActiveView("calls")}
+          >
+            <Video size={16} /> Video calls
+          </button>
+          <button
             className={activeView === "coach" ? "active" : ""}
             aria-pressed={activeView === "coach"}
             onClick={() => setActiveView("coach")}
@@ -1415,6 +1396,7 @@ function App() {
           </button>
         </nav>
       </section>
+      {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
           <section className="insight-strip">
@@ -2122,20 +2104,6 @@ function App() {
                     </td>
                     <td>
                       <div className="problem-actions">
-                        <button
-                          className="editor-toggle"
-                          type="button"
-                          aria-expanded={openEditorProblem === problem.number}
-                          onClick={() => {
-                            const isClosing = openEditorProblem === problem.number;
-                            setOpenEditorProblem(isClosing ? null : problem.number);
-                            setEditorOutput("");
-                            setEditorError("");
-                          }}
-                        >
-                          <Code2 size={14} />{" "}
-                          Code
-                        </button>
                         <a
                           className="external-link"
                           href={problem.link}
@@ -2164,180 +2132,7 @@ function App() {
           </span>
         </div>
       </section>}
-      {activeEditorProblem && (
-        <section
-          className="practice-workspace"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="practice-workspace-title"
-        >
-          <header className="practice-workspace-header">
-            <button
-              className="practice-back-button"
-              type="button"
-              onClick={() => setOpenEditorProblem(null)}
-            >
-              <ChevronLeft size={18} /> All problems
-            </button>
-            <span className="practice-workspace-brand">
-              <Code2 size={16} /> CodexSheet Practice
-            </span>
-            <span className="practice-saved-label">
-              Draft saved in this browser
-            </span>
-          </header>
-          <div className="practice-workspace-layout">
-            <aside className="practice-problem-pane">
-              <div className="practice-problem-meta">
-                <span>Problem {String(activeEditorProblem.number).padStart(3, "0")}</span>
-                <span className={`difficulty ${activeEditorProblem.difficulty.toLowerCase()}`}>
-                  {activeEditorProblem.difficulty}
-                </span>
-              </div>
-              <h1 id="practice-workspace-title">{activeEditorProblem.title}</h1>
-              <span className="pattern-pill">{activeEditorProblem.pattern}</span>
-              <h2>Problem description</h2>
-              {problemContentState.problemNumber !== activeEditorProblem.number ||
-              problemContentState.loading ? (
-                <p>Loading problem description…</p>
-              ) : problemContentState.error ? (
-                <p className="problem-content-message" role="status">
-                  {problemContentState.error}
-                </p>
-              ) : (
-                <>
-                  <p>{problemContentState.content?.description}</p>
-                  {(problemContentState.content?.examples.length ?? 0) > 0 && (
-                    <div className="practice-example-list">
-                      <h3>Examples</h3>
-                      {problemContentState.content?.examples.map((example, index) => (
-                        <div className="practice-example" key={index}>
-                          <strong>Example {index + 1}</strong>
-                          <pre>{`Input:\n${example.input}\n\nOutput:\n${example.output}`}</pre>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {(problemContentState.content?.constraints.length ?? 0) > 0 && (
-                    <div className="practice-problem-note">
-                      <strong>Constraints</strong>
-                      <ul>
-                        {problemContentState.content?.constraints.map((constraint) => (
-                          <li key={constraint}>{constraint}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="practice-problem-note">
-                <strong>Test case guidance</strong>
-                <ul>
-                  <li>Try the displayed examples in the input box below.</li>
-                  <li>Enter custom input to test additional cases.</li>
-                </ul>
-              </div>
-              <a
-                className="practice-reference-link"
-                href={activeEditorProblem.link}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open problem reference <ExternalLink size={14} />
-              </a>
-            </aside>
-            <section className="practice-editor-pane" aria-label="Code editor">
-              <div className="practice-editor-toolbar">
-                <label className="code-language-picker">
-                  <span>Language</span>
-                  <select
-                    value={editorLanguageId}
-                    onChange={(event) => {
-                      setEditorLanguageId(event.target.value);
-                      setEditorOutput("");
-                      setEditorError("");
-                    }}
-                  >
-                    {editorLanguages.map((language) => (
-                      <option key={language.id} value={language.id}>
-                        {language.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span className="practice-file-name">
-                  {editorLanguages.find((language) => language.id === editorLanguageId)?.fileName}
-                </span>
-              </div>
-              <Editor
-                className="monaco-editor-container"
-                height="100%"
-                language={
-                  editorLanguages.find((language) => language.id === editorLanguageId)?.monacoId ??
-                  "javascript"
-                }
-                theme="vs-dark"
-                value={getEditorDraft(activeEditorProblem.number, editorLanguageId)}
-                onChange={(value: string | undefined) =>
-                  updateEditorDraft(
-                    activeEditorProblem.number,
-                    editorLanguageId,
-                    value ?? "",
-                  )
-                }
-                options={{
-                  automaticLayout: true,
-                  fontSize: 13,
-                  fontFamily: "'DM Mono', monospace",
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  tabSize: 2,
-                  wordWrap: "on",
-                  padding: { top: 14 },
-                }}
-              />
-              <div className="practice-io-pane">
-                <label>
-                  <span>Input (available as `input`)</span>
-                  <textarea
-                    value={editorInput}
-                    onChange={(event) => setEditorInput(event.target.value)}
-                    placeholder="Enter input for your program"
-                  />
-                </label>
-                <div className="practice-output-pane" aria-live="polite">
-                  <span>{editorError ? "Execution issue" : "Output"}</span>
-                  {editorError || editorOutput ? (
-                    <pre className={editorError ? "has-error" : ""}>
-                      {[editorError, editorOutput].filter(Boolean).join("\n")}
-                    </pre>
-                  ) : (
-                    <p>Run your code to see the output here.</p>
-                  )}
-                </div>
-              </div>
-              <div className="practice-editor-footer">
-                <button
-                  className="run-code-button"
-                  type="button"
-                  onClick={() => void runProblemCode(activeEditorProblem)}
-                  disabled={editorRunning || editorLanguageId !== "javascript"}
-                >
-                  {editorRunning ? (
-                    <LoaderCircle className="spin" size={15} />
-                  ) : (
-                    <Play size={14} />
-                  )}
-                  {editorRunning ? "Running…" : "Run code"}
-                </button>
-              </div>
-              <p className="browser-runner-note">
-                JavaScript runs locally in a restricted sandbox and stops after 5 seconds. Use `console.log()` to show output; read custom input from the `input` variable. Run only code you trust. Other languages are editor-only, and automated test-case judging is not available.
-              </p>
-            </section>
-          </div>
-        </section>
-      )}
+
       <footer className="footer-note">
         Use the patterns, then make the problem yours.
       </footer>

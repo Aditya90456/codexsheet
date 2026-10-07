@@ -110,10 +110,6 @@ Problems are organized around common DSA patterns.
 
 Build your skills gradually instead of jumping directly into hard problems.
 
-### 💻 Code Editor
-
-Open a problem in the practice workspace to read its description and examples from Supabase, and write a solution in the Monaco editor using JavaScript, Python, Java, or C++. Code drafts are saved in your browser. JavaScript can be run locally in a restricted browser sandbox; other languages are editor-only. The browser runner does not judge against hidden test cases.
-
 ### 🤖 AI Mentor
 
 Get help understanding problems, approaches, and concepts with the CodexSheet AI Mentor.
