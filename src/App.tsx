@@ -45,6 +45,11 @@ import {
   Link2,
   MonitorUp,
   ShieldCheck,
+  BookOpen,
+  Clock3,
+  Play,
+  Pause,
+  RotateCcw,
 } from "lucide-react";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 
@@ -77,7 +82,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls";
+type WorkspaceView = "home" | "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -89,6 +94,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   notes: "/notes",
   coach: "/coach",
   calls: "/calls",
+  articles: "/articles",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -140,6 +146,14 @@ function HomePage({
             stagger: 0.14,
             ease: "power2.out",
             scrollTrigger: { trigger: ".home-loop", start: "top 78%", once: true },
+          });
+          engine.from(".home-feature-card", {
+            y: 24,
+            opacity: 0,
+            duration: 0.6,
+            stagger: 0.09,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".home-features", start: "top 78%", once: true },
           });
           engine.from(".home-progress-fill", {
             scaleX: 0,
@@ -208,15 +222,143 @@ function HomePage({
         </div>
       </section>
 
+      <section className="home-features" aria-labelledby="home-features-title">
+        <div className="home-section-heading">
+          <div><span className="home-section-kicker">TOOLS FOR EVERY STUDY SESSION</span><h2 id="home-features-title">Everything you need to <em>make progress.</em></h2></div>
+          <p>Choose a starting point. Your tools and progress stay together as you learn.</p>
+        </div>
+        <div className="home-feature-grid">
+          <button className="home-feature-card" type="button" onClick={() => onNavigate("problems")}>
+            <span className="home-feature-icon"><Rows3 size={19} /></span><span className="home-feature-index">01 / PRACTICE</span><strong>Problem library</strong><span className="home-feature-description">A curated set of coding problems organized by pattern and difficulty.</span><span className="home-feature-link">Browse problems <ArrowRight size={15} /></span>
+          </button>
+          <button className="home-feature-card" type="button" onClick={() => onNavigate("roadmap")}>
+            <span className="home-feature-icon"><MapIcon size={19} /></span><span className="home-feature-index">02 / PLAN</span><strong>Adaptive roadmap</strong><span className="home-feature-description">Shape a weekly study plan around your pace and focus areas.</span><span className="home-feature-link">Build your roadmap <ArrowRight size={15} /></span>
+          </button>
+          <button className="home-feature-card" type="button" onClick={() => onNavigate("dashboard")}>
+            <span className="home-feature-icon"><Target size={19} /></span><span className="home-feature-index">03 / PROGRESS</span><strong>Progress dashboard</strong><span className="home-feature-description">Track solved problems, patterns covered, and your daily streak.</span><span className="home-feature-link">View progress <ArrowRight size={15} /></span>
+          </button>
+          <button className="home-feature-card" type="button" onClick={() => onNavigate("calendar")}>
+            <span className="home-feature-icon"><CalendarDays size={19} /></span><span className="home-feature-index">04 / CONSISTENCY</span><strong>Practice calendar</strong><span className="home-feature-description">See your practice history and keep a steady learning rhythm.</span><span className="home-feature-link">Open calendar <ArrowRight size={15} /></span>
+          </button>
+          <button className="home-feature-card" type="button" onClick={() => onNavigate("chat")}>
+            <span className="home-feature-icon"><UsersRound size={19} /></span><span className="home-feature-index">05 / TOGETHER</span><strong>Study with peers</strong><span className="home-feature-description">Talk through tricky problems with your study group.</span><span className="home-feature-link">Join the group <ArrowRight size={15} /></span>
+          </button>
+          <button className="home-feature-card" type="button" onClick={() => onNavigate("notes")}>
+            <span className="home-feature-icon"><NotebookPen size={19} /></span><span className="home-feature-index">06 / REFLECT</span><strong>Personal notes</strong><span className="home-feature-description">Save useful insights and keep your problem-solving notes in one place.</span><span className="home-feature-link">Open your notebook <ArrowRight size={15} /></span>
+          </button>
+        </div>
+      </section>
+
       <section className="home-progress" aria-label="Your current study progress">
         <div className="home-progress-copy"><span className="home-section-kicker">YOUR WORKSPACE IS READY</span><h2>Pick up where <em>you are.</em></h2><p>Your practice stays yours. Sign in to sync progress and study with your peers.</p><button className="home-progress-link" type="button" onClick={() => onNavigate("dashboard")}>Open your dashboard <ArrowRight size={15} /></button></div>
         <div className="home-progress-stats"><div><span>PROBLEMS SOLVED</span><strong>{solved}<small> / 250</small></strong></div><div><span>IN PROGRESS</span><strong>{inProgress}</strong></div><div><span>DAY STREAK</span><strong>{streak}</strong></div><div className="home-progress-bar" aria-label={`${percent}% of problems solved`}><i className="home-progress-fill" style={{ width: `${percent}%` }} /></div>
           <div className="home-pattern-list">{patterns.slice(0, 3).map((item) => <span key={item.name}>{item.name}<small>{item.completed}/{item.total}</small></span>)}</div>
         </div>
       </section>
-      <footer className="home-footer"><span>codexsheet</span><span>One pattern. One problem. One step forward.</span><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
+      <footer className="home-footer"><span>codexsheet</span><span>One pattern. One problem. One step forward.</span><nav className="home-social-links" aria-label="Social profiles"><a href="https://www.instagram.com/adityabakshi10/" target="_blank" rel="noreferrer" aria-label="Instagram: adityabakshi10"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg> adityabakshi10</a><a href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer" aria-label="Aditya Bakshi on LinkedIn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4ZM3.4 9.5h3.7v11H3.4v-11Zm6 0h3.5V11h.1c.5-.9 1.7-1.9 3.5-1.9 3.8 0 4.5 2.4 4.5 5.5v5.9h-3.7v-5.2c0-1.2 0-2.8-1.8-2.8s-2.1 1.3-2.1 2.7v5.3H9.4v-11Z"/></svg> LinkedIn</a></nav><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
     </main>
   );
+}
+
+const dsaArticles = [
+  { category: "FOUNDATIONS", title: "Big O, without the mystery", read: "6 min read", summary: "Learn to describe how an algorithm scales as input grows, and why the slowest-growing term matters.", concept: "Complexity", body: "Big O describes how an algorithm’s work grows with its input. It helps compare approaches independently of hardware: a single pass through n values is O(n), while comparing every pair is O(n²).", takeaway: "Count the work that grows with n. Drop constants and lower-order terms: 3n² + 4n + 9 becomes O(n²).", code: "for (const item of items) {\n  visit(item); // O(n)\n}" },
+  { category: "ARRAYS & HASHING", title: "Hash maps: trade space for speed", read: "5 min read", summary: "Turn repeated searches into quick lookups by storing the information you have already seen.", concept: "Hash map", body: "A hash map stores key–value pairs and usually looks up a key in constant time. It is useful when a problem asks whether something has appeared before, how often it occurs, or what value complements the current one.", takeaway: "For Two Sum, store each value’s index. At x, look for target − x before saving x.", code: "for (let i = 0; i < nums.length; i++) {\n  const need = target - nums[i];\n  if (seen.has(need)) return [seen.get(need), i];\n  seen.set(nums[i], i);\n}" },
+  { category: "SEARCH", title: "Binary search is a boundary finder", read: "7 min read", summary: "Use a sorted range to discard half the search space at every step—and keep your loop honest.", concept: "Binary search", body: "Binary search works when the search space is ordered or when a yes/no condition changes monotonically. Each comparison rules out half the remaining candidates, giving O(log n) time.", takeaway: "Maintain a clear invariant: the answer stays inside [left, right]. Use mid = left + floor((right − left) / 2).", code: "while (left <= right) {\n  const mid = left + Math.floor((right - left) / 2);\n  if (nums[mid] === target) return mid;\n  if (nums[mid] < target) left = mid + 1;\n  else right = mid - 1;\n}" },
+  { category: "PATTERNS", title: "Sliding window: remember the useful range", read: "8 min read", summary: "Replace repeated subarray work with a window that expands and contracts as you scan.", concept: "Sliding window", body: "A sliding window tracks a contiguous section of an array or string. Move the right edge to include new values; when the window breaks a rule, move the left edge until it is valid again.", takeaway: "Ask whether the problem concerns a contiguous range. If each pointer moves only forward, many O(n²) scans become O(n).", code: "let left = 0;\nfor (let right = 0; right < text.length; right++) {\n  add(text[right]);\n  while (!isValid()) remove(text[left++]);\n  best = Math.max(best, right - left + 1);\n}" },
+  { category: "DATA STRUCTURES", title: "Trees are recursive by nature", read: "6 min read", summary: "See how each subtree is a smaller version of the whole, and use that to design traversals.", concept: "Trees", body: "A tree is a hierarchy of nodes connected by edges. In a binary tree, each node has at most two children. Preorder, inorder, and postorder differ only in when the current node is processed relative to its children.", takeaway: "State what a recursive call returns. For maximum depth: the depth of this node is 1 + the larger child depth.", code: "function depth(node) {\n  if (!node) return 0;\n  return 1 + Math.max(depth(node.left), depth(node.right));\n}" },
+  { category: "DYNAMIC PROGRAMMING", title: "DP starts with repeated subproblems", read: "9 min read", summary: "Build a dynamic programming solution by naming a state, a recurrence, and its base cases.", concept: "Dynamic programming", body: "Dynamic programming saves answers to smaller subproblems so they are not recomputed. A useful state captures exactly what is needed to make the next decision; a recurrence explains how states depend on one another.", takeaway: "Define the state in one sentence, write the recurrence, set base cases, then choose an evaluation order.", code: "// ways[i] = ways to reach step i\nways[0] = 1;\nfor (let i = 1; i <= n; i++) {\n  ways[i] = ways[i - 1] + (i > 1 ? ways[i - 2] : 0);\n}" },
+  { category: "DATA STRUCTURES", title: "Stacks and queues shape the order", read: "5 min read", summary: "Choose a stack for last-in-first-out work and a queue for first-in-first-out work.", concept: "Stack & queue", body: "A stack removes the newest item first, which makes it useful for nested work, undo actions, and matching brackets. A queue removes the oldest item first, which is the natural choice for level-by-level tree traversal and breadth-first search.", takeaway: "When the next item to process depends on arrival order, the right structure often makes the algorithm obvious.", code: "stack.push(item);\nconst newest = stack.pop();\n\nqueue.push(item);\nconst oldest = queue.shift();" },
+  { category: "GRAPHS", title: "Graph traversal: visit without looping forever", read: "8 min read", summary: "Use a visited set to explore connected nodes safely with DFS or BFS.", concept: "Graph traversal", body: "Graphs model relationships that are not necessarily hierarchical. Depth-first search follows one path before backtracking; breadth-first search explores in layers and finds shortest paths in an unweighted graph.", takeaway: "Mark nodes visited when adding them to the worklist. This prevents cycles from sending the traversal around forever.", code: "const queue = [start];\nconst visited = new Set([start]);\nwhile (queue.length) {\n  const node = queue.shift();\n  for (const next of graph.get(node) ?? []) {\n    if (visited.has(next)) continue;\n    visited.add(next); queue.push(next);\n  }\n}" },
+  { category: "RECURSION", title: "Recursion needs a smaller next step", read: "6 min read", summary: "Make recursive solutions safe by naming the base case and shrinking the problem each call.", concept: "Recursion", body: "A recursive function solves a problem by delegating a smaller version of it to itself. Every correct recursive design has a base case that stops and a recursive step that moves closer to that case.", takeaway: "Trace a tiny input by hand. If each call does not make measurable progress toward the base case, the recursion will not terminate.", code: "function sumTo(n) {\n  if (n <= 0) return 0; // base case\n  return n + sumTo(n - 1); // smaller input\n}" },
+  { category: "GREEDY", title: "Greedy choices need a reason", read: "7 min read", summary: "Make the locally best choice only when you can explain why it leads to a global optimum.", concept: "Greedy algorithm", body: "A greedy algorithm commits to a choice at each step without revisiting it. This can be fast and simple, but a plausible local choice is not automatically correct; the proof is what makes the method trustworthy.", takeaway: "Look for an exchange argument or a stays-ahead proof. If you cannot justify the choice, compare it against dynamic programming or search.", code: "intervals.sort((a, b) => a.end - b.end);\nlet finish = -Infinity;\nfor (const interval of intervals) {\n  if (interval.start >= finish) {\n    choose(interval); finish = interval.end;\n  }\n}" },
+  { category: "DATA STRUCTURES", title: "Heaps keep the next best item close", read: "6 min read", summary: "Use a priority queue when you repeatedly need the smallest or largest remaining value.", concept: "Heap", body: "A binary heap keeps its highest-priority value at the root while maintaining a compact tree shape. It does not fully sort every item, so inserting and removing the top item take O(log n), with O(1) access to the current minimum or maximum.", takeaway: "For top-k questions, keep a heap of size k instead of sorting all n values when k is small.", code: "for (const value of values) {\n  minHeap.push(value);\n  if (minHeap.size() > k) minHeap.pop();\n}\nreturn minHeap.peek();" },
+];
+
+const articleLessons: Record<string, { detail: string; usefulWhen: string; complexity: string; steps: string[] }> = {
+  "Complexity": { detail: "Complexity is a model of growth. We ask how the number of operations changes as the input size n increases, while ignoring machine-specific timing. A loop over every item grows linearly. A loop nested inside another full scan grows quadratically. Repeatedly halving a range grows logarithmically. This lets us reason about whether an approach will still work when the input becomes much larger.", usefulWhen: "Use it to compare two correct approaches, estimate whether a solution fits the constraints, and spot the part of your code that dominates as input grows.", complexity: "Time: depends on the algorithm · Space: count extra memory", steps: ["Compare growth as input grows", "A full scan visits n items", "Nested scans visit about n² pairs", "Halving the range takes log₂ n steps"] },
+  "Hash map": { detail: "A hash map converts a key into a bucket location, so a lookup usually takes constant time on average. Its key benefit is memory: instead of searching the prefix repeatedly, keep a compact record of what has already appeared. For Two Sum, the map represents the past; each new value asks whether its complement is already in that past. Check first, then insert, so an element cannot accidentally match itself.", usefulWhen: "Use one when you need fast membership checks, frequency counts, grouping by a signature, or a relationship between a current item and an earlier one.", complexity: "Average lookup / insert: O(1) · Extra space: O(n)", steps: ["Read the current value", "Compute the needed complement", "Look for it in earlier values", "Save this value for later"] },
+  "Binary search": { detail: "Binary search keeps a range that is guaranteed to contain the answer. At each step, inspect its midpoint. If the midpoint is too small, every value to its left can be discarded; if it is too large, discard the right side. The invariant matters more than memorizing a loop: after each update, the answer must remain inside the candidate range. This same idea works on a sorted array and on a monotonic yes/no condition.", usefulWhen: "Use it when the input is sorted, or when you can define a condition that changes once from false to true (or true to false).", complexity: "Time: O(log n) · Extra space: O(1)", steps: ["Start with the full sorted range", "Inspect the middle candidate", "Discard the half that cannot contain the answer", "Repeat until the range is empty or found"] },
+  "Sliding window": { detail: "A sliding window keeps a summary of one contiguous range. Advancing the right edge adds information; advancing the left edge removes information. The key optimization is that neither pointer moves backward. Even if a while-loop appears inside a for-loop, each item enters and leaves the window at most once, so the total work stays linear. For variable-size windows, shrink only when the current window violates the problem’s condition.", usefulWhen: "Use it for contiguous substrings or subarrays when you need a longest, shortest, or count result under a condition.", complexity: "Time: O(n) when each pointer only moves forward · Space: depends on the window summary", steps: ["Expand the right edge", "Update the window summary", "Shrink from the left if the rule breaks", "Record the best valid window"] },
+  "Trees": { detail: "A tree breaks into smaller trees: the left and right subtrees. That recursive structure makes divide-and-combine solutions natural. Decide what each call promises to return, handle the empty tree as the base case, then combine the child results. Traversal order changes when you process the current node: preorder processes it before children, inorder between children, and postorder after them.", usefulWhen: "Use tree traversal for hierarchy questions, path properties, subtree summaries, and ordered search in a binary search tree.", complexity: "Traversal: O(n) time · Call stack: O(h), where h is tree height", steps: ["Arrive at the current node", "Visit the left subtree", "Visit the right subtree", "Combine child results at the parent"] },
+  "Dynamic programming": { detail: "Dynamic programming is useful when a problem has overlapping subproblems and an optimal solution can be composed from smaller choices. The state is the smallest description of a subproblem that preserves everything future decisions need. The recurrence expresses the choices; base cases anchor the recurrence. Memoization evaluates only requested states, while tabulation fills a table in dependency order. Once the table is understood, many solutions can reduce memory to the previous row or a few variables.", usefulWhen: "Use it when naive recursion repeats the same states, especially for counting, feasibility, or best-value choices over prefixes, ranges, or capacities.", complexity: "Time / space: number of states × work per state", steps: ["Name the state", "Write the choices as a recurrence", "Set the base cases", "Fill states in dependency order"] },
+  "Stack & queue": { detail: "A stack and a queue both hold a sequence of pending work; their removal rule defines their behavior. A stack is last-in, first-out, which mirrors nested structure: the most recently opened bracket must close first. A queue is first-in, first-out, which processes work in arrival order and naturally explores graphs level by level. These operations are usually O(1) when backed by suitable containers.", usefulWhen: "Choose a stack for nested state, undo, parsing, or DFS. Choose a queue for scheduling, BFS, or processing items by arrival order.", complexity: "Push / pop / enqueue / dequeue: O(1) with a suitable implementation", steps: ["Add a new item", "Stack returns the newest item", "Queue returns the oldest item", "The removal rule determines the traversal"] },
+  "Graph traversal": { detail: "A graph is a set of vertices connected by edges; it can contain cycles, so a traversal needs a visited set. DFS follows one branch deeply and is often implemented with recursion or a stack. BFS uses a queue and explores by distance from the start. In an unweighted graph, that layer order proves the first time BFS reaches a node is through a shortest path. Mark nodes as discovered when they enter the worklist to avoid duplicate visits.", usefulWhen: "Use traversal for reachability, connected components, grid regions, dependency exploration, or shortest paths in an unweighted graph.", complexity: "Time: O(V + E) · Space: O(V)", steps: ["Add the start node to the queue", "Remove the next node to explore", "Discover each unvisited neighbor", "Process the graph one layer at a time"] },
+  "Recursion": { detail: "A recursive function delegates a smaller instance of a problem to itself. A sound design has a base case, a progress rule that moves toward it, and a clear contract for what the call returns. The runtime call stack remembers each unfinished call. Deep recursion can therefore use O(depth) stack space; an iterative version with an explicit stack can make that memory visible and avoid call-stack limits.", usefulWhen: "Use it for naturally nested data and split-into-smaller-subproblem designs; consider iteration when depth can be very large.", complexity: "Time: number of calls × work per call · Stack: recursion depth", steps: ["Receive the current subproblem", "Check whether it is already solved", "Create a smaller subproblem", "Return and combine the result"] },
+  "Greedy algorithm": { detail: "A greedy method makes one locally attractive choice and commits. The implementation may be simple, but correctness requires a proof that the choice can belong to an optimal solution. For interval scheduling, choosing the compatible interval that finishes earliest leaves the most room for later intervals; an exchange argument shows an optimal schedule can use that choice without losing solutions. The proof is what separates a valid greedy algorithm from a tempting heuristic.", usefulWhen: "Use it when choices can be ordered and you can prove an exchange or stays-ahead property; otherwise compare with DP or search.", complexity: "Often O(n log n) for sorting, then O(n) for selection", steps: ["Sort choices by the proven priority", "Take the best compatible choice", "Discard choices that now conflict", "Repeat while preserving feasibility"] },
+  "Heap": { detail: "A binary heap is a complete binary tree stored compactly in an array. The heap property guarantees only that each parent outranks its children; it does not sort every pair. That is enough to expose the minimum or maximum at the root. Insertion bubbles one value upward, and removal replaces the root then sifts a value downward, each across at most the tree height. A heap is especially effective when the next best item is needed repeatedly.", usefulWhen: "Use it for priority queues, streaming top-k problems, merging sorted streams, or repeatedly scheduling the next event.", complexity: "Peek: O(1) · Push / pop: O(log n) · Build: O(n)", steps: ["Keep the highest priority at the root", "Insert a new value at the next open leaf", "Restore order by moving it upward", "Remove the root and sift the replacement down"] },
+};
+
+function ConceptDiagram({ article, lesson }: { article: (typeof dsaArticles)[number]; lesson: (typeof articleLessons)[string] }) {
+  const [step, setStep] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => { setStep(0); setPlaying(false); }, [article]);
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setInterval(() => setStep((current) => (current + 1) % lesson.steps.length), 1350);
+    return () => window.clearInterval(timer);
+  }, [lesson.steps.length, playing]);
+  const family = article.concept;
+  const current = step % lesson.steps.length;
+  return <div className={`lesson-diagram diagram-${family.toLowerCase().replace(/[^a-z]+/g,"-")}`}>
+    <div className="lesson-diagram-top"><span>CONCEPT IN MOTION</span><span>{String(current + 1).padStart(2,"0")} / {String(lesson.steps.length).padStart(2,"0")}</span></div>
+    <div className={`lesson-visual-stage visual-step-${current}`} aria-label={`${family} illustration: ${lesson.steps[current]}`}>
+      {family === "Complexity" && <svg viewBox="0 0 360 205" role="img" aria-label="Algorithm growth curves"><path className="chart-gridline" d="M42 20V170H340M42 132H340M42 94H340M42 56H340"/><path className="chart-line chart-linear" d="M46 165 C120 154 211 132 328 99"/><path className="chart-line chart-log" d="M46 160 C90 112 177 92 328 82"/><path className="chart-line chart-quadratic" d="M46 165 C120 160 201 112 268 24"/><text x="278" y="92">log n</text><text x="303" y="107">n</text><text x="254" y="35">n²</text><text x="16" y="21">WORK</text><text x="310" y="190">INPUT →</text></svg>}
+      {family === "Hash map" && <div className="hash-diagram"><span className="diagram-input">value: 7 <b>→</b> need: 5</span><div className="hash-buckets">{[2,5,7,9].map((value,index)=><div className={`hash-bucket ${current >= 2 && index===1 || current===1 && index===2 ? "is-active" : ""}`} key={value}><small>key {value}</small><strong>{index===1?"idx 0":`idx ${index+2}`}</strong></div>)}</div><span className="diagram-result">{current < 2 ? "LOOK UP THE COMPLEMENT" : "MATCH FOUND · RETURN PAIR"}</span></div>}
+      {family === "Binary search" && <div className="binary-diagram"><div className="binary-range-label">{current < 2 ? "CANDIDATE RANGE" : "NARROWED RANGE"}</div><div className="binary-values">{[2,5,8,12,16,21,27,34].map((value,index)=><span className={`${current === 1 && index === 3 || current >= 2 && (index===4 || index===5) ? "is-mid" : ""} ${current >= 2 && index<4 ? "is-discarded" : ""}`} key={value}>{value}</span>)}</div><div className="binary-pointer-row"><span>left</span><span>mid</span><span>right</span></div></div>}
+      {family === "Sliding window" && <div className="window-diagram"><div className="window-label">CONTIGUOUS RANGE <span>length {current+2}</span></div><div className="window-values">{[4,2,1,7,8,3,5,6].map((value,index)=><span className={index >= current && index < current + 2 + (current % 3) ? "in-window" : ""} key={`${value}-${index}`}>{value}</span>)}</div><div className="window-track"><i style={{ left: `${current*10}%`, width: `${(2 + current%3)*10}%` }}/></div><div className="window-pointers"><span>← left</span><span>right →</span></div></div>}
+      {family === "Trees" && <svg viewBox="0 0 360 220" className="tree-diagram" role="img" aria-label="Tree traversal"><path d="M180 48L95 105M180 48L265 105M95 125L55 178M95 125L135 178M265 125L225 178M265 125L305 178"/><g className={current===0?"node-active":""}><circle cx="180" cy="38" r="20"/><text x="180" y="42">A</text></g><g className={current===1?"node-active":""}><circle cx="95" cy="115" r="18"/><text x="95" y="119">B</text></g><g className={current>=2?"node-active":""}><circle cx="265" cy="115" r="18"/><text x="265" y="119">C</text></g><circle cx="55" cy="188" r="14"/><circle cx="135" cy="188" r="14"/><circle cx="225" cy="188" r="14"/><circle cx="305" cy="188" r="14"/><text className="tree-caption" x="180" y="216">PARENT RESULT = 1 + CHILD RESULTS</text></svg>}
+      {family === "Dynamic programming" && <div className="dp-diagram"><div className="dp-equation">ways[i] = ways[i − 1] + ways[i − 2]</div><div className="dp-cells">{[1,1,2,3,5,8,13].map((value,index)=><div className={index <= current+2 ? "is-filled" : ""} key={index}><small>i={index}</small><strong>{index <= current+2 ? value : "?"}</strong></div>)}</div><div className="dp-caption">SAVE EACH ANSWER · REUSE IT LATER</div></div>}
+      {(family === "Stack & queue" || family === "Recursion") && <div className="linear-structure"><div className="structure-stack"><span className={current===0?"is-active":""}>item 03</span><span className={current===1?"is-active":""}>item 02</span><span>item 01</span><small>{family === "Recursion" ? "CALL STACK" : "LAST IN · FIRST OUT"}</small></div><div className="structure-arrow">{current===1?"← return":"push →"}</div><div className="structure-state"><span>current work</span><strong>{current===0?"item 03":current===1?"item 02":"item 01"}</strong></div></div>}
+      {family === "Graph traversal" && <svg viewBox="0 0 360 210" className="graph-diagram" role="img" aria-label="Breadth-first graph traversal"><g className="graph-edges"><path d="M76 101L155 54M76 101L160 155M155 54L250 73M160 155L250 143M250 73L303 109M250 143L303 109"/></g>{[[76,101,"A"],[155,54,"B"],[160,155,"C"],[250,73,"D"],[250,143,"E"],[303,109,"F"]].map(([x,y,label],index)=><g className={index<=current+1?"node-visited":""} key={label as string}><circle cx={x as number} cy={y as number} r="19"/><text x={x as number} y={(y as number)+4}>{label as string}</text></g>)}<text className="graph-caption" x="180" y="200">QUEUE · {current<2?"A → B, C":"D → E → F"}</text></svg>}
+      {(family === "Greedy algorithm" || family === "Heap") && <div className="choice-diagram">{family === "Greedy algorithm" ? <><span className="choice-title">CHOOSE THE EARLIEST FINISH</span>{[68,46,76,54].map((width,index)=><div className="interval-row" key={index}><small>{String.fromCharCode(65+index)}</small><i style={{width:`${width}%`}} className={index===current?"is-selected":""}/></div>)}<span className="choice-foot">KEEP THE SCHEDULE FEASIBLE</span></> : <><span className="choice-title">MIN-HEAP · SMALLEST AT ROOT</span><svg viewBox="0 0 320 180" className="heap-tree" role="img" aria-label="Min heap"><path d="M160 40L86 100M160 40L234 100M86 118L48 160M86 118L124 160M234 118L196 160M234 118L272 160"/><g className={current===0?"node-active":""}><circle cx="160" cy="34" r="23"/><text x="160" y="39">2</text></g><circle cx="86" cy="108" r="20"/><text x="86" y="113">5</text><circle cx="234" cy="108" r="20"/><text x="234" y="113">8</text><circle cx="48" cy="163" r="16"/><text x="48" y="168">9</text><circle cx="124" cy="163" r="16"/><text x="124" y="168">11</text><circle cx="196" cy="163" r="16"/><text x="196" y="168">12</text><circle cx="272" cy="163" r="16"/><text x="272" y="168">15</text></svg><span className="choice-foot">PUSH / POP · O(log n)</span></>}</div>}
+    </div>
+    <div className="lesson-step-copy"><strong>{lesson.steps[current]}</strong><span>{current + 1} of {lesson.steps.length}</span></div>
+    <div className="lesson-step-dots">{lesson.steps.map((stepLabel,index)=><button type="button" className={index===current?"active":""} key={stepLabel} onClick={()=>{setStep(index);setPlaying(false);}} aria-label={`Show step ${index+1}: ${stepLabel}`} />)}</div>
+    <div className="lesson-diagram-controls"><button type="button" onClick={()=>setPlaying((value)=>!value)}>{playing?<Pause size={13}/>:<Play size={13}/>} {playing?"Pause":"Play steps"}</button><button type="button" onClick={()=>{setPlaying(false);setStep(0);}} aria-label="Restart animation"><RotateCcw size={13}/></button><span>STEP THROUGH THE IDEA</span></div>
+  </div>;
+}
+
+function ArticlesPage() {
+  const [selected, setSelected] = useState("All concepts");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [openArticle, setOpenArticle] = useState<(typeof dsaArticles)[number] | null>(null);
+  const pageRef = useRef<HTMLElement>(null);
+  const categories = ["All concepts", ...new Set(dsaArticles.map((article) => article.category))];
+  const visible = dsaArticles.filter((article) =>
+    (selected === "All concepts" || article.category === selected) &&
+    `${article.title} ${article.category} ${article.summary} ${article.concept}`.toLowerCase().includes(searchTerm.trim().toLowerCase()),
+  );
+  const featuredArticle = visible[0];
+  const otherArticles = visible.slice(1);
+  const activeLesson = openArticle ? articleLessons[openArticle.concept] : null;
+  useEffect(() => {
+    if (!openArticle) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenArticle(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [openArticle]);
+  useEffect(() => {
+    let cancelled = false;
+    let revert: (() => void) | undefined;
+    void import("gsap").then(({ gsap }) => {
+      if (cancelled || !pageRef.current) return;
+      const context = gsap.context(() => {
+        gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+          gsap.from(".articles-hero-copy > *", { y: 20, opacity: 0, duration: .65, stagger: .1, ease: "power3.out" });
+          gsap.from(".article-row, .featured-article", { y: 16, opacity: 0, duration: .5, stagger: .06, ease: "power2.out", delay: .15 });
+        });
+      }, pageRef);
+      revert = () => context.revert();
+    });
+    return () => { cancelled = true; revert?.(); };
+  }, [selected]);
+  return <main className="articles-page" ref={pageRef}>
+    <section className="articles-hero editorial-hero"><div className="articles-hero-copy"><span className="articles-kicker"><BookOpen size={14}/> THE CODEXSHEET JOURNAL</span><h2>Learn the patterns<br/><em>behind the problems.</em></h2><p>Clear explanations for the ideas that show up again and again in coding interviews.</p><div className="editorial-hero-meta"><span>DSA FIELD NOTES</span><i/><span>{String(dsaArticles.length).padStart(2,"0")} SHORT READS</span></div></div><div className="editorial-hero-index"><span>COLLECTION</span><strong>01<span> / </span>{String(dsaArticles.length).padStart(2,"0")}</strong><p>Foundations<br/>to problem solving</p><div className="editorial-index-line"/></div></section>
+    <section className="articles-library"><div className="editorial-library-head"><div><span className="articles-kicker">THE LIBRARY</span><h3>Read. Understand. <em>Apply.</em></h3></div><label className="article-search"><Search size={15}/><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Find a concept" aria-label="Search DSA articles"/>{searchTerm && <button type="button" onClick={() => setSearchTerm("")} aria-label="Clear search">×</button>}</label></div><div className="article-filters" aria-label="Filter articles by topic">{categories.map((category) => <button key={category} type="button" className={selected === category ? "active" : ""} onClick={() => setSelected(category)}>{category}</button>)}</div>{featuredArticle ? <div className="editorial-reading-layout"><div className="editorial-main-column"><button className="featured-article" type="button" onClick={() => setOpenArticle(featuredArticle)}><span className="featured-label">{selected === "All concepts" ? "EDITOR’S PICK" : "FROM THIS TOPIC"}<ArrowRight size={14}/></span><span className="featured-category">{featuredArticle.category} <i/> {featuredArticle.read.toUpperCase()}</span><strong>{featuredArticle.title}</strong><p>{featuredArticle.summary}</p><span className="featured-link">Read the article <ArrowRight size={15}/></span><span className="featured-mark">{String(dsaArticles.indexOf(featuredArticle) + 1).padStart(2,"0")}</span></button><div className="article-list-heading"><span>MORE TO EXPLORE</span><span>{String(otherArticles.length).padStart(2,"0")} ARTICLES</span></div><div className="editorial-article-list">{otherArticles.map((article) => <button className="article-row" type="button" key={article.title} onClick={() => setOpenArticle(article)}><span className="article-row-number">{String(dsaArticles.indexOf(article) + 1).padStart(2,"0")}</span><span className="article-row-copy"><small>{article.category}</small><strong>{article.title}</strong><span>{article.summary}</span></span><span className="article-row-time">{article.read}<ArrowRight size={15}/></span></button>)}</div></div><aside className="editorial-aside"><span className="aside-kicker">A GOOD WAY IN</span><h4>Build your<br/>mental model.</h4><p>Start with the shape of the problem. Then choose a structure or pattern that makes the work simpler.</p><div className="aside-steps"><span><i>01</i> Understand the input</span><span><i>02</i> Find the repeated work</span><span><i>03</i> Choose a pattern</span></div><div className="aside-note"><Code2 size={15}/> Concepts are easier to remember when you can explain the tradeoff.</div><span className="aside-count">{String(visible.length).padStart(2,"0")} MATCHING READS</span></aside></div> : <div className="articles-empty"><Search size={20}/><strong>No concepts found</strong><span>Try another phrase or choose a different topic.</span><button type="button" onClick={() => { setSearchTerm(""); setSelected("All concepts"); }}>Clear filters</button></div>}</section>
+    {openArticle && activeLesson && <div className="article-reader-backdrop" onMouseDown={() => setOpenArticle(null)}><article className="article-reader article-reader-deep" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="article-reader-title"><div className="article-reader-top"><span className="articles-kicker"><BookOpen size={14}/>{openArticle.category}</span><button type="button" onClick={() => setOpenArticle(null)} aria-label="Close article">×</button></div><span className="article-reader-index">CONCEPT {String(dsaArticles.indexOf(openArticle) + 1).padStart(3,"0")} · {openArticle.read}</span><h2 id="article-reader-title">{openArticle.title}</h2><p className="article-reader-summary">{openArticle.summary}</p><div className="article-lesson-meta"><span><small>CORE IDEA</small><strong>{openArticle.concept}</strong></span><span><small>COMPLEXITY</small><strong>{activeLesson.complexity}</strong></span></div><div className="article-lesson-layout"><div className="article-lesson-copy"><section><span className="article-reader-label">BUILD THE MENTAL MODEL</span><h3>What’s really happening?</h3><p>{activeLesson.detail}</p></section><section><span className="article-reader-label">WHEN TO REACH FOR IT</span><h3>Recognize the signal</h3><p>{activeLesson.usefulWhen}</p></section><section className="article-lesson-takeaway"><span className="article-reader-label">A PRINCIPLE TO KEEP</span><p>{openArticle.takeaway}</p></section></div><ConceptDiagram key={openArticle.title} article={openArticle} lesson={activeLesson}/></div><section className="article-reader-example"><div><span className="article-reader-label">CODE IN CONTEXT</span><h3>One way to write it</h3></div><pre><code>{openArticle.code}</code></pre></section><div className="article-reader-bottom"><span><Clock3 size={14}/> {openArticle.read}</span><button type="button" onClick={() => { setOpenArticle(null); setSelected(openArticle.category); }}>Explore {openArticle.category} <ArrowRight size={14}/></button></div></article></div>}
+  </main>;
 }
 
 const elevenLabsAgentId = "agent_6801m0q9g55pe3vr0eb8y4sgkby7";
@@ -1446,6 +1588,30 @@ function App() {
           <span className="workspace-name">DSA practice workspace</span>
           <ChevronDown size={14} className="muted-icon" />
         </div>
+        <nav className="view-switcher" aria-label="Workspace views">
+          <button className={activeView === "home" ? "active" : ""} aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
+            <House size={16} /> Home
+          </button>
+          <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}>
+            <LayoutDashboard size={16} /> Progress
+          </button>
+          <button className={activeView === "problems" ? "active" : ""} aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
+            <Rows3 size={16} /> Problems
+            <span>{visibleProblems.length}</span>
+          </button>
+          <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
+          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+            <div className="nav-more-menu">
+              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
+              <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
+              <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
+              <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
+              <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
+              <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
+              <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
+            </div>
+          </details>
+        </nav>
         <div className="top-actions">
           <span className="save-state">
             {supabase && user ? <Wifi size={14} /> : <WifiOff size={14} />}{" "}
@@ -1487,7 +1653,7 @@ function App() {
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                          : "AI coach"}
+                          : activeView === "articles" ? "Articles" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -1505,7 +1671,7 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                        : "AI study coach"}{" "}
+                        : activeView === "articles" ? "DSA concept articles" : "AI study coach"}{" "}
               <span className="private-pill">DSA 250</span>
             </h1>
             <p>
@@ -1523,7 +1689,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
@@ -1532,77 +1698,6 @@ function App() {
             </button>
           </div>
         </div>}
-        <nav className="view-switcher" aria-label="Workspace views">
-          <button
-            className={activeView === "home" ? "active" : ""}
-            aria-pressed={activeView === "home"}
-            onClick={() => navigateToView("home")}
-          >
-            <House size={16} /> Home
-          </button>
-          <button
-            className={activeView === "dashboard" ? "active" : ""}
-            aria-pressed={activeView === "dashboard"}
-            onClick={() => navigateToView("dashboard")}
-          >
-            <LayoutDashboard size={16} /> Dashboard
-          </button>
-          <button
-            className={activeView === "problems" ? "active" : ""}
-            aria-pressed={activeView === "problems"}
-            onClick={() => navigateToView("problems")}
-          >
-            <Rows3 size={16} /> Problems
-            <span>{visibleProblems.length}</span>
-          </button>
-          <button
-            className={activeView === "calendar" ? "active" : ""}
-            aria-pressed={activeView === "calendar"}
-            onClick={() => navigateToView("calendar")}
-          >
-            <CalendarDays size={16} /> Calendar
-          </button>
-          <button
-            className={activeView === "roadmap" ? "active" : ""}
-            aria-pressed={activeView === "roadmap"}
-            onClick={() => navigateToView("roadmap")}
-          >
-            <MapIcon size={16} /> Roadmap
-          </button>
-          <button
-            className={activeView === "chat" ? "active" : ""}
-            aria-pressed={activeView === "chat"}
-            onClick={() => navigateToView("chat")}
-          >
-            <MessageCircle size={16} /> Group chat
-            {chatUnreadIds.length > 0 && (
-              <span className="chat-unread-badge" aria-label={`${chatUnreadIds.length} unread messages`}>
-                {chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}
-              </span>
-            )}
-          </button>
-          <button
-            className={activeView === "calls" ? "active" : ""}
-            aria-pressed={activeView === "calls"}
-            onClick={() => navigateToView("calls")}
-          >
-            <Video size={16} /> Video calls
-          </button>
-          <button
-            className={activeView === "coach" ? "active" : ""}
-            aria-pressed={activeView === "coach"}
-            onClick={() => navigateToView("coach")}
-          >
-            <AudioLines size={16} /> AI coach
-          </button>
-          <button
-            className={activeView === "notes" ? "active" : ""}
-            aria-pressed={activeView === "notes"}
-            onClick={() => navigateToView("notes")}
-          >
-            <NotebookPen size={16} /> Notes
-          </button>
-        </nav>
       </section>
       {activeView === "home" && <HomePage
         solved={solved}
@@ -1612,6 +1707,7 @@ function App() {
         patterns={patternStats}
         onNavigate={navigateToView}
       />}
+      {activeView === "articles" && <ArticlesPage />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
