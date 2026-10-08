@@ -101,6 +101,7 @@ function viewFromLocation(): WorkspaceView {
   const params = new URLSearchParams(window.location.search);
   if (params.has("room") || params.has("schedule")) return "calls";
   const path = window.location.pathname.replace(/\/$/, "") || "/";
+  if (path === "/artcles") return "articles";
   const match = (Object.entries(viewPaths) as Array<[WorkspaceView, string]>).find(([, route]) => route === path);
   return match?.[0] ?? "dashboard";
 }
