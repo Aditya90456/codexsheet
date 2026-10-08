@@ -354,6 +354,19 @@ type CallSignal = {
   name?: string;
 };
 
+function getCallIceServers(): RTCIceServer[] {
+  const urls = (import.meta.env.VITE_TURN_URLS ?? "").split(",").map((url: string) => url.trim()).filter(Boolean);
+  const iceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+  if (urls.length > 0) {
+    iceServers.push({
+      urls,
+      username: import.meta.env.VITE_TURN_USERNAME,
+      credential: import.meta.env.VITE_TURN_CREDENTIAL,
+    });
+  }
+  return iceServers;
+}
+
 function CallVideo({ stream, muted, label, self = false }: { stream: MediaStream | null; muted?: boolean; label: string; self?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -387,6 +400,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   const streamRef = useRef<MediaStream | null>(null);
   const displayStreamRef = useRef<MediaStream | null>(null);
   const peers = useRef(new Map<string, RTCPeerConnection>());
+  const pendingIceCandidates = useRef(new Map<string, RTCIceCandidateInit[]>());
   const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
   useEffect(() => {
     if (!inviteRoomId || !supabase || !userId) return;
@@ -488,7 +502,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
     const createPeer = (remoteId: string, name = "Guest") => {
       const existing = peers.current.get(remoteId);
       if (existing) return existing;
-      const peer = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+      const peer = new RTCPeerConnection({ iceServers: getCallIceServers() });
       peers.current.set(remoteId, peer);
       streamRef.current?.getTracks().forEach((track) => peer.addTrack(track, streamRef.current!));
       peer.ontrack = (event) => {
@@ -509,20 +523,47 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
     channel.on("broadcast", { event: "offer" }, async ({ payload }: { payload: CallSignal }) => {
       if (payload.to !== localId.current || !payload.description) return;
       const peer = createPeer(payload.from, payload.name || "Peer");
-      await peer.setRemoteDescription(payload.description);
-      const answer = await peer.createAnswer(); await peer.setLocalDescription(answer);
+      try {
+        await peer.setRemoteDescription(payload.description);
+        const queuedCandidates = pendingIceCandidates.current.get(payload.from) ?? [];
+        pendingIceCandidates.current.delete(payload.from);
+        await Promise.all(queuedCandidates.map((candidate) => peer.addIceCandidate(candidate)));
+        const answer = await peer.createAnswer(); await peer.setLocalDescription(answer);
+      } catch (cause) {
+        setError(`Could not negotiate with a peer: ${cause instanceof Error ? cause.message : "WebRTC negotiation failed."}`);
+        return;
+      }
       await send("answer", { from: localId.current, to: payload.from, description: peer.localDescription?.toJSON() });
     });
     channel.on("broadcast", { event: "answer" }, async ({ payload }: { payload: CallSignal }) => {
       if (payload.to !== localId.current || !payload.description) return;
-      await peers.current.get(payload.from)?.setRemoteDescription(payload.description);
+      const peer = peers.current.get(payload.from);
+      if (!peer) return;
+      try {
+        await peer.setRemoteDescription(payload.description);
+        const queuedCandidates = pendingIceCandidates.current.get(payload.from) ?? [];
+        pendingIceCandidates.current.delete(payload.from);
+        await Promise.all(queuedCandidates.map((candidate) => peer.addIceCandidate(candidate)));
+      } catch (cause) {
+        setError(`Could not negotiate with a peer: ${cause instanceof Error ? cause.message : "WebRTC negotiation failed."}`);
+      }
     });
     channel.on("broadcast", { event: "ice" }, async ({ payload }: { payload: CallSignal }) => {
       if (payload.to !== localId.current || !payload.candidate) return;
-      try { await peers.current.get(payload.from)?.addIceCandidate(payload.candidate); } catch { /* ICE may arrive before negotiation. */ }
+      const peer = peers.current.get(payload.from);
+      if (!peer || !peer.remoteDescription) {
+        const queued = pendingIceCandidates.current.get(payload.from) ?? [];
+        queued.push(payload.candidate);
+        pendingIceCandidates.current.set(payload.from, queued);
+        return;
+      }
+      try { await peer.addIceCandidate(payload.candidate); } catch (cause) {
+        console.warn("Could not add peer ICE candidate:", cause);
+      }
     });
     channel.on("broadcast", { event: "leave" }, ({ payload }: { payload: CallSignal }) => {
       peers.current.get(payload.from)?.close(); peers.current.delete(payload.from);
+      pendingIceCandidates.current.delete(payload.from);
       setRemoteStreams((current) => { const next = { ...current }; delete next[payload.from]; return next; });
     });
     channel.subscribe((status, subscriptionError) => {
@@ -547,6 +588,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
       void send("leave", { from: localId.current });
       channel.unsubscribe(); channelRef.current = null;
       peers.current.forEach((peer) => peer.close()); peers.current.clear();
+      pendingIceCandidates.current.clear();
     };
   }, [joined, roomId, userId, userName]);
 
@@ -557,6 +599,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
     displayStreamRef.current = null; setScreenSharing(false);
     streamRef.current = null; setStream(null); setRemoteStreams({}); setJoined(false); setConnecting(false);
     peers.current.forEach((peer) => peer.close()); peers.current.clear();
+    pendingIceCandidates.current.clear();
     setRoomId("");
     if (supabase && userId && roomId) void supabase.rpc("leave_call_room", { p_room_id: roomId });
   }
