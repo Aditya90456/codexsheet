@@ -50,8 +50,10 @@ import {
   Play,
   Pause,
   RotateCcw,
+  CodeXml,
 } from "lucide-react";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
+import Editor from "./Editor";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -82,12 +84,13 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
+type WorkspaceView = "home" | "dashboard" | "problems" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
   dashboard: "/dashboard",
   problems: "/problems",
+  editor: "/editor",
   calendar: "/calendar",
   roadmap: "/roadmap",
   chat: "/chat",
@@ -657,6 +660,12 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
       peer.onconnectionstatechange = () => {
         if (["failed", "closed", "disconnected"].includes(peer.connectionState)) {
           setRemoteStreams((current) => { const next = { ...current }; delete next[remoteId]; return next; });
+        }
+        if (peer.connectionState === "failed") {
+          const hasTurn = (import.meta.env.VITE_TURN_URLS ?? "").trim().length > 0;
+          setError(hasTurn
+            ? "Could not establish a media connection. Check that your TURN server is reachable and its credentials are valid, then rejoin."
+            : "Could not establish a media connection. Add a TURN server to the production deployment; STUN alone cannot connect some networks. Then rebuild and rejoin.");
         }
       };
       return peer;
@@ -1600,6 +1609,9 @@ function App() {
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
           </button>
+          <button className={activeView === "editor" ? "active" : ""} aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
+            <CodeXml size={16} /> Editor
+          </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
           <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
@@ -1644,6 +1656,8 @@ function App() {
                   ? "Dashboard"
                   : activeView === "problems"
                     ? "Problems"
+                    : activeView === "editor"
+                      ? "Code editor"
                     : activeView === "calendar"
                       ? "Calendar"
                       : activeView === "roadmap"
@@ -1662,6 +1676,8 @@ function App() {
                 ? "Your progress"
                 : activeView === "problems"
                   ? "Problem library"
+                  : activeView === "editor"
+                    ? "Code editor"
                   : activeView === "calendar"
                     ? "Practice calendar"
                     : activeView === "roadmap"
@@ -1680,6 +1696,8 @@ function App() {
                 ? "A clear view of your practice and what to tackle next."
                 : activeView === "problems"
                   ? "Find a problem, update its status, and keep your practice moving."
+                  : activeView === "editor"
+                    ? "A focused space to write, run, and refine your solutions."
                   : activeView === "calendar"
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
@@ -1709,6 +1727,7 @@ function App() {
         onNavigate={navigateToView}
       />}
       {activeView === "articles" && <ArticlesPage />}
+      {activeView === "editor" && <Editor />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
