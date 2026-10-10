@@ -500,18 +500,7 @@ type CallSignal = {
   name?: string;
 };
 
-function getCallIceServers(): RTCIceServer[] {
-  const urls = (import.meta.env.VITE_TURN_URLS ?? "").split(",").map((url: string) => url.trim()).filter(Boolean);
-  const iceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
-  if (urls.length > 0) {
-    iceServers.push({
-      urls,
-      username: import.meta.env.VITE_TURN_USERNAME,
-      credential: import.meta.env.VITE_TURN_CREDENTIAL,
-    });
-  }
-  return iceServers;
-}
+const fallbackCallIceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
 function CallVideo({ stream, muted, label, self = false }: { stream: MediaStream | null; muted?: boolean; label: string; self?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -546,6 +535,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   const streamRef = useRef<MediaStream | null>(null);
   const displayStreamRef = useRef<MediaStream | null>(null);
   const peers = useRef(new Map<string, RTCPeerConnection>());
+  const iceServers = useRef<RTCIceServer[]>(fallbackCallIceServers);
   const pendingIceCandidates = useRef(new Map<string, RTCIceCandidateInit[]>());
   const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
   useEffect(() => {
@@ -603,6 +593,11 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
       if (roomError || !room) throw new Error("That room link is no longer available.");
       setRoomCreatorId(room.created_by);
       setRoomId(targetRoomId);
+      const { data: iceConfig, error: iceConfigError } = await supabase.functions.invoke("call-ice");
+      if (iceConfigError || !Array.isArray(iceConfig?.iceServers) || iceConfig.iceServers.length === 0) {
+        throw new Error("Could not load secure call connection settings. Configure and deploy the call-ice Supabase function, then try again.");
+      }
+      iceServers.current = iceConfig.iceServers as RTCIceServer[];
       setConnectingLabel("Allow camera and microphone access…");
       const media = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       streamRef.current = media;
@@ -648,7 +643,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
     const createPeer = (remoteId: string, name = "Guest") => {
       const existing = peers.current.get(remoteId);
       if (existing) return existing;
-      const peer = new RTCPeerConnection({ iceServers: getCallIceServers() });
+      const peer = new RTCPeerConnection({ iceServers: iceServers.current });
       peers.current.set(remoteId, peer);
       streamRef.current?.getTracks().forEach((track) => peer.addTrack(track, streamRef.current!));
       peer.ontrack = (event) => {
@@ -662,7 +657,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
           setRemoteStreams((current) => { const next = { ...current }; delete next[remoteId]; return next; });
         }
         if (peer.connectionState === "failed") {
-          const hasTurn = (import.meta.env.VITE_TURN_URLS ?? "").trim().length > 0;
+          const hasTurn = iceServers.current.length > 1;
           setError(hasTurn
             ? "Could not establish a media connection. Check that your TURN server is reachable and its credentials are valid, then rejoin."
             : "Could not establish a media connection. Add a TURN server to the production deployment; STUN alone cannot connect some networks. Then rebuild and rejoin.");
