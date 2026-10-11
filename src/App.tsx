@@ -54,7 +54,6 @@ import {
 } from "lucide-react";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import Editor from "./Editor";
-import DsaTutor from "./DsaTutor";
 import CompanyProblems from "./CompanyProblems";
 
 type Status = "Todo" | "In progress" | "Solved";
@@ -2261,7 +2260,6 @@ function App() {
       )}
       {activeView === "coach" && (
         <>
-        <DsaTutor />
         <section className="coach-card" aria-label="ElevenLabs AI study coach">
           <header className="coach-heading">
             <div className="coach-icon"><AudioLines size={18} /></div>

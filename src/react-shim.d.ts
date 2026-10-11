@@ -28,7 +28,7 @@ declare namespace JSX {
       onChange?: (event: { target: { value: string } }) => void;
       onSubmit?: (event: import("react").FormEvent<HTMLFormElement>) => void;
       onMouseDown?: (event: { stopPropagation(): void }) => void;
-      onKeyDown?: (event: { key: string; shiftKey: boolean; preventDefault(): void }) => void;
+      onKeyDown?: (event: any) => void;
     };
   }
 }
