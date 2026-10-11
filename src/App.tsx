@@ -15,7 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  Code2,
+  Code2, 
   ExternalLink,
   Flame,
   GitBranch,
