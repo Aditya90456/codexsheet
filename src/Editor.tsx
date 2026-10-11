@@ -12,15 +12,15 @@ import {
   Terminal,
   Trash2,
 } from "lucide-react";
+import { supabase } from "./lib/supabase";
 
-type Language = "C++" | "Python" | "Java" | "JavaScript" | "TypeScript";
+type Language = "C++" | "Python" | "Java" | "JavaScript";
 type EditorProblem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard" };
 
 const starters: Record<Language, string> = {
   "C++": `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    cout << "Ready to solve" << endl;\n    return 0;\n}`,
   Java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write your solution here\n        System.out.println("Ready to solve");\n    }\n}`,
   JavaScript: `// Write your solution here\nfunction twoSum(nums, target) {\n  const seen = new Map();\n\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (seen.has(complement)) {\n      return [seen.get(complement), i];\n    }\n    seen.set(nums[i], i);\n  }\n\n  return [];\n}\n\nconsole.log(twoSum([2, 7, 11, 15], 9));`,
-  TypeScript: `// Write your solution here\nfunction twoSum(nums: number[], target: number): number[] {\n  const seen = new Map<number, number>();\n\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (seen.has(complement)) {\n      return [seen.get(complement)!, i];\n    }\n    seen.set(nums[i], i);\n  }\n\n  return [];\n}\n\nconsole.log(twoSum([2, 7, 11, 15], 9));`,
   Python: `# Write your solution here\nprint("Ready to solve")`,
 };
 
@@ -32,7 +32,6 @@ function starterFor(language: Language, problem: EditorProblem | undefined) {
     Python: `# Implement ${problem.title}\nprint("Ready to solve")`,
     Java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Implement ${problem.title}\n        System.out.println("Ready to solve");\n    }\n}`,
     JavaScript: `// Implement ${problem.title}\nconsole.log("Ready to solve");`,
-    TypeScript: `// Implement ${problem.title}\nfunction solution(input: unknown): unknown {\n  // Your code here\n}`,
   };
   return `${comment}\n${templates[language]}`;
 }
@@ -73,7 +72,7 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
   }, [code, codeKey]);
 
   const lines = useMemo(() => code.split("\n").length, [code]);
-  const fileExtension = language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : language === "TypeScript" ? "ts" : "js";
+  const fileExtension = language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js";
   const currentProblem = problems.find((problem) => problem.number === problemNumber) ?? problems[0];
 
   function changeLanguage(next: Language) {
@@ -97,61 +96,50 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
-    const languageIds: Partial<Record<Language, number>> = {
-      "C++": 105,
-      Java: 91,
-      Python: 100,
-      JavaScript: 102,
-      TypeScript: 101,
+    const languageIds: Record<Language, number> = {
+      "C++": 54,
+      Java: 62,
+      Python: 71,
+      JavaScript: 63,
     };
     const languageId = languageIds[language];
     if (!languageId) {
       setRunError(true);
-      setOutput([`${language} execution is not configured yet. Choose C++, Python, Java, or JavaScript.`]);
+      setOutput([`${language} execution is not configured yet.`]);
       return;
     }
-    if (code.length > 50000 || stdin.length > 10000) {
+    if (code.length > 30000 || stdin.length > 10000) {
       setRunError(true);
-      setOutput(["Code is limited to 50 KB and input to 10 KB per run."]);
+      setOutput(["Code is limited to 30 KB and input to 10 KB per run."]);
+      return;
+    }
+    if (!supabase) {
+      setRunError(true);
+      setOutput(["The code runner is not configured. Connect Supabase to execute code."]);
       return;
     }
     setIsRunning(true);
     try {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 25000);
-      try {
-        const response = await fetch("https://ce.judge0.com/submissions?base64_encoded=false&wait=true", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          signal: controller.signal,
-          body: JSON.stringify({
-            language_id: languageId,
-            source_code: code,
-            stdin,
-            cpu_time_limit: 3,
-            cpu_extra_time: 1,
-            wall_time_limit: 8,
-            memory_limit: 128000,
-          }),
-        });
-        const result = await response.json() as {
-          message?: string;
-          stdout?: string | null;
-          stderr?: string | null;
-          compile_output?: string | null;
-          status?: { description?: string };
-          time?: string | null;
-        };
-        if (!response.ok) throw new Error(result.message || `Runner returned HTTP ${response.status}.`);
-        const outputText = result.stdout?.trimEnd();
-        const errorText = result.compile_output?.trimEnd() || result.stderr?.trimEnd();
-        const failed = Boolean(result.status?.description && result.status.description !== "Accepted");
-        setRunError(Boolean(failed));
-        const details = [outputText, errorText, result.status?.description && result.status.description !== "Accepted" ? `Status: ${result.status.description}` : null, result.time ? `Runtime: ${result.time}s` : null].filter((item): item is string => Boolean(item));
-        setOutput(details.length ? details : ["Finished with no output."]);
-      } finally {
-        window.clearTimeout(timeoutId);
-      }
+      const { data, error } = await supabase.functions.invoke("run-code", {
+        body: { problemNumber, languageId, sourceCode: code, customInput: stdin },
+      });
+      if (error) throw error;
+      const result = data as {
+        error?: string;
+        summary?: string;
+        passed?: number;
+        total?: number;
+        results?: Array<{ label?: string; status?: string; stdout?: string; stderr?: string }>;
+      } | null;
+      if (!result || result.error) throw new Error(result?.error || "The code runner returned no result.");
+      const caseOutput = (result.results ?? []).flatMap((item) => [
+        `${item.label || "Test case"}: ${item.status || "Finished"}`,
+        item.stdout?.trimEnd(),
+        item.stderr?.trimEnd(),
+      ].filter((line): line is string => Boolean(line)));
+      const failed = (result.results ?? []).some((item) => item.status !== "Passed" && item.status !== "Executed");
+      setRunError(failed);
+      setOutput([result.summary, ...caseOutput].filter((line): line is string => Boolean(line)));
     } catch (error) {
       setRunError(true);
       const message = error instanceof Error && error.name === "AbortError"
@@ -200,9 +188,9 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
         <aside className="editor-rail">
           <span className="editor-rail-heading">WORKSPACE</span>
           <span className="editor-rail-group">LANGUAGE</span>
-          {(["C++", "Python", "Java", "JavaScript", "TypeScript"] as Language[]).map((item) => (
+          {(["C++", "Python", "Java", "JavaScript"] as Language[]).map((item) => (
             <button className={`editor-language${language === item ? " active" : ""}`} key={item} onClick={() => changeLanguage(item)} type="button" aria-pressed={language === item}>
-              <span className="editor-language-badge">{item === "JavaScript" ? "JS" : item === "TypeScript" ? "TS" : item === "Python" ? "PY" : item === "C++" ? "C+" : "JV"}</span>{item}
+              <span className="editor-language-badge">{item === "JavaScript" ? "JS" : item === "Python" ? "PY" : item === "C++" ? "C+" : "JV"}</span>{item}
               {language === item && <i />}
             </button>
           ))}
@@ -215,7 +203,7 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
 
         <div className="editor-main">
           <div className="editor-tabs">
-            <div className="editor-tab"><span className="editor-tab-badge">{language === "JavaScript" ? "JS" : language === "TypeScript" ? "TS" : language === "Python" ? "PY" : language === "C++" ? "C+" : "JV"}</span>solution.{fileExtension}<i /></div>
+            <div className="editor-tab"><span className="editor-tab-badge">{language === "JavaScript" ? "JS" : language === "Python" ? "PY" : language === "C++" ? "C+" : "JV"}</span>solution.{fileExtension}<i /></div>
             <span className="editor-saved-tag"><Check size={13} /> Autosave on</span>
           </div>
           <div className="editor-actions">
