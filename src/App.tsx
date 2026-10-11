@@ -1722,7 +1722,7 @@ function App() {
         onNavigate={navigateToView}
       />}
       {activeView === "articles" && <ArticlesPage />}
-      {activeView === "editor" && <Editor />}
+      {activeView === "editor" && <Editor problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>

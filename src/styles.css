@@ -110,6 +110,8 @@ a {
 .editor-problem-chip { display: flex; flex-direction: column; gap: 4px; margin-left: auto; padding: 11px 14px; border: 1px solid #e1e8dc; border-radius: 10px; background: rgba(252,253,249,.75); }
 .editor-problem-chip > span { color: #929e91; font: 8px 'DM Mono', monospace; letter-spacing: .1em; }
 .editor-problem-chip strong { color: #354b3e; font-size: 11px; }
+.editor-problem-chip .editor-problem-select { width: min(270px, 34vw); min-width: 175px; padding: 3px 20px 3px 0; border: 0; outline: 0; color: #354b3e; background: transparent; font-family: inherit; font-size: 11px; font-weight: 700; }
+.editor-problem-chip .editor-problem-select:focus-visible { outline: 2px solid #9bb77d; outline-offset: 2px; }
 .editor-problem-chip small { display: flex; align-items: center; gap: 7px; color: #849084; font-size: 9px; }
 .editor-problem-chip small i, .editor-statusbar span > i:not(.editor-live-dot) { width: 3px; height: 3px; border-radius: 50%; background: #b3beb0; }
 .editor-window { overflow: hidden; border: 1px solid #263a32; border-radius: 13px; background: #17231f; box-shadow: 0 20px 55px rgba(24, 43, 34, .17); }
@@ -124,6 +126,9 @@ a {
 .editor-tool-button:hover { color: #edf5ea; background: rgba(255,255,255,.06); }
 .editor-run { gap: 6px; padding: 8px 11px; border: 0; border-radius: 6px; color: #263528; background: #c8dc9b; font-size: 10px; font-weight: 800; }
 .editor-run:hover { background: #d6e8ae; }
+.editor-run:disabled { cursor: wait; opacity: .8; }
+.editor-spinner { display: inline-flex; animation: editor-spin 1s linear infinite; }
+@keyframes editor-spin { to { transform: rotate(360deg); } }
 .editor-run kbd, .editor-output-body kbd, .editor-footer kbd { padding: 2px 4px; border: 1px solid rgba(40,60,48,.17); border-radius: 3px; color: inherit; background: rgba(255,255,255,.2); font: 8px 'DM Mono', monospace; }
 .editor-run kbd { margin-left: 3px; color: #596950; }
 .editor-code-area { display: flex; height: min(55vh, 445px); min-height: 280px; overflow: hidden; background: #17231f; }
@@ -141,8 +146,16 @@ a {
 .editor-output-body { min-height: 80px; padding: 14px 17px; color: #ceddce; font: 11px/1.6 'DM Mono', monospace; }
 .editor-output-body pre { margin: 0; white-space: pre-wrap; }
 .editor-output-body.is-error { color: #ef9e8d; }
+.editor-output-body.is-notice { color: #b9c7a0; }
 .editor-output-body > span { display: flex; align-items: center; gap: 8px; color: #76877c; font-size: 10px; }
 .editor-output-body kbd { color: #a6b4a9; background: rgba(255,255,255,.07); }
+.editor-stdin-panel { display: grid; gap: 8px; padding: 12px 15px; border-top: 1px solid rgba(226,237,225,.07); background: #18241f; }
+.editor-stdin-panel label { display: flex; align-items: center; gap: 8px; color: #a4b3a7; font: 8px 'DM Mono',monospace; letter-spacing: .09em; }
+.editor-stdin-panel label span { color: #708276; letter-spacing: 0; }
+.editor-stdin-panel textarea { min-height: 52px; max-height: 120px; resize: vertical; padding: 9px 10px; border: 1px solid rgba(224,237,225,.09); border-radius: 6px; outline: 0; color: #d8e2d8; background: #131d19; font: 10px/1.5 'DM Mono',monospace; }
+.editor-stdin-panel textarea:focus { border-color: #8aa66a; }
+.editor-stdin-panel textarea::placeholder { color: #617267; }
+.editor-stdin-panel small { color: #697c70; font-size: 8px; }
 .editor-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 3px; color: #7d8b7e; font-size: 9px; }
 .editor-footer > span { display: flex; align-items: center; gap: 6px; }
 .editor-footer-spark { color: #829d5e; font-size: 13px; }
@@ -227,6 +240,7 @@ a {
   .editor-context-icon { width: 39px; height: 39px; }
   .editor-context-copy p { max-width: 215px; font-size: 10px; }
   .editor-problem-chip { min-width: auto; padding: 8px; }
+  .editor-problem-chip .editor-problem-select { width: min(220px, 48vw); min-width: 120px; font-size: 10px; }
   .editor-chip-icon, .editor-problem-chip > svg, .editor-problem-chip small { display: none; }
   .editor-problem-chip strong { font-size: 10px; }
   .editor-workspace { grid-template-columns: minmax(0,1fr); min-height: 0; }
