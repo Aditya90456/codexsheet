@@ -1,5 +1,6 @@
 declare module "react" {
   export type ReactNode = unknown;
+  export type CSSProperties = { [property: string]: string | number | undefined };
   export type FormEvent<T = HTMLFormElement> = { preventDefault(): void; target: T };
   export function useRef<T>(initialValue: T): { current: T };
   export function useRef<T>(initialValue: T | null): { current: T | null };
@@ -27,6 +28,7 @@ declare namespace JSX {
       onChange?: (event: { target: { value: string } }) => void;
       onSubmit?: (event: import("react").FormEvent<HTMLFormElement>) => void;
       onMouseDown?: (event: { stopPropagation(): void }) => void;
+      onKeyDown?: (event: { key: string; shiftKey: boolean; preventDefault(): void }) => void;
     };
   }
 }

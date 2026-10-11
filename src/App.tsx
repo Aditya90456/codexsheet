@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
   SignInButton,
   SignUpButton,
@@ -15,7 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  Code2, 
+  Code2,
   ExternalLink,
   Flame,
   GitBranch,
@@ -54,6 +54,8 @@ import {
 } from "lucide-react";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import Editor from "./Editor";
+import DsaTutor from "./DsaTutor";
+import CompanyProblems from "./CompanyProblems";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -84,12 +86,13 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
   dashboard: "/dashboard",
   problems: "/problems",
+  companies: "/companies",
   editor: "/editor",
   calendar: "/calendar",
   roadmap: "/roadmap",
@@ -166,7 +169,32 @@ function HomePage({
             transformOrigin: "left center",
             scrollTrigger: { trigger: ".home-progress", start: "top 82%", once: true },
           });
+          engine.to(".home-lab", {
+            y: -18,
+            ease: "none",
+            scrollTrigger: { trigger: ".home-hero", start: "top top", end: "bottom top", scrub: 0.7 },
+          });
           engine.to(".home-mark-orbit", { rotate: 360, duration: 32, ease: "none", repeat: -1 });
+        });
+        motion.add("(prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine)", () => {
+          const cards = Array.from(pageRef.current?.querySelectorAll<HTMLElement>(".home-feature-card") ?? []);
+          const cleanups = cards.map((card) => {
+            const tiltX = engine.quickTo(card, "--tilt-x", { duration: 0.32, ease: "power2.out" });
+            const tiltY = engine.quickTo(card, "--tilt-y", { duration: 0.32, ease: "power2.out" });
+            const onMove = (event: PointerEvent) => {
+              const bounds = card.getBoundingClientRect();
+              tiltX(((event.clientX - bounds.left) / bounds.width - 0.5) * 7);
+              tiltY((0.5 - (event.clientY - bounds.top) / bounds.height) * 7);
+            };
+            const onLeave = () => { tiltX(0); tiltY(0); };
+            card.addEventListener("pointermove", onMove);
+            card.addEventListener("pointerleave", onLeave);
+            return () => {
+              card.removeEventListener("pointermove", onMove);
+              card.removeEventListener("pointerleave", onLeave);
+            };
+          });
+          return () => cleanups.forEach((cleanup) => cleanup());
         });
         return () => motion.revert();
       }, pageRef);
@@ -882,6 +910,7 @@ function App() {
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesError, setNotesError] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const problemLibraryRef = useRef<HTMLElement>(null);
   const activeViewRef = useRef(activeView);
   activeViewRef.current = activeView;
   const currentUserIdRef = useRef<string | null>(user?.id ?? null);
@@ -901,6 +930,7 @@ function App() {
   const practiceDaySet = new Set(practiceDays);
   const activeDaysThisMonth = practiceDays.filter((day) => day.startsWith(calendarMonthKey)).length;
   const todayDateKey = localDateKey(new Date());
+  const isCurrentCalendarMonth = calendarMonthKey === todayDateKey.slice(0, 7);
 
   const visibleProblems = useMemo(
     () =>
@@ -918,6 +948,34 @@ function App() {
       }),
     [difficulty, pattern, progress, query, status],
   );
+  useEffect(() => {
+    if (activeView !== "problems" || !problemLibraryRef.current) return;
+    let cancelled = false;
+    let revert: (() => void) | undefined;
+    const timer = window.setTimeout(() => {
+      void import("gsap").then(({ gsap }) => {
+        if (cancelled || !problemLibraryRef.current) return;
+        const rows = Array.from(problemLibraryRef.current.querySelectorAll<HTMLElement>(".library-row")).slice(0, 16);
+        const context = gsap.context(() => {
+          gsap.fromTo(rows, { y: 10, opacity: 0, filter: "blur(3px)" }, {
+            y: 0,
+            opacity: 1,
+            filter: "blur(0px)",
+            duration: 0.38,
+            stagger: 0.022,
+            ease: "power2.out",
+            clearProps: "transform,opacity,filter",
+          });
+        }, problemLibraryRef);
+        revert = () => context.revert();
+      });
+    }, 75);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      revert?.();
+    };
+  }, [activeView, difficulty, pattern, query, status, visibleProblems.length]);
   const solved = Object.values(progress).filter(
     (item) => item.status === "Solved",
   ).length;
@@ -1604,6 +1662,9 @@ function App() {
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
           </button>
+          <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}>
+            <UsersRound size={16} /> Companies
+          </button>
           <button className={activeView === "editor" ? "active" : ""} aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
             <CodeXml size={16} /> Editor
           </button>
@@ -1640,7 +1701,7 @@ function App() {
             ) : null}
         </div>
       </header>
-      <section className="workspace-header">
+      <section className={`workspace-header${activeView === "companies" ? " company-workspace-header" : ""}`}>
         {activeView !== "home" && <div className="title-row">
           <div>
             <div className="breadcrumb">
@@ -1722,10 +1783,28 @@ function App() {
         onNavigate={navigateToView}
       />}
       {activeView === "articles" && <ArticlesPage />}
+      {activeView === "companies" && <CompanyProblems />}
       {activeView === "editor" && <Editor problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
+          <section className="dashboard-welcome" aria-label="Continue your DSA practice">
+            <div className="dashboard-welcome-copy">
+              <span className="dashboard-welcome-kicker"><span /> YOUR PRACTICE, AT A GLANCE</span>
+              <h2>Small steps make <em>strong instincts.</em></h2>
+              <p>{solved > 0 ? `You’ve solved ${solved} of 250 problems. Keep your momentum going with the next one.` : "Build a steady interview practice habit, one thoughtfully chosen problem at a time."}</p>
+              <div className="dashboard-welcome-actions">
+                <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
+                <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
+              </div>
+            </div>
+            <div className="dashboard-welcome-progress" aria-label={`${percent}% complete`}>
+              <div className="dashboard-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties & { "--progress": string }}>
+                <div><strong>{percent}<small>%</small></strong><span>COMPLETE</span></div>
+              </div>
+              <span className="dashboard-progress-caption"><strong>{solved}</strong> solved <i /> 250 total</span>
+            </div>
+          </section>
           <section className="insight-strip">
         <div className="insight">
           <span className="insight-label">Solved</span>
@@ -1976,8 +2055,9 @@ function App() {
             <div className="calendar-titlelockup">
               <div className="calendar-icon"><CalendarDays size={18} /></div>
               <div>
-                <h2>Practice calendar</h2>
-                <p>{activeDaysThisMonth} active {activeDaysThisMonth === 1 ? "day" : "days"} this month</p>
+                <span className="calendar-eyebrow">YOUR CONSISTENCY</span>
+                <h2>Practice rhythm</h2>
+                <p>Every focused session adds up.</p>
               </div>
             </div>
             <div className="calendar-controls">
@@ -1990,6 +2070,7 @@ function App() {
                   setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
                   setSelectedCalendarDate(null);
                 }}
+                disabled={isCurrentCalendarMonth}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -2008,6 +2089,23 @@ function App() {
               </button>
             </div>
           </header>
+          <div className="calendar-stats" aria-label="Practice streak summary">
+            <article className="calendar-stat calendar-stat-streak">
+              <span className="calendar-stat-icon"><Flame size={18} /></span>
+              <div><span>CURRENT STREAK</span><strong>{practiceStreak.current}<small>{practiceStreak.current === 1 ? "day" : "days"}</small></strong></div>
+              <p>{practiceStreak.current > 0 ? "Keep the rhythm going" : "Log a session to begin"}</p>
+            </article>
+            <article className="calendar-stat">
+              <span className="calendar-stat-icon"><Target size={17} /></span>
+              <div><span>PERSONAL BEST</span><strong>{practiceStreak.best}<small>{practiceStreak.best === 1 ? "day" : "days"}</small></strong></div>
+              <p>Your longest practice run</p>
+            </article>
+            <article className="calendar-stat">
+              <span className="calendar-stat-icon"><Check size={17} /></span>
+              <div><span>THIS MONTH</span><strong>{activeDaysThisMonth}<small>{activeDaysThisMonth === 1 ? "day" : "days"}</small></strong></div>
+              <p>Days with a practice session</p>
+            </article>
+          </div>
           <div className="calendar-body">
             <div className="calendar-weekdays" aria-hidden="true">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -2032,11 +2130,7 @@ function App() {
                     onClick={() => setSelectedCalendarDate(dateKey)}
                   >
                     <span>{date.getDate()}</span>
-                    {!isFuture && (
-                      <span className="calendar-day-mood" aria-hidden="true">
-                        {isActive ? "🔥" : "😠"}
-                      </span>
-                    )}
+                    {!isFuture && <span className="calendar-day-indicator" aria-hidden="true" />}
                   </button>
                 );
               })}
@@ -2044,15 +2138,15 @@ function App() {
           </div>
           <footer className="calendar-footer">
             <div className="calendar-legend">
-              <span><i aria-hidden="true">🔥</i> Practiced</span>
-              <span><i aria-hidden="true">😠</i> Missed</span>
+              <span><i className="calendar-legend-active" aria-hidden="true" /> Practice logged</span>
+              <span><i className="calendar-legend-empty" aria-hidden="true" /> No activity</span>
             </div>
-            <span className="calendar-streak-summary"><Flame size={14} /> {practiceStreak.current}-day streak</span>
+            <span className="calendar-streak-summary"><Flame size={14} /> {practiceStreak.current} day streak</span>
             <p className="calendar-selection" role="status">
               {selectedCalendarDate ? (
                 <>
                   <strong>{new Date(`${selectedCalendarDate}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</strong>
-                  <span>{practiceDaySet.has(selectedCalendarDate) ? "Practice logged" : "No practice logged"}</span>
+                  <span>{practiceDaySet.has(selectedCalendarDate) ? "Practice logged · nice work" : selectedCalendarDate === todayDateKey ? "No practice yet · there’s still time today" : "No practice logged"}</span>
                 </>
               ) : "Select a date to see your activity."}
             </p>
@@ -2166,6 +2260,8 @@ function App() {
         </section>
       )}
       {activeView === "coach" && (
+        <>
+        <DsaTutor />
         <section className="coach-card" aria-label="ElevenLabs AI study coach">
           <header className="coach-heading">
             <div className="coach-icon"><AudioLines size={18} /></div>
@@ -2216,6 +2312,7 @@ function App() {
             </div>
           </div>
         </section>
+        </>
       )}
       {activeView === "notes" && (
         <section className="notebook-card" aria-label="Personal notebook">
