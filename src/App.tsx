@@ -52,6 +52,7 @@ import {
   RotateCcw,
   CodeXml,
 } from "lucide-react";
+import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import Editor from "./Editor";
 import CompanyProblems from "./CompanyProblems";
@@ -277,6 +278,78 @@ function HomePage({
           <button className="home-feature-card" type="button" onClick={() => onNavigate("notes")}>
             <span className="home-feature-icon"><NotebookPen size={19} /></span><span className="home-feature-index">06 / REFLECT</span><strong>Personal notes</strong><span className="home-feature-description">Save useful insights and keep your problem-solving notes in one place.</span><span className="home-feature-link">Open your notebook <ArrowRight size={15} /></span>
           </button>
+        </div>
+      </section>
+
+      <section className="home-creator" aria-labelledby="home-creator-title">
+        <div className="home-creator-photo-wrap">
+          <img className="home-creator-photo" src={adityaPortrait} alt="Aditya Bakshi, creator of CodexSheet" />
+          <span className="home-creator-photo-caption"><span className="home-success-dot" /> BUILDING CODEXSHEET</span>
+        </div>
+        <div className="home-creator-copy">
+          <span className="home-section-kicker">A NOTE FROM THE CREATOR</span>
+          <h2 id="home-creator-title">Hey, I’m Aditya.<br /><em>I build with purpose.</em></h2>
+          <p>I’m a full-stack developer, competitive programmer, and the creator of CodexSheet. I love turning ideas into real-world products and solving problems through code.</p>
+          <p>I’m building CodexSheet to make learning data structures and algorithms more structured, practical, and accessible for students preparing for technical interviews.</p>
+          <blockquote>“The challenges we face can inspire us to build solutions that help others.”</blockquote>
+          <p>I’m constantly learning, building, and sharing my journey as I work toward products that make a real difference in the developer community.</p>
+          <div className="home-creator-tags"><span>Full-Stack Development</span><span>Competitive Programming</span><span>Learning in Public</span></div>
+          <a className="home-creator-link" href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer">Connect on LinkedIn <ExternalLink size={14} /></a>
+        </div>
+      </section>
+
+      <section className="home-services" aria-labelledby="home-services-title">
+        <div className="home-section-heading">
+          <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
+          <p>Explore 1:1 guidance, practical resources, and project focused AI sessions.</p>
+        </div>
+        <div className="home-services-grid">
+          {[
+            { title: "Codex Sheet — 250 DSA Patterns Roadmap", type: "Digital product", price: "Free", icon: "📋", href: "https://topmate.io/aditya_bakshi/2296977" },
+            { title: "Online Guest Speaker", type: "Video meeting · 30 min", price: "Free", icon: "🎤", href: "https://topmate.io/aditya_bakshi/2277582/pay" },
+            { title: "Vibe Coding + AI 1:1", type: "Project focused session", price: "Free", icon: "⚡", href: "https://topmate.io/aditya_bakshi/2253290" },
+            { title: "DSA Pattern-Wise Roadmap", type: "Digital product", price: "Free", icon: "🗺️", href: "https://topmate.io/aditya_bakshi/2266884" },
+            { title: "Personalized DSA Roadmap", type: "Priority DM · 7 day reply", price: "Free", icon: "🧭", href: "https://topmate.io/aditya_bakshi/2098102/pay" },
+            { title: "Beginner to Intermediate DSA in C++", type: "Video meeting · 60 min", price: "₹5", icon: "⌘", href: "https://topmate.io/aditya_bakshi/1197418" },
+            { title: "DSA Questions", type: "Priority DM · 2 day reply", price: "₹25", icon: "💬", href: "https://topmate.io/aditya_bakshi/1763657/pay" },
+            { title: "150 Curated DSA Problems + AI", type: "Digital product", price: "₹99", icon: "📚", href: "https://topmate.io/aditya_bakshi/1930767" },
+            { title: "Interview Prep & Tips", type: "Video meeting · 60 min", price: "₹150", icon: "🎯", href: "https://topmate.io/aditya_bakshi/1076702" },
+            { title: "DSA + AI Career Accelerator", type: "Package · 21 products", price: "₹20", icon: "🚀", href: "https://topmate.io/aditya_bakshi/2283100" },
+            { title: "DSA Guidance 1:1", type: "Video meeting · 30 min", price: "Free", icon: "🧠", href: "https://topmate.io/aditya_bakshi/2260868" },
+            { title: "AI DSA Mentor — Your AI Voice Mentor", type: "Digital product", price: "Free", icon: "🤖", href: "https://topmate.io/aditya_bakshi/2264403" },
+            { title: "Web Development + DSA Roadmap", type: "Digital product", price: "₹5", icon: "🛠️", href: "https://topmate.io/aditya_bakshi/2268701" },
+            { title: "AI Package", type: "Package · 11 products", price: "Free", icon: "✨", href: "https://topmate.io/aditya_bakshi/2258400" },
+            { title: "Ask for Anything", type: "Priority DM · 2 day reply", price: "₹20", icon: "✳️", href: "https://topmate.io/aditya_bakshi/900194/pay" },
+            { title: "Web Development: Beginner to Advanced", type: "Priority DM · 3 day reply", price: "₹19–₹50", icon: "🌐", href: "https://topmate.io/aditya_bakshi/2106317/pay" },
+            { title: "Data Structures & Algorithms Roadmap", type: "Video meeting · 60 min", price: "₹108", icon: "📈", href: "https://topmate.io/aditya_bakshi/1056724" },
+          ].map((service, index) => <a className="home-service-card" href={service.href} target="_blank" rel="noreferrer" key={service.title}>
+            <span className="home-service-top"><span className="home-service-icon" aria-hidden="true">{service.icon}</span><span className="home-service-index">{String(index + 1).padStart(2, "0")}</span></span>
+            <span className="home-service-type">{service.type}</span>
+            <strong>{service.title}</strong>
+            <span className="home-service-bottom"><span>{service.price}</span><span className="home-service-link">View service <ArrowRight size={14} /></span></span>
+          </a>)}
+        </div>
+        <a className="home-services-cta" href="https://topmate.io/aditya_bakshi" target="_blank" rel="noreferrer">See all services on Topmate <ExternalLink size={15} /></a>
+      </section>
+
+      <section className="home-portfolio" aria-labelledby="home-portfolio-title">
+        <div className="home-section-heading">
+          <div><span className="home-section-kicker">PORTFOLIO</span><h2 id="home-portfolio-title">Built for <em>steady progress.</em></h2></div>
+          <p>A closer look at the learning tools and resources in the Codexsheet workspace.</p>
+        </div>
+        <div className="home-portfolio-grid">
+          <a className="home-portfolio-card portfolio-featured" href="/problems">
+            <span className="home-portfolio-label">01 · PRACTICE PLATFORM</span><span className="home-portfolio-art portfolio-art-sheet"><Rows3 size={31}/><i>250</i></span>
+            <strong>Codexsheet DSA Practice</strong><span>Pattern based problem practice with progress tracking, notes, and a focused study flow.</span><span className="home-service-link">Explore the problem sheet <ArrowRight size={14}/></span>
+          </a>
+          <a className="home-portfolio-card" href="/roadmap">
+            <span className="home-portfolio-label">02 · LEARNING PLAN</span><span className="home-portfolio-art portfolio-art-roadmap"><MapIcon size={30}/><span><i/><i/><i/></span></span>
+            <strong>Adaptive DSA Roadmap</strong><span>A weekly plan shaped around your timeline, practice pace, and focus patterns.</span><span className="home-service-link">Build a roadmap <ArrowRight size={14}/></span>
+          </a>
+          <a className="home-portfolio-card" href="/articles">
+            <span className="home-portfolio-label">03 · EDITORIAL</span><span className="home-portfolio-art portfolio-art-journal"><BookOpen size={30}/><span>FIELD<br/>NOTES</span></span>
+            <strong>DSA Field Notes</strong><span>Short visual explainers for the ideas behind common coding interview patterns.</span><span className="home-service-link">Read the journal <ArrowRight size={14}/></span>
+          </a>
         </div>
       </section>
 
