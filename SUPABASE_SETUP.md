@@ -68,23 +68,20 @@ requests, policies, or deployed Edge Functions in your Supabase project.
 
 ## Problem practice and code execution
 
-The SQL script seeds 50 original problem descriptions and examples, then creates
-a corresponding description and one test case for each of the 250 problem
-numbers in the current app. The app currently repeats its 50
-base problem patterns across those 250 entries. Add or edit rows in
-`public.dsa_problem_content` and `public.dsa_problem_test_cases` using the SQL
-Editor. The public table contains descriptions, constraints, and examples.
-Test-case data remains in Supabase for future judging support; it is not
-exposed to browser users or used by the current runner.
+The SQL script seeds problem descriptions, constraints, and examples in
+`public.dsa_problem_content`, along with private expected inputs and outputs in
+`public.dsa_problem_test_cases`. The app repeats its 50 base problem patterns
+across 250 library entries. The beginner POTD problems have additional test
+cases so common edge cases are checked too.
 
-The Monaco editor runs JavaScript locally in a sandboxed iframe and dedicated
-worker. The sandbox blocks network APIs and the parent page terminates the
-worker after five seconds.
-Only JavaScript can run; Python, Java, and C++ are available for editing only.
-This local runner prints `console.log()` output and does not compare code
-against the saved test-case data. It is not a substitute for a server-side
-sandbox for untrusted production workloads; users should only run code they
-trust.
+The editor loads the selected problem brief and examples from
+`dsa_problem_content`. Its language starters use a `solve(input)` function and
+standard input/output, matching the Supabase `run-code` Edge Function. Run
+submits the program to Judge0 once per private test case; expected outputs stay
+server-side. Custom input is run separately and reported without an expected
+answer. Keep `dsa_problem_test_cases` restricted to `service_role` and keep the
+Judge0 credentials in Edge Function secrets. Set `JUDGE0_API_URL`, and, when
+required by the Judge0 provider, `JUDGE0_API_KEY` and `JUDGE0_API_HOST`.
 
 ## Group chat and personal notebook
 

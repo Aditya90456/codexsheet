@@ -8,6 +8,7 @@ import {
 } from "@clerk/clerk-react";
 import {
   ArrowRight,
+  Briefcase,
   AudioLines,
   CalendarDays,
   Check,
@@ -128,6 +129,17 @@ function HomePage({
   onNavigate: (view: WorkspaceView) => void;
 }) {
   const pageRef = useRef<HTMLElement>(null);
+  const [jobKeywords, setJobKeywords] = useState("Software Engineer Intern");
+  const [jobLocation, setJobLocation] = useState("India");
+
+  const openLinkedInJobs = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    if (jobKeywords.trim()) params.set("keywords", jobKeywords.trim());
+    if (jobLocation.trim()) params.set("location", jobLocation.trim());
+    params.set("f_TPR", "r86400");
+    window.open(`https://www.linkedin.com/jobs/search/?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -353,6 +365,35 @@ function HomePage({
         </div>
       </section>
 
+      <section className="home-jobs" id="home-jobs" aria-labelledby="home-jobs-title">
+        <div className="home-jobs-copy">
+          <span className="home-section-kicker"><span className="home-jobs-live-dot" /> LIVE FROM LINKEDIN</span>
+          <h2 id="home-jobs-title">Your next role <em>starts here.</em></h2>
+          <p>Search fresh software and technology openings on LinkedIn. Choose a role and location to see current listings, company details, and application links.</p>
+          <form className="home-jobs-search" onSubmit={openLinkedInJobs}>
+            <label><span>ROLE OR KEYWORD</span><input value={jobKeywords} onChange={(event) => setJobKeywords(event.target.value)} placeholder="e.g. Frontend Developer" /></label>
+            <label><span>LOCATION</span><input value={jobLocation} onChange={(event) => setJobLocation(event.target.value)} placeholder="e.g. Bengaluru, India" /></label>
+            <button type="submit">Find jobs <ArrowRight size={15} /></button>
+          </form>
+          <span className="home-jobs-note">Listings open on LinkedIn and are refreshed there in real time.</span>
+        </div>
+        <div className="home-jobs-card-grid" aria-label="Popular job searches">
+          {[
+            { title: "Software Engineer Intern", category: "EARLY CAREER", icon: "01", detail: "Internships and graduate roles" },
+            { title: "Frontend Developer", category: "PRODUCT ENGINEERING", icon: "02", detail: "React, web, and UI roles" },
+            { title: "Backend Developer", category: "PLATFORM ENGINEERING", icon: "03", detail: "APIs, cloud, and systems roles" },
+          ].map((job) => (
+            <a className="home-job-card" key={job.title} href={`https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(job.title)}&location=${encodeURIComponent(jobLocation || "India")}&f_TPR=r86400`} target="_blank" rel="noreferrer">
+              <span className="home-job-card-top"><span>{job.category}</span><span>{job.icon}</span></span>
+              <span className="home-job-card-icon"><Code2 size={18} /></span>
+              <strong>{job.title}</strong>
+              <span className="home-job-card-detail">{job.detail}</span>
+              <span className="home-job-card-link">See live listings <ExternalLink size={13} /></span>
+            </a>
+          ))}
+        </div>
+      </section>
+
       <section className="home-progress" aria-label="Your current study progress">
         <div className="home-progress-copy"><span className="home-section-kicker">YOUR WORKSPACE IS READY</span><h2>Pick up where <em>you are.</em></h2><p>Your practice stays yours. Sign in to sync progress and study with your peers.</p><button className="home-progress-link" type="button" onClick={() => onNavigate("dashboard")}>Open your dashboard <ArrowRight size={15} /></button></div>
         <div className="home-progress-stats"><div><span>PROBLEMS SOLVED</span><strong>{solved}<small> / 250</small></strong></div><div><span>IN PROGRESS</span><strong>{inProgress}</strong></div><div><span>DAY STREAK</span><strong>{streak}</strong></div><div className="home-progress-bar" aria-label={`${percent}% of problems solved`}><i className="home-progress-fill" style={{ width: `${percent}%` }} /></div>
@@ -555,6 +596,26 @@ const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
     link: `https://leetcode.com/problems/${seed[0].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}/description/?search=${encodeURIComponent(seed[0])}`,
   };
 });
+
+const beginnerPotd = [
+  { title: "Two Sum", pattern: "Arrays & Hashing", hint: "Try checking whether the matching number has appeared already." },
+  { title: "Valid Anagram", pattern: "Arrays & Hashing", hint: "Compare how many times each letter appears." },
+  { title: "Valid Palindrome", pattern: "Two Pointers", hint: "Read from both ends and move toward the middle." },
+  { title: "Best Time to Buy and Sell Stock", pattern: "Sliding Window", hint: "Keep track of the lowest price seen so far." },
+  { title: "Valid Parentheses", pattern: "Stack", hint: "The most recent opening bracket must close first." },
+  { title: "Binary Search", pattern: "Binary Search", hint: "At each step, discard half of the remaining range." },
+  { title: "Reverse Linked List", pattern: "Linked List", hint: "Save the next node before changing a link." },
+  { title: "Maximum Depth of Binary Tree", pattern: "Trees", hint: "The depth is one plus the deeper child subtree." },
+  { title: "Climbing Stairs", pattern: "1-D DP", hint: "Ways to reach a step come from the previous two steps." },
+];
+
+const practiceBadges = [
+  { id: "first-step", name: "First Step", detail: "Solve your first problem", icon: "🌱", earned: (solved: number) => solved >= 1 },
+  { id: "five-solved", name: "Getting Warm", detail: "Solve 5 problems", icon: "✨", earned: (solved: number) => solved >= 5 },
+  { id: "ten-solved", name: "Problem Solver", detail: "Solve 10 problems", icon: "🏅", earned: (solved: number) => solved >= 10 },
+  { id: "three-day-streak", name: "On a Roll", detail: "Practice 3 days in a row", icon: "🔥", earned: (_solved: number, streak: number) => streak >= 3 },
+  { id: "seven-day-streak", name: "Weekly Rhythm", detail: "Practice 7 days in a row", icon: "🌟", earned: (_solved: number, streak: number) => streak >= 7 },
+];
 
 function localDateKey(date: Date) {
   const year = date.getFullYear();
@@ -898,6 +959,121 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
 }
 
+function PeerDirectory({
+  userId,
+  onNavigate,
+}: {
+  userId: string | null;
+  onNavigate: (view: WorkspaceView) => void;
+}) {
+  const [peers, setPeers] = useState<Array<{ userId: string; displayName: string }>>([]);
+  const [following, setFollowing] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showFollowing, setShowFollowing] = useState(false);
+
+  useEffect(() => {
+    if (!userId) {
+      setPeers([]);
+      setFollowing([]);
+      return;
+    }
+    try {
+      const saved = window.localStorage.getItem(`codexsheet-following-${userId}`);
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+      setFollowing(Array.isArray(parsed) ? parsed.filter((id: unknown): id is string => typeof id === "string") : []);
+    } catch {
+      setFollowing([]);
+    }
+    if (!supabase) {
+      setError("Connect Supabase to discover study peers.");
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    void supabase
+      .from("profiles")
+      .select("user_id, display_name")
+      .order("display_name", { ascending: true })
+      .limit(60)
+      .then(({ data, error: loadError }) => {
+        if (cancelled) return;
+        if (loadError) {
+          setError(`Could not load study peers. ${loadError.message}`);
+        } else {
+          setPeers((data ?? [])
+            .filter((profile) => profile.user_id !== userId)
+            .map((profile) => ({
+              userId: profile.user_id,
+              displayName: profile.display_name?.trim() || `Learner ${profile.user_id.slice(-5)}`,
+            })));
+        }
+        setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  function toggleFollow(peerId: string) {
+    setFollowing((current) => {
+      const next = current.includes(peerId)
+        ? current.filter((id) => id !== peerId)
+        : [...current, peerId];
+      if (userId) {
+        try { window.localStorage.setItem(`codexsheet-following-${userId}`, JSON.stringify(next)); } catch { /* Keep this session usable when browser storage is unavailable. */ }
+      }
+      return next;
+    });
+  }
+
+  const visiblePeers = peers.filter((peer) => !showFollowing || following.includes(peer.userId));
+
+  return (
+    <section className="community-panel" aria-label="Study community">
+      <header className="community-heading">
+        <div>
+          <span className="community-eyebrow">LEARN TOGETHER</span>
+          <h2>Study community</h2>
+          <p>Find a peer, keep in touch, and work through problems together.</p>
+        </div>
+        <div className="community-heading-actions">
+          <button type="button" className="community-filter" aria-pressed={showFollowing} onClick={() => setShowFollowing((value) => !value)}>
+            {showFollowing ? "Following" : "Everyone"}<ChevronDown size={14} />
+          </button>
+          <span className="community-follow-count">{following.length} following</span>
+        </div>
+      </header>
+      {!userId ? (
+        <div className="community-empty"><UsersRound size={20} /><strong>Sign in to meet your study group</strong><span>Follow learners and jump into shared chat or peer calls.</span></div>
+      ) : loading ? (
+        <p className="community-state"><LoaderCircle size={15} className="spin" /> Finding study peers…</p>
+      ) : error ? (
+        <p className="community-state" role="status">{error}</p>
+      ) : visiblePeers.length === 0 ? (
+        <div className="community-empty"><UsersRound size={20} /><strong>{showFollowing ? "No followed peers yet" : "Your study group is just getting started"}</strong><span>{showFollowing ? "Follow someone from Everyone to keep them close." : "Invite a friend or check back soon to find learners."}</span></div>
+      ) : (
+        <div className="community-list">
+          {visiblePeers.slice(0, 8).map((peer) => {
+            const isFollowing = following.includes(peer.userId);
+            return (
+              <article className="community-peer" key={peer.userId}>
+                <span className="community-avatar" aria-hidden="true">{peer.displayName.slice(0, 1).toUpperCase()}</span>
+                <div className="community-peer-copy"><strong>{peer.displayName}</strong><span>Codexsheet learner</span></div>
+                <button type="button" className={`community-follow${isFollowing ? " is-following" : ""}`} aria-pressed={isFollowing} onClick={() => toggleFollow(peer.userId)}>
+                  {isFollowing ? <><Check size={14} /> Following</> : <><Plus size={14} /> Follow</>}
+                </button>
+                <button type="button" className="community-action" onClick={() => onNavigate("chat")} aria-label={`Chat with ${peer.displayName}`}><MessageCircle size={16} /><span>Chat</span></button>
+                <button type="button" className="community-action call" onClick={() => onNavigate("calls")} aria-label={`Start a call with ${peer.displayName}`}><Video size={16} /><span>Call</span></button>
+              </article>
+            );
+          })}
+        </div>
+      )}
+      <footer className="community-footer"><span><span className="community-live-dot" /> Shared study group</span><button type="button" onClick={() => onNavigate("chat")}>Open group chat <ArrowRight size={14} /></button><button type="button" onClick={() => onNavigate("calls")}>Peer calls <ArrowRight size={14} /></button></footer>
+    </section>
+  );
+}
+
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
@@ -923,6 +1099,9 @@ function App() {
     () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
   );
   const practiceStreak = getPracticeStreak(practiceDays);
+  const potdIndex = Math.floor(new Date(`${localDateKey(new Date())}T00:00:00`).getTime() / 86_400_000) % beginnerPotd.length;
+  const dailyChallenge = beginnerPotd[potdIndex];
+  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title)!;
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -930,6 +1109,7 @@ function App() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  const [editorProblemNumber, setEditorProblemNumber] = useState(1);
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
@@ -940,6 +1120,10 @@ function App() {
     }
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
+  };
+  const openProblemInEditor = (problemNumber: number) => {
+    setEditorProblemNumber(problemNumber);
+    navigateToView("editor");
   };
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
@@ -1051,6 +1235,7 @@ function App() {
   const solved = Object.values(progress).filter(
     (item) => item.status === "Solved",
   ).length;
+  const earnedBadges = practiceBadges.filter((badge) => badge.earned(solved, practiceStreak.current));
   const inProgress = Object.values(progress).filter(
     (item) => item.status === "In progress",
   ).length;
@@ -1750,6 +1935,7 @@ function App() {
               <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
+              <button onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Jobs</button>
             </div>
           </details>
         </nav>
@@ -1856,7 +2042,7 @@ function App() {
       />}
       {activeView === "articles" && <ArticlesPage />}
       {activeView === "companies" && <CompanyProblems />}
-      {activeView === "editor" && <Editor problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
+      {activeView === "editor" && <Editor initialProblemNumber={editorProblemNumber} problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
@@ -1912,6 +2098,32 @@ function App() {
           <span>{250 - solved} problems left in your path</span>
         </div>
           </section>
+          <section className="beginner-rewards" aria-label="Daily beginner problem and badges">
+            <article className="potd-card">
+              <div className="potd-topline"><span className="potd-kicker"><CalendarDays size={14} /> PROBLEM OF THE DAY</span><span className="potd-level">EASY · BEGINNER</span></div>
+              <h2>{dailyChallenge.title}</h2>
+              <p>{dailyChallenge.hint}</p>
+              <div className="potd-meta"><span className="pattern-pill">{dailyChallenge.pattern}</span><span>One small practice win for today</span></div>
+              <div className="potd-actions">
+                <button type="button" className="potd-start" onClick={() => setProblemStatus(dailyProblem.number, "In progress")}>
+                  {progress[dailyProblem.number]?.status === "Solved" ? <><Check size={15} /> Solved</> : progress[dailyProblem.number]?.status === "In progress" ? <>Keep practicing <ArrowRight size={15} /></> : <>Start today’s problem <ArrowRight size={15} /></>}
+                </button>
+                <button type="button" className="potd-editor-link" onClick={() => openProblemInEditor(dailyProblem.number)}><CodeXml size={14} /> Solve in editor</button>
+                <a href={dailyProblem.link} target="_blank" rel="noreferrer">Open problem <ExternalLink size={13} /></a>
+              </div>
+            </article>
+            <article className="badges-card">
+              <div className="badges-heading"><div><span className="insight-label">Little wins add up</span><h2>Your badges</h2></div><span className="badge-count">{earnedBadges.length}/{practiceBadges.length}</span></div>
+              <div className="badge-list">
+                {practiceBadges.map((badge) => {
+                  const earned = badge.earned(solved, practiceStreak.current);
+                  return <div className={`practice-badge${earned ? " earned" : ""}`} key={badge.id} aria-label={`${badge.name}: ${earned ? "earned" : badge.detail}`}>
+                    <span className="badge-icon" aria-hidden="true">{badge.icon}</span><span className="badge-copy"><strong>{badge.name}</strong><small>{earned ? "Earned — nice work!" : badge.detail}</small></span>{earned && <Check size={15} className="badge-check" />}
+                  </div>;
+                })}
+              </div>
+            </article>
+          </section>
           <section className="dashboard-grid">
             <div className="dashboard-panel queue-panel">
               <header className="panel-heading">
@@ -1945,6 +2157,7 @@ function App() {
                       >
                         <ArrowRight size={15} />
                       </a>
+                      <button type="button" className="inline-editor-button" aria-label={`Solve ${problem.title} in editor`} title="Solve in editor" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={15} /></button>
                     </div>
                   );
                 })}
@@ -1976,6 +2189,7 @@ function App() {
               </div>
             </div>
           </section>
+          <PeerDirectory userId={user?.id ?? null} onNavigate={navigateToView} />
         </>
       )}
       {activeView === "roadmap" && (
@@ -2100,6 +2314,7 @@ function App() {
                             </a>
                             <span>{problem.pattern} · {problem.difficulty}</span>
                             <span className="roadmap-reason">{reason}</span>
+                            <button type="button" className="roadmap-editor-button" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={13} /> Solve in editor</button>
                           </div>
                           <select
                             className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
@@ -2611,6 +2826,7 @@ function App() {
                     </td>
                     <td>
                       <div className="problem-actions">
+                        <button type="button" className="inline-editor-button" aria-label={`Solve ${problem.title} in editor`} title="Solve in editor" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={15} /></button>
                         <a
                           className="external-link"
                           href={problem.link}

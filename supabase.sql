@@ -673,3 +673,30 @@ end;
 $$;
 
 notify pgrst, 'reload schema';
+
+-- Additional public-catalog practice coverage for the beginner POTD rotation.
+-- Expected outputs remain private to the server-side run-code function.
+insert into public.dsa_problem_test_cases
+  (problem_number, case_number, stdin, expected_output)
+values
+  (1, 2, E'3 6\n3 2 4', '1 2'),
+  (1, 3, E'2 6\n3 3', '0 1'),
+  (2, 2, E'rat\ncar', 'false'),
+  (2, 3, E'listen\nsilent', 'true'),
+  (6, 2, 'race a car', 'false'),
+  (6, 3, ' ', 'true'),
+  (10, 2, E'5\n7 6 4 3 1', '0'),
+  (10, 3, E'3\n2 4 1', '2'),
+  (14, 2, '([)]', 'false'),
+  (14, 3, '({[]})', 'true'),
+  (18, 2, E'5 2\n-1 0 3 5 9', '-1'),
+  (18, 3, E'1 5\n5', '0'),
+  (21, 2, E'1\n7', '7'),
+  (21, 3, E'2\n1 2', '2 1'),
+  (27, 2, '1', '1'),
+  (27, 3, '1 2 3', '2'),
+  (41, 2, '1', '1'),
+  (41, 3, '2', '2')
+on conflict (problem_number, case_number) do update
+set stdin = excluded.stdin,
+    expected_output = excluded.expected_output;

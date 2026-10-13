@@ -5,6 +5,7 @@ import {
   ChevronRight,
   CirclePlay,
   Code2,
+  BookOpen,
   Copy,
   LoaderCircle,
   RotateCcw,
@@ -16,22 +17,18 @@ import { supabase } from "./lib/supabase";
 
 type Language = "C++" | "Python" | "Java" | "JavaScript";
 type EditorProblem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard" };
-
-const starters: Record<Language, string> = {
-  "C++": `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    cout << "Ready to solve" << endl;\n    return 0;\n}`,
-  Java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Write your solution here\n        System.out.println("Ready to solve");\n    }\n}`,
-  JavaScript: `// Write your solution here\nfunction twoSum(nums, target) {\n  const seen = new Map();\n\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (seen.has(complement)) {\n      return [seen.get(complement), i];\n    }\n    seen.set(nums[i], i);\n  }\n\n  return [];\n}\n\nconsole.log(twoSum([2, 7, 11, 15], 9));`,
-  Python: `# Write your solution here\nprint("Ready to solve")`,
-};
+type ProblemExample = { input: string; output: string };
+type ProblemContent = { description: string; constraints: string[]; examples: ProblemExample[] };
 
 function starterFor(language: Language, problem: EditorProblem | undefined) {
-  if (!problem || problem.number === 1) return starters[language];
-  const comment = language === "Python" ? `# ${problem.title}` : `// ${problem.title}`;
+  const title = problem?.title ?? "your problem";
+  const pattern = problem?.pattern ?? "DSA";
+  const comment = language === "Python" ? `# ${title} · ${pattern}` : `// ${title} · ${pattern}`;
   const templates: Record<Language, string> = {
-    "C++": `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Implement ${problem.title}\n    cout << "Ready to solve" << endl;\n    return 0;\n}`,
-    Python: `# Implement ${problem.title}\nprint("Ready to solve")`,
-    Java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Implement ${problem.title}\n        System.out.println("Ready to solve");\n    }\n}`,
-    JavaScript: `// Implement ${problem.title}\nconsole.log("Ready to solve");`,
+    "C++": `#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& input) {\n    // Parse the input, solve ${title}, and return the output.\n    // Start by reading the problem brief and its examples.\n    return \"\";\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());\n    cout << solve(input);\n}`,
+    Python: `import sys\n\ndef solve(input_text: str) -> str:\n    # Parse the input, solve ${title}, and return the output.\n    # Start by reading the problem brief and its examples.\n    return ""\n\nif __name__ == "__main__":\n    print(solve(sys.stdin.read()))`,
+    Java: `import java.io.*;\nimport java.nio.charset.StandardCharsets;\n\npublic class Main {\n    static String solve(String input) {\n        // Parse the input, solve ${title}, and return the output.\n        // Start by reading the problem brief and its examples.\n        return \"\";\n    }\n\n    public static void main(String[] args) throws Exception {\n        String input = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);\n        System.out.print(solve(input));\n    }\n}`,
+    JavaScript: `const fs = require("fs");\n\nfunction solve(input) {\n  // Parse the input, solve ${title}, and return the output.\n  // Start by reading the problem brief and its examples.\n  return "";\n}\n\nconst input = fs.readFileSync(0, "utf8");\nprocess.stdout.write(String(solve(input)));`,
   };
   return `${comment}\n${templates[language]}`;
 }
@@ -47,12 +44,12 @@ function readSavedCode(): Record<string, string> {
   }
 }
 
-export default function Editor({ problems }: { problems: EditorProblem[] }) {
+export default function Editor({ problems, initialProblemNumber = 1 }: { problems: EditorProblem[]; initialProblemNumber?: number }) {
   const [language, setLanguage] = useState<Language>("JavaScript");
-  const [problemNumber, setProblemNumber] = useState(1);
+  const [problemNumber, setProblemNumber] = useState(initialProblemNumber);
   const [savedCode, setSavedCode] = useState(readSavedCode);
-  const initialKey = `${problems[0]?.number ?? 1}:JavaScript`;
-  const [code, setCode] = useState(() => savedCode[initialKey] ?? starters.JavaScript);
+  const initialKey = `${initialProblemNumber}:JavaScript`;
+  const [code, setCode] = useState(() => savedCode[initialKey] ?? starterFor("JavaScript", problems.find((problem) => problem.number === initialProblemNumber)));
   const [output, setOutput] = useState<string[]>([]);
   const [runError, setRunError] = useState(false);
   const [runNotice, setRunNotice] = useState(false);
@@ -60,6 +57,8 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
   const [stdin, setStdin] = useState("");
   const [outputOpen, setOutputOpen] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [problemContent, setProblemContent] = useState<ProblemContent | null>(null);
+  const [contentError, setContentError] = useState("");
   const codeKey = `${problemNumber}:${language}`;
 
   useEffect(() => {
@@ -74,6 +73,37 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
   const lines = useMemo(() => code.split("\n").length, [code]);
   const fileExtension = language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js";
   const currentProblem = problems.find((problem) => problem.number === problemNumber) ?? problems[0];
+
+  useEffect(() => {
+    let cancelled = false;
+    setProblemContent(null);
+    setContentError("");
+    if (!supabase) {
+      setContentError("Connect Supabase to load the problem brief and examples.");
+      return;
+    }
+    void supabase
+      .from("dsa_problem_content")
+      .select("description, constraints, examples")
+      .eq("problem_number", problemNumber)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setContentError("Could not load the problem brief from Supabase.");
+          return;
+        }
+        if (!data) {
+          setContentError("No problem brief is available for this problem yet.");
+          return;
+        }
+        const examples = Array.isArray(data.examples) ? data.examples.filter((item): item is ProblemExample =>
+          typeof item === "object" && item !== null && "input" in item && "output" in item && typeof item.input === "string" && typeof item.output === "string",
+        ) : [];
+        setProblemContent({ description: data.description, constraints: data.constraints ?? [], examples });
+      });
+    return () => { cancelled = true; };
+  }, [problemNumber]);
 
   function changeLanguage(next: Language) {
     setSavedCode((current) => ({ ...current, [codeKey]: code }));
@@ -214,6 +244,15 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
               <button className="editor-run" onClick={() => void runCode()} type="button" disabled={isRunning}><span className={isRunning ? "editor-spinner" : ""}>{isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}</span><span>{isRunning ? "Running…" : "Run"}</span><kbd>Ctrl ↵</kbd></button>
             </div>
           </div>
+          <section className="editor-problem-brief" aria-label="Problem description and examples">
+            <header><span><BookOpen size={14} /> PROBLEM BRIEF</span><small>Loaded from Supabase</small></header>
+            {problemContent ? <>
+              <p>{problemContent.description}</p>
+              {problemContent.constraints.length > 0 && <ul className="editor-constraints">{problemContent.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}</ul>}
+              {problemContent.examples.map((example, index) => <details className="editor-example" key={`${index}-${example.input}`}><summary>Example {index + 1}</summary><div><span>INPUT</span><pre>{example.input}</pre><span>OUTPUT</span><pre>{example.output}</pre></div></details>)}
+            </> : <p className="editor-brief-state">{contentError || "Loading the problem brief…"}</p>}
+            <p className="editor-tests-note">Run checks your solution against private test cases stored in Supabase. Example inputs are shown here; hidden expected answers stay on the server.</p>
+          </section>
           <div className="editor-code-area">
             <div className="editor-gutter" aria-hidden="true">{Array.from({ length: lines }, (_, index) => <span key={index}>{index + 1}</span>)}</div>
             <textarea className="editor-textarea" aria-label={`${language} code`} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} onKeyDown={(event: { ctrlKey: boolean; metaKey: boolean; key: string; preventDefault(): void; currentTarget: { selectionStart: number; selectionEnd: number } }) => {
