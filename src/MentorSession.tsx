@@ -39,10 +39,10 @@ export default function MentorSession() {
     const [hours, minutes] = booking.time.match(/\d+/g)!.map(Number);
     const isPm = booking.time.includes("PM");
     const hour24 = (hours % 12) + (isPm ? 12 : 0);
-    const start = `${booking.date.replaceAll("-", "")}T${String(hour24).padStart(2, "0")}${String(minutes).padStart(2, "0")}00`;
+    const start = `${booking.date.replace(/-/g, "")}T${String(hour24).padStart(2, "0")}${String(minutes).padStart(2, "0")}00`;
     const endDate = new Date(`${booking.date}T${String(hour24).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`);
     endDate.setMinutes(endDate.getMinutes() + 60);
-    const end = `${dateKey(endDate).replaceAll("-", "")}T${String(endDate.getHours()).padStart(2, "0")}${String(endDate.getMinutes()).padStart(2, "0")}00`;
+    const end = `${dateKey(endDate).replace(/-/g, "")}T${String(endDate.getHours()).padStart(2, "0")}${String(endDate.getMinutes()).padStart(2, "0")}00`;
     return `https://calendar.google.com/calendar/render?${new URLSearchParams({
       action: "TEMPLATE",
       text: `Requested free mentor session — ${booking.name}`,
