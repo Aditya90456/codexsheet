@@ -2091,7 +2091,7 @@ function App() {
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                          : activeView === "articles" ? "Articles" : "AI coach"}
+                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -2111,8 +2111,8 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                        : activeView === "articles" ? "DSA concept articles" : "AI study coach"}{" "}
-              <span className="private-pill">DSA 250</span>
+                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : "AI study coach"}{" "}
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : "DSA 250"}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2131,7 +2131,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
