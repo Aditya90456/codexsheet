@@ -34,8 +34,6 @@ import {
   Target,
   Trophy,
   UsersRound,
-  Wifi,
-  WifiOff,
   Video,
   VideoOff,
   Mic,
@@ -48,6 +46,8 @@ import {
   ShieldCheck,
   BookOpen,
   Clock3,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   Pause,
   RotateCcw,
@@ -59,6 +59,7 @@ import * as THREE from "three";
 import Editor from "./Editor";
 import CompanyProblems from "./CompanyProblems";
 import Course from "./Course";
+import MentorSession from "./MentorSession";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -89,7 +90,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -105,6 +106,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   calls: "/calls",
   articles: "/articles",
   course: "/course",
+  mentor: "/mentor",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -1217,6 +1219,7 @@ function App() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editorProblemNumber, setEditorProblemNumber] = useState(1);
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
@@ -1251,7 +1254,7 @@ function App() {
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
-  const [notice, setNotice] = useState("Saved locally");
+  const [, setNotice] = useState("Saved locally");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatReadsByMessage, setChatReadsByMessage] = useState<Record<number, string[]>>({});
   const [chatUnreadIds, setChatUnreadIds] = useState<number[]>([]);
@@ -2004,7 +2007,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${activeView === "home" ? "is-home" : "is-workspace"}${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark">
@@ -2017,30 +2020,29 @@ function App() {
           <ChevronDown size={14} className="muted-icon" />
         </div>
         <nav className="view-switcher" aria-label="Workspace views">
-          <button className={activeView === "home" ? "active" : ""} aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
+          <button className={activeView === "home" ? "active" : ""} aria-label="Home" title="Home" aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
             <House size={16} /> Home
           </button>
-          <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}>
+          <button className={activeView === "dashboard" ? "active" : ""} aria-label="Progress" title="Progress" aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}>
             <LayoutDashboard size={16} /> Progress
           </button>
-          <button className={activeView === "problems" ? "active" : ""} aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
+          <button className={activeView === "problems" ? "active" : ""} aria-label="Problems" title="Problems" aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
           </button>
-          <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}>
-            <UsersRound size={16} /> Companies
-          </button>
-          <button className={activeView === "editor" ? "active" : ""} aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
+          <button className={activeView === "editor" ? "active" : ""} aria-label="Editor" title="Editor" aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
             <CodeXml size={16} /> Editor
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary title="More workspace views" className={activeView === "companies" || activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
+              <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
               <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
               <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
               <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
               <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
+              <button className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><CalendarDays size={16} /> Mentor session</button>
               <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
@@ -2049,11 +2051,12 @@ function App() {
           </details>
         </nav>
         <div className="top-actions">
-          <span className="save-state">
-            {supabase && user ? <Wifi size={14} /> : <WifiOff size={14} />}{" "}
-            {notice}
-          </span>
-          <CircleHelp size={18} className="muted-icon" />
+          {activeView !== "home" && <button className="sidebar-toggle" type="button" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}>
+            {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          </button>}
+          <button className="topbar-help" type="button" aria-label="Open DSA articles" title="Open DSA articles" onClick={() => navigateToView("articles")}>
+            <CircleHelp size={18} />
+          </button>
             {isLoaded ? user ? (
               <UserButton />
             ) : (
@@ -2091,7 +2094,7 @@ function App() {
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : "AI coach"}
+                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -2111,8 +2114,8 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : "AI study coach"}{" "}
-              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : "DSA 250"}</span>
+                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : "AI study coach"}{" "}
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · ₹12" : "DSA 250"}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2131,7 +2134,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
@@ -2153,6 +2156,7 @@ function App() {
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "editor" && <Editor initialProblemNumber={editorProblemNumber} problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
+      {activeView === "mentor" && <MentorSession />}
       {activeView === "dashboard" && (
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
@@ -2170,6 +2174,25 @@ function App() {
                 <div><strong>{percent}<small>%</small></strong><span>COMPLETE</span></div>
               </div>
               <span className="dashboard-progress-caption"><strong>{solved}</strong> solved <i /> 250 total</span>
+            </div>
+          </section>
+          <section className="practice-path" aria-labelledby="practice-path-heading">
+            <div className="practice-path-heading">
+              <div><span>YOUR LEARNING LOOP</span><h2 id="practice-path-heading">A clear path, one step at a time</h2></div>
+              <span className="practice-path-caption">Pick up anywhere</span>
+            </div>
+            <div className="practice-path-steps">
+              <button type="button" className="practice-path-step" onClick={() => navigateToView("roadmap")}>
+                <span className="practice-path-icon plan"><MapIcon size={18} /></span><span className="practice-path-copy"><small>01 · PLAN</small><strong>Choose a pattern</strong><em>{patternStats.length} patterns to explore</em></span><ArrowRight size={16} className="practice-path-arrow" />
+              </button>
+              <span className="practice-path-connector" aria-hidden="true" />
+              <button type="button" className="practice-path-step" onClick={() => navigateToView("problems")}>
+                <span className="practice-path-icon practice"><CodeXml size={18} /></span><span className="practice-path-copy"><small>02 · PRACTICE</small><strong>Solve a problem</strong><em>{solved} solved · {inProgress} underway</em></span><ArrowRight size={16} className="practice-path-arrow" />
+              </button>
+              <span className="practice-path-connector" aria-hidden="true" />
+              <button type="button" className="practice-path-step" onClick={() => navigateToView("notes")}>
+                <span className="practice-path-icon reflect"><NotebookPen size={18} /></span><span className="practice-path-copy"><small>03 · REFLECT</small><strong>Save what you learn</strong><em>Keep insights close</em></span><ArrowRight size={16} className="practice-path-arrow" />
+              </button>
             </div>
           </section>
           <section className="insight-strip">

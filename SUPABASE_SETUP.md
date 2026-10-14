@@ -66,6 +66,29 @@ updates; its statements are written to be repeatable.
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
 
+## Mentor session payments
+
+The public `/mentor` page offers ₹12 direct UPI and Razorpay Checkout. To enable
+Razorpay, first run the complete `supabase.sql` script above, then set the
+following secrets in Supabase Edge Function Secrets:
+
+- `RAZORPAY_KEY_ID`
+- `RAZORPAY_KEY_SECRET`
+
+Use Razorpay test-mode keys while validating the flow. Deploy
+`supabase/functions/razorpay-checkout/index.ts` as the `razorpay-checkout`
+Edge Function. `supabase/config.toml` keeps gateway JWT verification enabled
+for this endpoint; the function keeps Razorpay and Supabase secret keys
+server-side, fixes the amount to ₹12, and verifies the payment signature and
+captured status before marking a booking paid. The database table has RLS
+enabled and grants table access only to the server role. Razorpay checkout
+requires the attendee to sign in first; direct UPI remains available without
+sign-in.
+
+Razorpay does not send the booking confirmation email through this integration.
+Configure an email provider and notification recipient before promising email
+confirmations to attendees.
+
 ## Problem practice and code execution
 
 The SQL script seeds problem descriptions, constraints, and examples in

@@ -676,6 +676,25 @@ notify pgrst, 'reload schema';
 
 -- Additional public-catalog practice coverage for the beginner POTD rotation.
 -- Expected outputs remain private to the server-side run-code function.
+
+-- Mentor checkout records are created and updated only by the Razorpay Edge Function.
+create table if not exists public.mentor_session_bookings (
+  id uuid primary key default gen_random_uuid(),
+  attendee_name text not null check (char_length(attendee_name) between 1 and 120),
+  attendee_email text not null check (char_length(attendee_email) between 3 and 254),
+  session_date date not null,
+  session_time text not null check (session_time in ('10:00 AM', '2:00 PM', '4:30 PM')),
+  amount_paise integer not null default 1200 check (amount_paise = 1200),
+  currency text not null default 'INR' check (currency = 'INR'),
+  status text not null default 'pending' check (status in ('pending', 'paid')),
+  razorpay_order_id text unique,
+  razorpay_payment_id text unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.mentor_session_bookings enable row level security;
+revoke all on public.mentor_session_bookings from anon, authenticated;
+grant all on public.mentor_session_bookings to service_role;
 insert into public.dsa_problem_test_cases
   (problem_number, case_number, stdin, expected_output)
 values
