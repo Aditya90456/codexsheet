@@ -55,8 +55,10 @@ import {
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
+import * as THREE from "three";
 import Editor from "./Editor";
 import CompanyProblems from "./CompanyProblems";
+import Course from "./Course";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -87,7 +89,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -102,6 +104,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   coach: "/coach",
   calls: "/calls",
   articles: "/articles",
+  course: "/course",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -433,6 +436,111 @@ const articleLessons: Record<string, { detail: string; usefulWhen: string; compl
   "Heap": { detail: "A binary heap is a complete binary tree stored compactly in an array. The heap property guarantees only that each parent outranks its children; it does not sort every pair. That is enough to expose the minimum or maximum at the root. Insertion bubbles one value upward, and removal replaces the root then sifts a value downward, each across at most the tree height. A heap is especially effective when the next best item is needed repeatedly.", usefulWhen: "Use it for priority queues, streaming top-k problems, merging sorted streams, or repeatedly scheduling the next event.", complexity: "Peek: O(1) · Push / pop: O(log n) · Build: O(n)", steps: ["Keep the highest priority at the root", "Insert a new value at the next open leaf", "Restore order by moving it upward", "Remove the root and sift the replacement down"] },
 };
 
+function BinarySearch3D({ step }: { step: number }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const stepRef = useRef(step);
+  useEffect(() => { stepRef.current = step; }, [step]);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#f7f9f3");
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+    camera.position.set(0, 5.8, 13);
+    let renderer: any;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    } catch {
+      host.dataset.fallback = "true";
+      return;
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    host.appendChild(renderer.domElement);
+    const group = new THREE.Group();
+    scene.add(group);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xa8b99c, 2.2));
+    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    key.position.set(-4, 8, 7);
+    key.castShadow = true;
+    scene.add(key);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 18), new THREE.MeshStandardMaterial({ color: 0xf7f9f3, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.6;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    const values = [2, 5, 8, 12, 16, 21, 27, 34];
+    const cards = values.map((value, index) => {
+      const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.42, metalness: 0.02 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.88, 0.32), material);
+      mesh.position.set((index - 3.5) * 1.34, 0, 0);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const canvas = document.createElement("canvas");
+      canvas.width = 256; canvas.height = 192;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 256, 192);
+        ctx.fillStyle = "#93a18e"; ctx.font = "24px monospace"; ctx.textAlign = "center"; ctx.fillText(`INDEX ${index}`, 128, 53);
+        ctx.fillStyle = "#405b43"; ctx.font = "bold 68px monospace"; ctx.fillText(String(value), 128, 135);
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 0.81), new THREE.MeshBasicMaterial({ map: texture }));
+      face.position.z = 0.166;
+      mesh.add(face);
+      group.add(mesh);
+      return { mesh, material };
+    });
+    let width = 0;
+    let height = 0;
+    const resize = () => {
+      const rect = host.getBoundingClientRect();
+      width = Math.max(1, rect.width); height = Math.max(1, rect.height);
+      camera.aspect = width / height; camera.updateProjectionMatrix(); renderer.setSize(width, height, false);
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(host); resize();
+    let dragging = false; let lastX = 0;
+    const down = (event: PointerEvent) => { dragging = true; lastX = event.clientX; renderer.domElement.setPointerCapture(event.pointerId); };
+    const move = (event: PointerEvent) => { if (!dragging) return; group.rotation.y += (event.clientX - lastX) * 0.008; lastX = event.clientX; };
+    const up = () => { dragging = false; };
+    renderer.domElement.addEventListener("pointerdown", down);
+    renderer.domElement.addEventListener("pointermove", move);
+    renderer.domElement.addEventListener("pointerup", up);
+    renderer.domElement.addEventListener("pointercancel", up);
+    let frame = 0;
+    let raf = 0;
+    const animate = () => {
+      const activeStep = stepRef.current;
+      const midIndex = activeStep >= 2 ? 5 : 3;
+      const discardedBefore = activeStep >= 2 ? 4 : -1;
+      cards.forEach(({ mesh, material }, index) => {
+        const faded = index < discardedBefore;
+        material.color.set(index === midIndex ? 0x78945f : faded ? 0xd8ded4 : 0xffffff);
+        material.transparent = faded; material.opacity = faded ? 0.24 : 1;
+        mesh.position.y = index === midIndex ? 0.26 + Math.sin(frame * 0.06) * 0.05 : 0;
+        mesh.scale.setScalar(index === midIndex ? 1.06 : 1);
+      });
+      if (!dragging) group.rotation.y += 0.0016;
+      frame += 1;
+      renderer.render(scene, camera);
+      raf = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => {
+      cancelAnimationFrame(raf); observer.disconnect();
+      renderer.domElement.removeEventListener("pointerdown", down); renderer.domElement.removeEventListener("pointermove", move);
+      renderer.domElement.removeEventListener("pointerup", up); renderer.domElement.removeEventListener("pointercancel", up);
+      cards.forEach(({ mesh }) => { mesh.geometry.dispose(); mesh.children.forEach((child: any) => { if (child instanceof THREE.Mesh) { child.geometry.dispose(); child.material.dispose(); } }); mesh.material.dispose(); });
+      ground.geometry.dispose(); ground.material.dispose(); renderer.dispose(); renderer.domElement.remove();
+    };
+  }, []);
+  return <div className="binary-3d-wrap"><div className="binary-3d-hint"><span>DRAG TO ROTATE</span><span>ARRAY · 8 VALUES</span></div><div className="binary-3d-canvas" ref={hostRef} role="img" aria-label="Interactive 3D binary search array. Drag to rotate the array."><div className="binary-3d-fallback" aria-hidden="true">{[2,5,8,12,16,21,27,34].map((value,index)=><div key={value} className={`${index === (step >= 2 ? 5 : 3) ? "is-mid" : ""} ${step >= 2 && index < 4 ? "is-discarded" : ""}`}><small>{index}</small><strong>{value}</strong></div>)}</div></div><div className="binary-3d-caption"><i/> midpoint <span>·</span> faded values are ruled out</div></div>;
+}
+
 function ConceptDiagram({ article, lesson }: { article: (typeof dsaArticles)[number]; lesson: (typeof articleLessons)[string] }) {
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -449,7 +557,7 @@ function ConceptDiagram({ article, lesson }: { article: (typeof dsaArticles)[num
     <div className={`lesson-visual-stage visual-step-${current}`} aria-label={`${family} illustration: ${lesson.steps[current]}`}>
       {family === "Complexity" && <svg viewBox="0 0 360 205" role="img" aria-label="Algorithm growth curves"><path className="chart-gridline" d="M42 20V170H340M42 132H340M42 94H340M42 56H340"/><path className="chart-line chart-linear" d="M46 165 C120 154 211 132 328 99"/><path className="chart-line chart-log" d="M46 160 C90 112 177 92 328 82"/><path className="chart-line chart-quadratic" d="M46 165 C120 160 201 112 268 24"/><text x="278" y="92">log n</text><text x="303" y="107">n</text><text x="254" y="35">n²</text><text x="16" y="21">WORK</text><text x="310" y="190">INPUT →</text></svg>}
       {family === "Hash map" && <div className="hash-diagram"><span className="diagram-input">value: 7 <b>→</b> need: 5</span><div className="hash-buckets">{[2,5,7,9].map((value,index)=><div className={`hash-bucket ${current >= 2 && index===1 || current===1 && index===2 ? "is-active" : ""}`} key={value}><small>key {value}</small><strong>{index===1?"idx 0":`idx ${index+2}`}</strong></div>)}</div><span className="diagram-result">{current < 2 ? "LOOK UP THE COMPLEMENT" : "MATCH FOUND · RETURN PAIR"}</span></div>}
-      {family === "Binary search" && <div className="binary-diagram"><div className="binary-range-label">{current < 2 ? "CANDIDATE RANGE" : "NARROWED RANGE"}</div><div className="binary-values">{[2,5,8,12,16,21,27,34].map((value,index)=><span className={`${current === 1 && index === 3 || current >= 2 && (index===4 || index===5) ? "is-mid" : ""} ${current >= 2 && index<4 ? "is-discarded" : ""}`} key={value}>{value}</span>)}</div><div className="binary-pointer-row"><span>left</span><span>mid</span><span>right</span></div></div>}
+      {family === "Binary search" && <BinarySearch3D step={current} />}
       {family === "Sliding window" && <div className="window-diagram"><div className="window-label">CONTIGUOUS RANGE <span>length {current+2}</span></div><div className="window-values">{[4,2,1,7,8,3,5,6].map((value,index)=><span className={index >= current && index < current + 2 + (current % 3) ? "in-window" : ""} key={`${value}-${index}`}>{value}</span>)}</div><div className="window-track"><i style={{ left: `${current*10}%`, width: `${(2 + current%3)*10}%` }}/></div><div className="window-pointers"><span>← left</span><span>right →</span></div></div>}
       {family === "Trees" && <svg viewBox="0 0 360 220" className="tree-diagram" role="img" aria-label="Tree traversal"><path d="M180 48L95 105M180 48L265 105M95 125L55 178M95 125L135 178M265 125L225 178M265 125L305 178"/><g className={current===0?"node-active":""}><circle cx="180" cy="38" r="20"/><text x="180" y="42">A</text></g><g className={current===1?"node-active":""}><circle cx="95" cy="115" r="18"/><text x="95" y="119">B</text></g><g className={current>=2?"node-active":""}><circle cx="265" cy="115" r="18"/><text x="265" y="119">C</text></g><circle cx="55" cy="188" r="14"/><circle cx="135" cy="188" r="14"/><circle cx="225" cy="188" r="14"/><circle cx="305" cy="188" r="14"/><text className="tree-caption" x="180" y="216">PARENT RESULT = 1 + CHILD RESULTS</text></svg>}
       {family === "Dynamic programming" && <div className="dp-diagram"><div className="dp-equation">ways[i] = ways[i − 1] + ways[i − 2]</div><div className="dp-cells">{[1,1,2,3,5,8,13].map((value,index)=><div className={index <= current+2 ? "is-filled" : ""} key={index}><small>i={index}</small><strong>{index <= current+2 ? value : "?"}</strong></div>)}</div><div className="dp-caption">SAVE EACH ANSWER · REUSE IT LATER</div></div>}
@@ -1926,9 +2034,10 @@ function App() {
             <CodeXml size={16} /> Editor
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
               <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
+              <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
               <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
               <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
@@ -2727,6 +2836,7 @@ function App() {
           )}
         </section>
       )}
+      {activeView === "course" && <Course />}
       {activeView === "problems" && <section className="sheet-card">
         <div className="problems-heading">
           <div>
