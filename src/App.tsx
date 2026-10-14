@@ -2115,7 +2115,7 @@ function App() {
                         : activeView === "calls"
                           ? "Video calls"
                         : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : "AI study coach"}{" "}
-              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · ₹12" : "DSA 250"}</span>
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : "DSA 250"}</span>
             </h1>
             <p>
               {activeView === "dashboard"
