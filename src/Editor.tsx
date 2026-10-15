@@ -126,6 +126,11 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
+    if (!supabase) {
+      setRunError(true);
+      setOutput(["Connect Supabase before running code."]);
+      return;
+    }
     const languageIds: Record<Language, number> = {
       "C++": 54,
       Java: 62,

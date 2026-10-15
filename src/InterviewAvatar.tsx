@@ -12,7 +12,7 @@ export default function InterviewAvatar({ speaking = false }: { speaking?: boole
     const host = hostRef.current;
     if (!host) return;
 
-    let renderer: THREE.WebGLRenderer;
+    let renderer: any;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     } catch {
@@ -120,11 +120,11 @@ export default function InterviewAvatar({ speaking = false }: { speaking?: boole
       cancelAnimationFrame(frame);
       observer.disconnect();
       host.removeEventListener("pointermove", onPointerMove);
-      scene.traverse((object) => {
+      scene.traverse((object: any) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
           const materials = Array.isArray(object.material) ? object.material : [object.material];
-          materials.forEach((material) => material.dispose());
+          materials.forEach((material: any) => material.dispose());
         }
       });
       renderer.dispose();
