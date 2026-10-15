@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { ArrowRight, CalendarDays, Check, Clock3, Mail, Video } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarDays, Check, Clock3, Code2, ExternalLink, Mail, MessageCircle, Video } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 
 const MEET_URL = "https://meet.google.com/prb-vzch-yrn";
@@ -85,12 +85,22 @@ export default function MentorSession() {
         <div className="mentor-price-card"><span>60 minute session</span><strong>Free</strong><span>No payment required</span></div>
       </section>
 
+      <section className="mentor-focus-section" aria-label="Mentoring topics">
+        <div className="mentor-focus-heading"><span className="mentor-eyebrow">A SESSION BUILT AROUND YOU</span><h3>What would you like to work on?</h3></div>
+        <div className="mentor-focus-grid">
+          <article className="mentor-focus-card"><span className="mentor-focus-icon mentor-focus-icon--code"><Code2 size={18} /></span><span className="mentor-focus-number">01</span><h4>DSA & problem solving</h4><p>Break down a tricky problem and find a repeatable way to approach it.</p></article>
+          <article className="mentor-focus-card"><span className="mentor-focus-icon mentor-focus-icon--build"><Briefcase size={18} /></span><span className="mentor-focus-number">02</span><h4>Full-stack development</h4><p>Talk through projects, architecture, and practical engineering decisions.</p></article>
+          <article className="mentor-focus-card"><span className="mentor-focus-icon mentor-focus-icon--career"><MessageCircle size={18} /></span><span className="mentor-focus-number">03</span><h4>Interviews & career</h4><p>Get focused feedback and leave with clear next steps for your goals.</p></article>
+        </div>
+      </section>
+
       <div className="mentor-booking-layout">
         <section className="mentor-details-card">
           <div className="mentor-profile-row">
-            <img src={adityaPortrait} alt="Mentor" />
-            <div><span className="mentor-eyebrow">YOUR MENTOR</span><h3>CodexSheet Mentor</h3><span>Software engineering · DSA · Interviews</span></div>
+            <img src={adityaPortrait} alt="Aditya Bakshi" />
+            <div><span className="mentor-eyebrow">YOUR MENTOR</span><h3>Aditya Bakshi</h3><span>Full-stack development · DSA · Interviews</span></div>
           </div>
+          <a className="mentor-profile-link" href="https://preplaced.in/profile/aditya-bakshi" target="_blank" rel="noreferrer"><span><strong>Meet Aditya on Preplaced</strong><small>Explore his mentor profile and background</small></span><ExternalLink size={16} /></a>
           <div className="mentor-session-summary">
             <h3>What we can work on</h3>
             <ul><li>Untangle a DSA concept or interview problem</li><li>Review your approach and problem-solving habits</li><li>Build a practical plan for your next career step</li></ul>

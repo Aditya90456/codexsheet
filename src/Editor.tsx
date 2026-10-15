@@ -143,11 +143,6 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
       setOutput(["Code is limited to 30 KB and input to 10 KB per run."]);
       return;
     }
-    if (!supabase) {
-      setRunError(true);
-      setOutput(["The code runner is not configured. Connect Supabase to execute code."]);
-      return;
-    }
     setIsRunning(true);
     try {
       const { data, error } = await supabase.functions.invoke("run-code", {

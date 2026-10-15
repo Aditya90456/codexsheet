@@ -1,2 +1,5 @@
 [functions.razorpay-checkout]
 verify_jwt = false
+
+[functions.dsa-tutor]
+verify_jwt = false

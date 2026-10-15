@@ -7,9 +7,6 @@ const corsHeaders = {
 };
 const PRICE_PAISE = 1200;
 const ALLOWED_TIMES = new Set(["10:00 AM", "2:00 PM", "4:30 PM"]);
-const CLERK_ISSUER = "https://optimum-panda-5.clerk.accounts.dev";
-const CLERK_JWKS_URL = `${CLERK_ISSUER}/.well-known/jwks.json`;
-let clerkJwksCache: { keys: JsonWebKey[]; expiresAt: number } | null = null;
 
 type BookingInput = {
   name?: string;
@@ -35,64 +32,6 @@ function getSupabaseSecretKey() {
   try {
     const parsed = JSON.parse(keys) as Record<string, string>;
     return parsed.default ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function decodeBase64Url(value: string) {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  return Uint8Array.from(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, "=")), (character) => character.charCodeAt(0));
-}
-
-async function clerkSigningKey(kid: string) {
-  const loadJwks = async () => {
-    const response = await fetch(CLERK_JWKS_URL, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error("Could not load Clerk signing keys.");
-    const body = await response.json() as { keys?: Array<JsonWebKey & { kid?: string; use?: string; alg?: string }> };
-    if (!Array.isArray(body.keys)) throw new Error("Clerk signing keys response was invalid.");
-    clerkJwksCache = { keys: body.keys, expiresAt: Date.now() + 10 * 60_000 };
-  };
-  if (!clerkJwksCache || clerkJwksCache.expiresAt <= Date.now()) await loadJwks();
-  let jwk = clerkJwksCache!.keys.find((key) => (key as JsonWebKey & { kid?: string }).kid === kid);
-  if (!jwk) {
-    await loadJwks();
-    jwk = clerkJwksCache!.keys.find((key) => (key as JsonWebKey & { kid?: string }).kid === kid);
-  }
-  if (!jwk) throw new Error("No matching Clerk signing key was found.");
-  return await crypto.subtle.importKey(
-    "jwk",
-    jwk,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["verify"],
-  );
-}
-
-async function getVerifiedClerkUserId(request: Request) {
-  const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-  if (!token) return null;
-  const parts = token.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { alg?: string; kid?: string };
-    const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as {
-      iss?: string; sub?: string; exp?: number; nbf?: number; azp?: string;
-    };
-    const now = Math.floor(Date.now() / 1000);
-    if (header.alg !== "RS256" || !header.kid || claims.iss !== CLERK_ISSUER ||
-      typeof claims.sub !== "string" || !claims.sub || typeof claims.exp !== "number" || claims.exp <= now ||
-      (typeof claims.nbf === "number" && claims.nbf > now)) return null;
-    const origin = request.headers.get("Origin");
-    if (claims.azp && origin && new URL(origin).origin !== new URL(claims.azp).origin) return null;
-    const key = await clerkSigningKey(header.kid);
-    const valid = await crypto.subtle.verify(
-      "RSASSA-PKCS1-v1_5",
-      key,
-      decodeBase64Url(parts[2]),
-      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
-    );
-    return valid ? claims.sub : null;
   } catch {
     return null;
   }
@@ -141,16 +80,25 @@ function safeEqual(left: string, right: string) {
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed." }, 405);
-  const userId = await getVerifiedClerkUserId(request);
-  if (!userId) return json({ error: "Sign in with a valid session before booking." }, 401);
 
   const razorpayKeyId = Deno.env.get("RAZORPAY_KEY_ID");
   const razorpayKeySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
   const supabaseSecret = getSupabaseSecretKey();
-  if (!razorpayKeyId || !razorpayKeySecret || !supabaseUrl || !supabaseSecret) {
+  if (!razorpayKeyId || !razorpayKeySecret || !supabaseUrl || !supabaseAnonKey || !supabaseSecret) {
     return json({ error: "Razorpay checkout is not configured on the server." }, 503);
   }
+
+  const authorization = request.headers.get("Authorization");
+  const accessToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!authorization || !accessToken) return json({ error: "Sign in with a valid session before booking." }, 401);
+  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: authorization } },
+  });
+  const { data: authData, error: authError } = await authClient.auth.getUser(accessToken);
+  if (authError || !authData.user) return json({ error: "Sign in with a valid session before booking." }, 401);
 
   let body: Record<string, unknown>;
   try {

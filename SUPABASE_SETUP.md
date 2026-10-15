@@ -11,14 +11,31 @@ These are browser-facing keys. Never put a Supabase `service_role` key in a
 `VITE_` variable or client code. Restart the Vite dev server after changing
 `.env`.
 
-## Authentication
+## Authentication and database schema
 
-Clerk handles sign-up, email verification, sign-in, and account sessions. In
-Clerk, use **Connect with Supabase** to configure the instance, then add Clerk
-under **Supabase > Authentication > Third-Party Auth Providers**. The app
-passes Clerk session tokens to Supabase; RLS policies authorize the JWT subject
-as the row's `user_id`. Supabase's email SMTP settings do not send Clerk
-verification emails.
+The app uses Supabase Auth email/password accounts. In the Supabase Dashboard,
+enable Email under **Authentication > Sign In / Providers**, then set the Site
+URL and allowed redirect URLs under **Authentication > URL Configuration** to
+include the app's production URL and local development URL.
+
+Run [`db/schema.sql`](db/schema.sql) in **SQL Editor** to create the profile
+table, secure it with RLS, backfill existing Supabase Auth users, and install a
+trigger that creates a profile row whenever a user signs up. Email confirmation
+is controlled by **Authentication > Sign In / Providers**; when it is enabled,
+new users must confirm their email before they can sign in.
+
+Confirmation and password-reset email delivery uses the project's SMTP settings.
+Configure a working provider under **Authentication > SMTP Settings** (host,
+port, username, password, and a verified sender address). The Supabase Auth
+logs report delivery failures. For example, `535 5.7.8 Username and Password
+not accepted` means the SMTP provider rejected its credentials; update them
+there and retry signup. Supabase recommends a dedicated transactional email
+provider for production rather than relying on a personal mailbox.
+
+Run [`supabase.sql`](supabase.sql) as well to create the app's other tables,
+policies, and triggers (including private notes, DSA progress, chat, and calls).
+The signup trigger creates a profile row, not a new copy of the database tables
+for each user.
 
 ## Peer video rooms
 
@@ -40,14 +57,14 @@ npx supabase functions deploy call-ice
 ```
 
 Use your provider's exact TURN URLs and shared secret. Keep the function's JWT
-verification enabled and ensure the Supabase project trusts the Clerk
-third-party auth integration. Redeploy the function after changing its code;
-function secrets take effect without a redeploy.
+verification enabled. Redeploy the function after changing its code; function
+secrets take effect without a redeploy.
 
 ## Database setup
 
-Run the complete `supabase.sql` script in Supabase Dashboard > SQL Editor. It
-creates or migrates the progress and profile tables, applies Supabase Auth RLS,
+Run [`db/schema.sql`](db/schema.sql) and then the complete `supabase.sql`
+script in Supabase Dashboard > SQL Editor. They create or migrate the progress
+and profile tables, apply Supabase Auth RLS,
 grants the authenticated role the required table/identity-sequence permissions,
 and configures profile synchronization, private notes, shared group chat,
 per-message read receipts, and peer video rooms. Signed-in users create a room

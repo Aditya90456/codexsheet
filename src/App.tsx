@@ -60,6 +60,7 @@ import Editor from "./Editor";
 import CompanyProblems from "./CompanyProblems";
 import Course from "./Course";
 import MentorSession from "./MentorSession";
+import InterviewCoach from "./InterviewCoach";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -615,11 +616,6 @@ function ArticlesPage() {
     {openArticle && activeLesson && <div className="article-reader-backdrop" onMouseDown={() => setOpenArticle(null)}><article className="article-reader article-reader-deep" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="article-reader-title"><div className="article-reader-top"><span className="articles-kicker"><BookOpen size={14}/>{openArticle.category}</span><button type="button" onClick={() => setOpenArticle(null)} aria-label="Close article">×</button></div><span className="article-reader-index">CONCEPT {String(dsaArticles.indexOf(openArticle) + 1).padStart(3,"0")} · {openArticle.read}</span><h2 id="article-reader-title">{openArticle.title}</h2><p className="article-reader-summary">{openArticle.summary}</p><div className="article-lesson-meta"><span><small>CORE IDEA</small><strong>{openArticle.concept}</strong></span><span><small>COMPLEXITY</small><strong>{activeLesson.complexity}</strong></span></div><div className="article-lesson-layout"><div className="article-lesson-copy"><section><span className="article-reader-label">BUILD THE MENTAL MODEL</span><h3>What’s really happening?</h3><p>{activeLesson.detail}</p></section><section><span className="article-reader-label">WHEN TO REACH FOR IT</span><h3>Recognize the signal</h3><p>{activeLesson.usefulWhen}</p></section><section className="article-lesson-takeaway"><span className="article-reader-label">A PRINCIPLE TO KEEP</span><p>{openArticle.takeaway}</p></section></div><ConceptDiagram key={openArticle.title} article={openArticle} lesson={activeLesson}/></div><section className="article-reader-example"><div><span className="article-reader-label">CODE IN CONTEXT</span><h3>One way to write it</h3></div><pre><code>{openArticle.code}</code></pre></section><div className="article-reader-bottom"><span><Clock3 size={14}/> {openArticle.read}</span><button type="button" onClick={() => { setOpenArticle(null); setSelected(openArticle.category); }}>Explore {openArticle.category} <ArrowRight size={14}/></button></div></article></div>}
   </main>;
 }
-
-const elevenLabsAgentId = "agent_6801m0q9g55pe3vr0eb8y4sgkby7";
-const elevenLabsVoiceId = "C2S5J6WvmHnrQWjUu6Rg";
-const elevenLabsAgentUrl = `https://elevenlabs.io/app/talk-to?agent_id=${elevenLabsAgentId}&branch_id=agtbrch_4401m0q9g6nbf1885mt8fmg66dm7`;
-const elevenLabsVoicePreviewUrl = "https://elevenlabs.io/app/voice-lab/share/7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6/C2S5J6WvmHnrQWjUu6Rg";
 
 const seeds: Array<[string, string, Problem["difficulty"]]> = [
   ["Two Sum", "Arrays & Hashing", "Easy"],
@@ -2061,12 +2057,8 @@ function App() {
               <UserButton />
             ) : (
               <>
-                <SignInButton mode="modal">
-                  <button className="secondary-button">Sign in</button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="primary-button">Create account</button>
-                </SignUpButton>
+                <SignInButton mode="modal"><button className="secondary-button" type="button">Sign in</button></SignInButton>
+                <SignUpButton mode="modal"><button className="primary-button" type="button">Create account</button></SignUpButton>
               </>
             ) : null}
         </div>
@@ -2604,7 +2596,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to join the shared study group and chat with other learners.</p>
-              <SignInButton mode="modal"><button className="primary-button">Sign in</button></SignInButton>
+              <SignInButton mode="modal"><button className="primary-button" type="button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
@@ -2679,58 +2671,7 @@ function App() {
         </section>
       )}
       {activeView === "coach" && (
-        <>
-        <section className="coach-card" aria-label="ElevenLabs AI study coach">
-          <header className="coach-heading">
-            <div className="coach-icon"><AudioLines size={18} /></div>
-            <div>
-              <h2>DSA voice coach</h2>
-              <p>Practice problem-solving out loud with your ElevenLabs agent</p>
-            </div>
-            <a
-              className="secondary-button coach-open-link"
-              href={elevenLabsAgentUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ExternalLink size={15} /> Open agent page
-            </a>
-            <a
-              className="secondary-button coach-open-link"
-              href={elevenLabsVoicePreviewUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <AudioLines size={15} /> Preview voice
-            </a>
-          </header>
-          <div className="coach-layout">
-            <aside className="coach-brief">
-              <span className="coach-kicker">VOICE PRACTICE</span>
-              <h2>Make your reasoning audible.</h2>
-              <p>Talk through an approach, test your assumptions, and ask for a hint when you get stuck.</p>
-              <div className="coach-prompts" aria-label="Suggested topics">
-                <span>Explain a solution step by step</span>
-                <span>Ask for a hint, not the answer</span>
-                <span>Compare time and space complexity</span>
-              </div>
-              <p className="coach-mic-note">Your browser may ask for microphone access when you start a voice session. Preview the selected voice, or enable voice overrides in ElevenLabs to use it here.</p>
-            </aside>
-            <div className="coach-widget">
-              <elevenlabs-convai
-                agent-id={elevenLabsAgentId}
-                override-voice-id={elevenLabsVoiceId}
-                variant="expanded"
-                dismissible="true"
-                action-text="Talk with your DSA coach"
-                start-call-text="Start coaching session"
-                end-call-text="End session"
-                expand-text="Open voice coach"
-              />
-            </div>
-          </div>
-        </section>
-        </>
+        <InterviewCoach />
       )}
       {activeView === "notes" && (
         <section className="notebook-card" aria-label="Personal notebook">
@@ -2756,7 +2697,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to create a private notebook that syncs with your account.</p>
-              <SignInButton mode="modal"><button className="primary-button">Sign in</button></SignInButton>
+              <SignInButton mode="modal"><button className="primary-button" type="button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>

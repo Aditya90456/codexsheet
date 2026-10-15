@@ -12,7 +12,7 @@ function json(body: unknown, status = 200) {
 }
 
 function getVerifiedUserId(request: Request) {
-  // Supabase's Edge gateway verifies the Clerk JWT before invoking this function.
+  // Supabase's Edge gateway verifies the Supabase Auth JWT before invoking this function.
   const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return null;
   try {
