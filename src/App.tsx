@@ -52,6 +52,7 @@ import {
   Pause,
   RotateCcw,
   CodeXml,
+  Palette,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -61,6 +62,7 @@ import CompanyProblems from "./CompanyProblems";
 import Course from "./Course";
 import MentorSession from "./MentorSession";
 import InterviewCoach from "./InterviewCoach";
+import DailyPlanner from "./DailyPlanner";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -91,6 +93,14 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
+type ThemeName = "tuf" | "moss" | "ocean" | "violet" | "ember";
+const appThemes: Array<{ id: ThemeName; name: string; color: string; description: string }> = [
+  { id: "tuf", name: "TUF", color: "#f2762b", description: "Tactical dark" },
+  { id: "moss", name: "Moss", color: "#65865c", description: "Soft green" },
+  { id: "ocean", name: "Ocean", color: "#4c7d9b", description: "Calm blue" },
+  { id: "violet", name: "Violet", color: "#8066a3", description: "Soft purple" },
+  { id: "ember", name: "Ember", color: "#be7457", description: "Warm clay" },
+];
 type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor";
 
 const viewPaths: Record<WorkspaceView, string> = {
@@ -164,13 +174,31 @@ function HomePage({
             .from(".home-flow-link", { scaleX: 0, duration: 0.45, stagger: 0.12, transformOrigin: "left center" }, "-=0.3")
             .from(".home-lab-foot", { y: 10, opacity: 0, duration: 0.45 }, "-=0.2");
 
-          engine.from(".home-loop-step", {
-            y: 24,
-            opacity: 0,
-            duration: 0.65,
-            stagger: 0.14,
-            ease: "power2.out",
+          const routeIntro = engine.timeline({
             scrollTrigger: { trigger: ".home-loop", start: "top 78%", once: true },
+          });
+          routeIntro
+            .from(".home-loop-track", { scaleX: 0, duration: 0.9, ease: "power2.inOut", transformOrigin: "left center" })
+            .from(".home-loop-step", {
+              y: 36,
+              opacity: 0,
+              scale: 0.96,
+              rotateX: 3,
+              duration: 0.62,
+              stagger: 0.16,
+              ease: "power3.out",
+              transformOrigin: "center bottom",
+            }, "-=0.55");
+          routeIntro.call(() => {
+            engine.to(".home-loop-step", {
+              y: -5,
+              duration: 0.42,
+              ease: "sine.inOut",
+              yoyo: true,
+              repeat: -1,
+              repeatDelay: 0.55,
+              stagger: { each: 0.28, from: "start" },
+            });
           });
           engine.from(".home-feature-card", {
             y: 24,
@@ -256,18 +284,22 @@ function HomePage({
 
       <section className="home-loop" aria-labelledby="home-loop-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">A SIMPLE SYSTEM, USED DAILY</span><h2 id="home-loop-title">Practice that <em>adds up.</em></h2></div>
+          <div><span className="home-section-kicker">YOUR ROUTE · SUGGESTED</span><h2 id="home-loop-title">Four steps. <em>One system.</em></h2></div>
           <p>Small, deliberate reps build the instincts that interviews ask for.</p>
         </div>
         <div className="home-loop-grid">
+          <i className="home-loop-track" aria-hidden="true" />
           <button className="home-loop-step" type="button" onClick={() => onNavigate("roadmap")}>
             <span className="home-loop-number">01</span><strong>Follow a roadmap</strong><span>Set your timeline and focus on the patterns you need most.</span><span className="home-step-link">Build your plan <ArrowRight size={14} /></span>
           </button>
           <button className="home-loop-step" type="button" onClick={() => onNavigate("problems")}>
             <span className="home-loop-number">02</span><strong>Solve with intent</strong><span>Practice a curated problem set, then mark what you have learned.</span><span className="home-step-link">Browse problems <ArrowRight size={14} /></span>
           </button>
-          <button className="home-loop-step" type="button" onClick={() => onNavigate("calendar")}>
-            <span className="home-loop-number">03</span><strong>Keep your rhythm</strong><span>See your progress take shape and make the next session count.</span><span className="home-step-link">View calendar <ArrowRight size={14} /></span>
+          <button className="home-loop-step" type="button" onClick={() => onNavigate("notes")}>
+            <span className="home-loop-number">03</span><strong>Review what you learn</strong><span>Capture useful insights and return to them when you revise.</span><span className="home-step-link">Open your notes <ArrowRight size={14} /></span>
+          </button>
+          <button className="home-loop-step" type="button" onClick={() => onNavigate("coach")}>
+            <span className="home-loop-number">04</span><strong>Explain your approach</strong><span>Practice the reasoning you will share in an interview.</span><span className="home-step-link">Meet your AI coach <ArrowRight size={14} /></span>
           </button>
         </div>
       </section>
@@ -1215,6 +1247,47 @@ function App() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  const [theme, setTheme] = useState<ThemeName>(() => {
+    const saved = localStorage.getItem("codexsheet-theme");
+    return appThemes.some((option) => option.id === saved) ? saved as ThemeName : "tuf";
+  });
+  useEffect(() => { localStorage.setItem("codexsheet-theme", theme); }, [theme]);
+  useEffect(() => {
+    let cancelled = false;
+    let revertMotion: (() => void) | undefined;
+    if (activeView === "home") return;
+    void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
+      if (cancelled) return;
+      const gsap = gsapModule.gsap;
+      gsap.registerPlugin(triggerModule.ScrollTrigger);
+      const root = document.querySelector(".app-shell.is-workspace");
+      if (!root) return;
+      const context = gsap.context(() => {
+        const motion = gsap.matchMedia();
+        motion.add("(prefers-reduced-motion: no-preference)", () => {
+          const heading = root.querySelector(".workspace-header");
+          const welcome = root.querySelector(".dashboard-welcome");
+          if (heading) gsap.from(heading, { autoAlpha: 0, y: 16, duration: 0.48, ease: "power2.out" });
+          if (welcome) gsap.from(welcome, { autoAlpha: 0, y: 22, scale: 0.99, duration: 0.62, delay: 0.07, ease: "power3.out" });
+          const revealTargets = root.querySelectorAll<HTMLElement>([
+            ".insight-strip", ".daily-plan-card", ".dashboard-panel", ".sheet-card", ".roadmap-card",
+            ".calendar-card", ".chat-card", ".notebook-card", ".coach-card", ".articles-page",
+            ".course-page", ".calls-page", ".mentor-page",
+          ].join(","));
+          triggerModule.ScrollTrigger.batch(revealTargets, {
+            start: "top 91%",
+            once: true,
+            onEnter: (elements) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
+              autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
+            }),
+          });
+        });
+        return () => motion.revert();
+      }, root);
+      revertMotion = () => context.revert();
+    }).catch(() => { /* Keep the workspace usable if optional motion chunks fail to load. */ });
+    return () => { cancelled = true; revertMotion?.(); };
+  }, [activeView]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editorProblemNumber, setEditorProblemNumber] = useState(1);
   const navigateToView = (view: WorkspaceView) => {
@@ -1227,6 +1300,7 @@ function App() {
     }
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
+    window.scrollTo(0, 0);
   };
   const openProblemInEditor = (problemNumber: number) => {
     setEditorProblemNumber(problemNumber);
@@ -2003,7 +2077,7 @@ function App() {
   }
 
   return (
-    <main className={`app-shell ${activeView === "home" ? "is-home" : "is-workspace"}${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
+    <main className={`app-shell ${activeView === "home" ? "is-home" : "is-workspace"}${sidebarCollapsed ? " sidebar-collapsed" : ""}`} data-theme={theme}>
       <header className="topbar">
         <div className="brand-lockup">
           <div className="brand-mark">
@@ -2015,39 +2089,60 @@ function App() {
           <span className="workspace-name">DSA practice workspace</span>
           <ChevronDown size={14} className="muted-icon" />
         </div>
-        <nav className="view-switcher" aria-label="Workspace views">
+        <nav className="view-switcher" aria-label="Main navigation">
           <button className={activeView === "home" ? "active" : ""} aria-label="Home" title="Home" aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
-            <House size={16} /> Home
+            <House size={16} /><span className="nav-label">Home</span>
           </button>
-          <button className={activeView === "dashboard" ? "active" : ""} aria-label="Progress" title="Progress" aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}>
-            <LayoutDashboard size={16} /> Progress
+          <button className={activeView === "dashboard" ? "active" : ""} aria-label="Dashboard" title="Dashboard" aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}>
+            <LayoutDashboard size={16} /><span className="nav-label">Dashboard</span>
           </button>
           <button className={activeView === "problems" ? "active" : ""} aria-label="Problems" title="Problems" aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
-            <Rows3 size={16} /> Problems
-            <span>{visibleProblems.length}</span>
+            <Rows3 size={16} /><span className="nav-label">Problems</span>
+            <span className="nav-count">{problems.length}</span>
+          </button>
+          <button className={activeView === "roadmap" ? "active" : ""} aria-label="Roadmap" title="Roadmap" aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}>
+            <MapIcon size={16} /><span className="nav-label">Roadmap</span>
           </button>
           <button className={activeView === "editor" ? "active" : ""} aria-label="Editor" title="Editor" aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
-            <CodeXml size={16} /> Editor
+            <CodeXml size={16} /><span className="nav-label">Editor</span>
           </button>
-          <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary title="More workspace views" className={activeView === "companies" || activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { const target = event.target as HTMLElement; if (target.closest("summary")) document.querySelector(".theme-picker")?.removeAttribute("open"); if (target.closest("button")) event.currentTarget.open = false; }}>
+          <summary aria-label="Explore more tools" title="Explore more tools" className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}><span className="nav-label">Explore</span><ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
-              <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
-              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
-              <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
-              <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
-              <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
-              <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-              <button className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><CalendarDays size={16} /> Mentor session</button>
-              <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
-              <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
-              <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
-              <button onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Jobs</button>
+              <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
+                <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
+                <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
+              </div>
+              <div className="nav-menu-group"><span className="nav-menu-label">STUDY TOOLS</span>
+                <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
+                <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
+                <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
+              </div>
+              <div className="nav-menu-group"><span className="nav-menu-label">COMMUNITY</span>
+                <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
+                <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
+                <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
+                <button className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><CalendarDays size={16} /> Mentor session</button>
+              </div>
+              <div className="nav-menu-group"><span className="nav-menu-label">CAREER</span>
+                <button onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Job search</button>
+              </div>
             </div>
           </details>
         </nav>
         <div className="top-actions">
-          {activeView !== "home" && <button className="sidebar-toggle" type="button" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}>
+          <details className="theme-picker" onClick={(event: { target: EventTarget }) => { if ((event.target as HTMLElement).closest("summary")) document.querySelector(".nav-more")?.removeAttribute("open"); }}>
+            <summary aria-label={`Choose theme, current theme ${appThemes.find((option) => option.id === theme)?.name ?? "TUF"}`} title={`Theme · ${appThemes.find((option) => option.id === theme)?.name ?? "TUF"}`}><Palette size={16} /><i className="theme-current-dot" aria-hidden="true" /><span>{appThemes.find((option) => option.id === theme)?.name ?? "TUF"}</span><ChevronDown size={13} className="theme-chevron" /></summary>
+            <div className="theme-picker-menu" role="group" aria-label="Color themes">
+              <div className="theme-picker-heading"><span className="theme-heading-eyebrow">APPEARANCE</span><strong>Make it yours</strong><span>Choose a color for your workspace</span></div>
+              {appThemes.map((option) => <button key={option.id} type="button" className={theme === option.id ? "selected" : ""} aria-pressed={theme === option.id} onClick={() => { setTheme(option.id); document.querySelector(".theme-picker")?.removeAttribute("open"); }}>
+                <span className="theme-swatch" data-theme={option.id} style={{ "--swatch": option.color } as CSSProperties & { "--swatch": string }}><i /><i /><i /></span>
+                <span className="theme-option-copy"><strong>{option.name}</strong><small>{option.description}</small></span>
+                {theme === option.id && <Check size={15} className="theme-check" />}
+              </button>)}
+            </div>
+          </details>
+          {activeView !== "home" && <button className="sidebar-toggle" type="button" aria-label={sidebarCollapsed ? "Expand navigation labels" : "Compact navigation"} title={sidebarCollapsed ? "Expand navigation labels" : "Compact navigation"} aria-expanded={!sidebarCollapsed} onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}>
             {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
           </button>}
           <button className="topbar-help" type="button" aria-label="Open DSA articles" title="Open DSA articles" onClick={() => navigateToView("articles")}>
@@ -2248,6 +2343,12 @@ function App() {
               </div>
             </article>
           </section>
+          <DailyPlanner
+            problems={problems}
+            progress={progress}
+            onStatusChange={setProblemStatus}
+            onOpenProblem={openProblemInEditor}
+          />
           <section className="dashboard-grid">
             <div className="dashboard-panel queue-panel">
               <header className="panel-heading">

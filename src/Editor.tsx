@@ -10,6 +10,7 @@ import {
   LoaderCircle,
   RotateCcw,
   Save,
+  Send,
   Terminal,
   Trash2,
 } from "lucide-react";
@@ -122,7 +123,7 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
     setRunNotice(false);
   }
 
-  async function runCode() {
+  async function runCode(customInput = stdin) {
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
@@ -143,7 +144,7 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
       setOutput([`${language} execution is not configured yet.`]);
       return;
     }
-    if (code.length > 30000 || stdin.length > 10000) {
+    if (code.length > 30000 || customInput.length > 10000) {
       setRunError(true);
       setOutput(["Code is limited to 30 KB and input to 10 KB per run."]);
       return;
@@ -151,7 +152,7 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
     setIsRunning(true);
     try {
       const { data, error } = await supabase.functions.invoke("run-code", {
-        body: { problemNumber, languageId, sourceCode: code, customInput: stdin },
+        body: { problemNumber, languageId, sourceCode: code, customInput },
       });
       if (error) throw error;
       const result = data as {
@@ -172,11 +173,17 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
       setOutput([result.summary, ...caseOutput].filter((line): line is string => Boolean(line)));
     } catch (error) {
       setRunError(true);
-      const message = error instanceof Error && error.name === "AbortError"
+      let message = error instanceof Error && error.name === "AbortError"
         ? "Execution took too long. Try a shorter-running solution."
         : error instanceof Error && error.message === "Failed to fetch"
           ? "Could not reach the code runner. Check your connection or try again later."
           : error instanceof Error ? error.message : String(error);
+      const context = error instanceof Error ? (error as Error & { context?: unknown }).context : undefined;
+      if (context instanceof Response) {
+        const details = await context.clone().json().catch(() => null) as { error?: unknown } | null;
+        if (typeof details?.error === "string" && details.error.trim()) message = details.error;
+        else if (context.status === 401) message = "Your sign-in session was rejected by the code runner. Sign in again and retry.";
+      }
       setOutput([message]);
     } finally {
       setIsRunning(false);
@@ -232,6 +239,7 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
         </aside>
 
         <div className="editor-main">
+          <div className="editor-canvas">
           <div className="editor-tabs">
             <div className="editor-tab"><span className="editor-tab-badge">{language === "JavaScript" ? "JS" : language === "Python" ? "PY" : language === "C++" ? "C+" : "JV"}</span>solution.{fileExtension}<i /></div>
             <span className="editor-saved-tag"><Check size={13} /> Autosave on</span>
@@ -241,18 +249,10 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
             <div className="editor-action-buttons">
               <button className="editor-tool-button" onClick={() => void copyCode()} type="button" title="Copy code">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copied" : "Copy"}</span></button>
               <button className="editor-tool-button" onClick={() => { setCode(starterFor(language, currentProblem)); setOutput([]); setRunError(false); setRunNotice(false); }} type="button" title="Reset code"><RotateCcw size={13} /><span>Reset</span></button>
-              <button className="editor-run" onClick={() => void runCode()} type="button" disabled={isRunning}><span className={isRunning ? "editor-spinner" : ""}>{isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}</span><span>{isRunning ? "Running…" : "Run"}</span><kbd>Ctrl ↵</kbd></button>
+              <button className="editor-run" onClick={() => void runCode()} type="button" disabled={isRunning}><span className={isRunning ? "editor-spinner" : ""}>{isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}</span><span>{isRunning ? "Running…" : "Run code"}</span><kbd>Ctrl ↵</kbd></button>
+              <button className="editor-submit" onClick={() => void runCode("")} type="button" disabled={isRunning}><Send size={13} /><span>{isRunning ? "Submitting…" : "Submit"}</span></button>
             </div>
           </div>
-          <section className="editor-problem-brief" aria-label="Problem description and examples">
-            <header><span><BookOpen size={14} /> PROBLEM BRIEF</span><small>Loaded from Supabase</small></header>
-            {problemContent ? <>
-              <p>{problemContent.description}</p>
-              {problemContent.constraints.length > 0 && <ul className="editor-constraints">{problemContent.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}</ul>}
-              {problemContent.examples.map((example, index) => <details className="editor-example" key={`${index}-${example.input}`}><summary>Example {index + 1}</summary><div><span>INPUT</span><pre>{example.input}</pre><span>OUTPUT</span><pre>{example.output}</pre></div></details>)}
-            </> : <p className="editor-brief-state">{contentError || "Loading the problem brief…"}</p>}
-            <p className="editor-tests-note">Run checks your solution against private test cases stored in Supabase. Example inputs are shown here; hidden expected answers stay on the server.</p>
-          </section>
           <div className="editor-code-area">
             <div className="editor-gutter" aria-hidden="true">{Array.from({ length: lines }, (_, index) => <span key={index}>{index + 1}</span>)}</div>
             <textarea className="editor-textarea" aria-label={`${language} code`} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} onKeyDown={(event: { ctrlKey: boolean; metaKey: boolean; key: string; preventDefault(): void; currentTarget: { selectionStart: number; selectionEnd: number } }) => {
@@ -261,6 +261,17 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
             }} />
           </div>
           <div className="editor-statusbar"><span><i className="editor-live-dot" /> Ready</span><span>Ln {lines}, Col 1 <i /> UTF-8 <i /> {language}</span></div>
+          </div>
+          <aside className="editor-sidepanels">
+          <section className="editor-problem-brief" aria-label="Problem description and examples">
+            <header><span><BookOpen size={14} /> PROBLEM BRIEF</span><small>Loaded from Supabase</small></header>
+            {problemContent ? <>
+              <p>{problemContent.description}</p>
+              {problemContent.constraints.length > 0 && <ul className="editor-constraints">{problemContent.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}</ul>}
+              {problemContent.examples.map((example, index) => <details className="editor-example" key={`${index}-${example.input}`}><summary>Example {index + 1}</summary><div><span>INPUT</span><pre>{example.input}</pre><span>OUTPUT</span><pre>{example.output}</pre></div></details>)}
+            </> : <p className="editor-brief-state">{contentError || "Loading the problem brief…"}</p>}
+            <p className="editor-tests-note">Submit checks your solution against private test cases stored in Supabase. Example inputs are shown here; hidden expected answers stay on the server.</p>
+          </section>
           <div className="editor-stdin-panel">
             <label htmlFor="editor-stdin">CUSTOM INPUT <span>Optional · sent to stdin</span></label>
             <textarea id="editor-stdin" aria-label="Program input" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Add input for your program (optional)" />
@@ -273,6 +284,7 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
             </div>
             {outputOpen && <div className={`editor-output-body${runError ? " is-error" : ""}${runNotice ? " is-notice" : ""}`}>{isRunning ? <span><LoaderCircle size={13} className="editor-spinner" /> Compiling and running in sandbox…</span> : output.length ? <pre>{output.join("\n")}</pre> : <span><ChevronRight size={13} /> Run your code to see the output here.</span>}</div>}
           </section>
+          </aside>
         </div>
       </section>
       <footer className="editor-footer"><span><span className="editor-footer-spark">✳</span> Start with a small example. Build from there.</span><span>Run your code with <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span></footer>

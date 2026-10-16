@@ -104,6 +104,7 @@ def main() -> int:
         return 2
 
     try:
+        import numpy as np
         import torch
         from peft import LoraConfig, get_peft_model
         from torch.utils.data import Dataset
@@ -115,6 +116,11 @@ def main() -> int:
         )
         print(f"Details: {error}", file=sys.stderr)
         return 2
+
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
     if tokenizer.chat_template is None:
