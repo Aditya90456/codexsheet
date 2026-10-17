@@ -7,9 +7,14 @@ import {
   Code2,
   BookOpen,
   Copy,
+  Folder,
+  FolderOpen,
   LoaderCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   RotateCcw,
   Save,
+  Search,
   Send,
   Terminal,
   Trash2,
@@ -48,6 +53,9 @@ function readSavedCode(): Record<string, string> {
 export default function Editor({ problems, initialProblemNumber = 1 }: { problems: EditorProblem[]; initialProblemNumber?: number }) {
   const [language, setLanguage] = useState<Language>("JavaScript");
   const [problemNumber, setProblemNumber] = useState(initialProblemNumber);
+  const [explorerOpen, setExplorerOpen] = useState(true);
+  const [explorerSearch, setExplorerSearch] = useState("");
+  const [expandedPatterns, setExpandedPatterns] = useState<Set<string>>(new Set());
   const [savedCode, setSavedCode] = useState(readSavedCode);
   const initialKey = `${initialProblemNumber}:JavaScript`;
   const [code, setCode] = useState(() => savedCode[initialKey] ?? starterFor("JavaScript", problems.find((problem) => problem.number === initialProblemNumber)));
@@ -74,6 +82,33 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
   const lines = useMemo(() => code.split("\n").length, [code]);
   const fileExtension = language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js";
   const currentProblem = problems.find((problem) => problem.number === problemNumber) ?? problems[0];
+
+  // Explorer: group problems by pattern, filter by search
+  const filteredProblems = useMemo(() => {
+    const q = explorerSearch.trim().toLowerCase();
+    if (!q) return problems;
+    return problems.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.pattern.toLowerCase().includes(q) ||
+        String(p.number).includes(q),
+    );
+  }, [problems, explorerSearch]);
+
+  const patternGroups = useMemo(() => {
+    const map = new Map<string, EditorProblem[]>();
+    for (const p of filteredProblems) {
+      if (!map.has(p.pattern)) map.set(p.pattern, []);
+      map.get(p.pattern)!.push(p);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredProblems]);
+
+  // Auto-expand the pattern of the current problem
+  useEffect(() => {
+    const current = problems.find((p) => p.number === problemNumber);
+    if (current) setExpandedPatterns((prev) => new Set([...prev, current.pattern]));
+  }, [problemNumber, problems]);
 
   useEffect(() => {
     let cancelled = false;

@@ -264,7 +264,7 @@ function HomePage({
               <button className="home-primary" type="button" onClick={() => onNavigate("problems")}>Start practicing <ArrowRight size={16} /></button>
               <button className="home-secondary" type="button" onClick={() => onNavigate("dashboard")}>View my progress</button>
             </div>
-            <div className="home-proof"><span><Check size={14} /> 250 curated problems</span><span><Check size={14} /> 18 core patterns</span></div>
+            <div className="home-proof"><span><Check size={14} /> 250 curated problems</span><span><Check size={14} /> 19 core patterns</span></div>
           </div>
 
           <div className="home-lab" aria-label="A problem-solving path from problem to pattern to solution">
@@ -282,7 +282,7 @@ function HomePage({
         <div className="home-hero-bottom"><span>START WITH ONE PROBLEM</span><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div>
       </section>
 
-      <section className="home-loop" aria-labelledby="home-loop-title">
+      <section className="home-loop home-section home-section-alt" aria-labelledby="home-loop-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">YOUR ROUTE · SUGGESTED</span><h2 id="home-loop-title">Four steps. <em>One system.</em></h2></div>
           <p>Small, deliberate reps build the instincts that interviews ask for.</p>
@@ -304,7 +304,7 @@ function HomePage({
         </div>
       </section>
 
-      <section className="home-features" aria-labelledby="home-features-title">
+      <section className="home-features home-section" aria-labelledby="home-features-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">TOOLS FOR EVERY STUDY SESSION</span><h2 id="home-features-title">Everything you need to <em>make progress.</em></h2></div>
           <p>Choose a starting point. Your tools and progress stay together as you learn.</p>
@@ -331,7 +331,7 @@ function HomePage({
         </div>
       </section>
 
-      <section className="home-creator" aria-labelledby="home-creator-title">
+      <section className="home-creator home-section home-section-alt" aria-labelledby="home-creator-title">
         <div className="home-creator-photo-wrap">
           <img className="home-creator-photo" src={adityaPortrait} alt="Aditya Bakshi, creator of CodexSheet" />
           <span className="home-creator-photo-caption"><span className="home-success-dot" /> BUILDING CODEXSHEET</span>
@@ -348,7 +348,7 @@ function HomePage({
         </div>
       </section>
 
-      <section className="home-services" aria-labelledby="home-services-title">
+      <section className="home-services home-section" aria-labelledby="home-services-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
           <p>Explore 1:1 guidance, practical resources, and project focused AI sessions.</p>
@@ -382,7 +382,7 @@ function HomePage({
         <a className="home-services-cta" href="https://topmate.io/aditya_bakshi" target="_blank" rel="noreferrer">See all services on Topmate <ExternalLink size={15} /></a>
       </section>
 
-      <section className="home-portfolio" aria-labelledby="home-portfolio-title">
+      <section className="home-portfolio home-section home-section-alt" aria-labelledby="home-portfolio-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">PORTFOLIO</span><h2 id="home-portfolio-title">Built for <em>steady progress.</em></h2></div>
           <p>A closer look at the learning tools and resources in the Codexsheet workspace.</p>
@@ -403,7 +403,7 @@ function HomePage({
         </div>
       </section>
 
-      <section className="home-jobs" id="home-jobs" aria-labelledby="home-jobs-title">
+      <section className="home-jobs home-section" id="home-jobs" aria-labelledby="home-jobs-title">
         <div className="home-jobs-copy">
           <span className="home-section-kicker"><span className="home-jobs-live-dot" /> LIVE FROM LINKEDIN</span>
           <h2 id="home-jobs-title">Your next role <em>starts here.</em></h2>
@@ -432,9 +432,9 @@ function HomePage({
         </div>
       </section>
 
-      <section className="home-progress" aria-label="Your current study progress">
+      <section className="home-progress home-section home-section-alt" aria-label="Your current study progress">
         <div className="home-progress-copy"><span className="home-section-kicker">YOUR WORKSPACE IS READY</span><h2>Pick up where <em>you are.</em></h2><p>Your practice stays yours. Sign in to sync progress and study with your peers.</p><button className="home-progress-link" type="button" onClick={() => onNavigate("dashboard")}>Open your dashboard <ArrowRight size={15} /></button></div>
-        <div className="home-progress-stats"><div><span>PROBLEMS SOLVED</span><strong>{solved}<small> / 250</small></strong></div><div><span>IN PROGRESS</span><strong>{inProgress}</strong></div><div><span>DAY STREAK</span><strong>{streak}</strong></div><div className="home-progress-bar" aria-label={`${percent}% of problems solved`}><i className="home-progress-fill" style={{ width: `${percent}%` }} /></div>
+        <div className="home-progress-stats"><div><span>PROBLEMS SOLVED</span><strong>{solved}<small> / {problems.length}</small></strong></div><div><span>IN PROGRESS</span><strong>{inProgress}</strong></div><div><span>DAY STREAK</span><strong>{streak}</strong></div><div className="home-progress-bar" aria-label={`${percent}% of problems solved`}><i className="home-progress-fill" style={{ width: `${percent}%` }} /></div>
           <div className="home-pattern-list">{patterns.slice(0, 3).map((item) => <span key={item.name}>{item.name}<small>{item.completed}/{item.total}</small></span>)}</div>
         </div>
       </section>
@@ -650,90 +650,318 @@ function ArticlesPage() {
 }
 
 const seeds: Array<[string, string, Problem["difficulty"]]> = [
+  // Arrays & Hashing (14)
   ["Two Sum", "Arrays & Hashing", "Easy"],
   ["Valid Anagram", "Arrays & Hashing", "Easy"],
   ["Group Anagrams", "Arrays & Hashing", "Medium"],
   ["Top K Frequent Elements", "Arrays & Hashing", "Medium"],
   ["Product of Array Except Self", "Arrays & Hashing", "Medium"],
+  ["Encode and Decode Strings", "Arrays & Hashing", "Medium"],
+  ["Longest Consecutive Sequence", "Arrays & Hashing", "Medium"],
+  ["Contains Duplicate", "Arrays & Hashing", "Easy"],
+  ["Two Sum II", "Arrays & Hashing", "Medium"],
+  ["Sort Colors", "Arrays & Hashing", "Medium"],
+  ["Find All Duplicates in an Array", "Arrays & Hashing", "Medium"],
+  ["Majority Element", "Arrays & Hashing", "Easy"],
+  ["Missing Number", "Arrays & Hashing", "Easy"],
+  ["Set Matrix Zeroes", "Arrays & Hashing", "Medium"],
+  // Two Pointers (8)
   ["Valid Palindrome", "Two Pointers", "Easy"],
   ["3Sum", "Two Pointers", "Medium"],
   ["Container With Most Water", "Two Pointers", "Medium"],
   ["Trapping Rain Water", "Two Pointers", "Hard"],
+  ["Move Zeroes", "Two Pointers", "Easy"],
+  ["Two Sum II Input Array Is Sorted", "Two Pointers", "Medium"],
+  ["Squares of a Sorted Array", "Two Pointers", "Easy"],
+  ["4Sum", "Two Pointers", "Medium"],
+  // Sliding Window (8)
   ["Best Time to Buy and Sell Stock", "Sliding Window", "Easy"],
-  [
-    "Longest Substring Without Repeating Characters",
-    "Sliding Window",
-    "Medium",
-  ],
+  ["Longest Substring Without Repeating Characters", "Sliding Window", "Medium"],
   ["Longest Repeating Character Replacement", "Sliding Window", "Medium"],
   ["Minimum Window Substring", "Sliding Window", "Hard"],
+  ["Permutation in String", "Sliding Window", "Medium"],
+  ["Fruit Into Baskets", "Sliding Window", "Medium"],
+  ["Sliding Window Maximum", "Sliding Window", "Hard"],
+  ["Max Consecutive Ones III", "Sliding Window", "Medium"],
+  // Stack (8)
   ["Valid Parentheses", "Stack", "Easy"],
   ["Min Stack", "Stack", "Medium"],
   ["Evaluate Reverse Polish Notation", "Stack", "Medium"],
+  ["Generate Parentheses", "Stack", "Medium"],
+  ["Largest Rectangle in Histogram", "Stack", "Hard"],
+  ["Car Fleet", "Monotonic Stack", "Medium"],
   ["Daily Temperatures", "Monotonic Stack", "Medium"],
+  ["Next Greater Element I", "Monotonic Stack", "Easy"],
+  // Binary Search (8)
   ["Binary Search", "Binary Search", "Easy"],
   ["Search a 2D Matrix", "Binary Search", "Medium"],
   ["Koko Eating Bananas", "Binary Search", "Medium"],
+  ["Find Minimum in Rotated Sorted Array", "Binary Search", "Medium"],
+  ["Search in Rotated Sorted Array", "Binary Search", "Medium"],
+  ["Time Based Key-Value Store", "Binary Search", "Medium"],
+  ["Median of Two Sorted Arrays", "Binary Search", "Hard"],
+  ["Find Peak Element", "Binary Search", "Medium"],
+  // Linked List (10)
   ["Reverse Linked List", "Linked List", "Easy"],
   ["Merge Two Sorted Lists", "Linked List", "Easy"],
   ["Reorder List", "Linked List", "Medium"],
   ["Remove Nth Node From End of List", "Linked List", "Medium"],
   ["LRU Cache", "Linked List", "Medium"],
+  ["Linked List Cycle", "Linked List", "Easy"],
+  ["Find the Duplicate Number", "Linked List", "Medium"],
+  ["Add Two Numbers", "Linked List", "Medium"],
+  ["Reverse Nodes in k-Group", "Linked List", "Hard"],
+  ["Copy List with Random Pointer", "Linked List", "Medium"],
+  // Trees (16)
   ["Invert Binary Tree", "Trees", "Easy"],
   ["Maximum Depth of Binary Tree", "Trees", "Easy"],
   ["Binary Tree Level Order Traversal", "Trees", "Medium"],
   ["Validate Binary Search Tree", "Trees", "Medium"],
   ["Kth Smallest Element in a BST", "Trees", "Medium"],
+  ["Diameter of Binary Tree", "Trees", "Easy"],
+  ["Balanced Binary Tree", "Trees", "Easy"],
+  ["Same Tree", "Trees", "Easy"],
+  ["Subtree of Another Tree", "Trees", "Easy"],
+  ["Lowest Common Ancestor of a BST", "Trees", "Medium"],
+  ["Binary Tree Right Side View", "Trees", "Medium"],
+  ["Count Good Nodes in Binary Tree", "Trees", "Medium"],
+  ["Binary Tree Maximum Path Sum", "Trees", "Hard"],
+  ["Serialize and Deserialize Binary Tree", "Trees", "Hard"],
+  ["Construct Binary Tree from Preorder and Inorder Traversal", "Trees", "Medium"],
+  ["Path Sum II", "Trees", "Medium"],
+  // Tries (4)
+  ["Implement Trie", "Tries", "Medium"],
+  ["Design Add and Search Words Data Structure", "Tries", "Medium"],
+  ["Word Search II", "Tries", "Hard"],
+  ["Replace Words", "Tries", "Medium"],
+  // Heaps (7)
+  ["Kth Largest Element in an Array", "Heaps", "Medium"],
+  ["K Closest Points to Origin", "Heaps", "Medium"],
+  ["Task Scheduler", "Heaps", "Medium"],
+  ["Design Twitter", "Heaps", "Medium"],
+  ["Find Median from Data Stream", "Heaps", "Hard"],
+  ["Last Stone Weight", "Heaps", "Easy"],
+  ["Top K Frequent Words", "Heaps", "Medium"],
+  // Backtracking (8)
   ["Subsets", "Backtracking", "Medium"],
   ["Combination Sum", "Backtracking", "Medium"],
   ["Permutations", "Backtracking", "Medium"],
   ["Word Search", "Backtracking", "Medium"],
   ["N-Queens", "Backtracking", "Hard"],
+  ["Subsets II", "Backtracking", "Medium"],
+  ["Combination Sum II", "Backtracking", "Medium"],
+  ["Palindrome Partitioning", "Backtracking", "Medium"],
+  // Graphs (14)
   ["Number of Islands", "Graphs", "Medium"],
   ["Clone Graph", "Graphs", "Medium"],
   ["Rotting Oranges", "Graphs", "Medium"],
   ["Course Schedule", "Graphs", "Medium"],
-  ["Graph Valid Tree", "Graphs", "Medium"],
+  ["Pacific Atlantic Water Flow", "Graphs", "Medium"],
+  ["Surrounded Regions", "Graphs", "Medium"],
+  ["Number of Connected Components in an Undirected Graph", "Graphs", "Medium"],
+  ["Redundant Connection", "Graphs", "Medium"],
+  ["Word Ladder", "Graphs", "Hard"],
+  ["Walls and Gates", "Graphs", "Medium"],
+  ["Course Schedule II", "Graphs", "Medium"],
+  ["Alien Dictionary", "Graphs", "Hard"],
+  ["Cheapest Flights Within K Stops", "Graphs", "Medium"],
+  ["Network Delay Time", "Graphs", "Medium"],
+  // 1-D DP (12)
   ["Climbing Stairs", "1-D DP", "Easy"],
   ["House Robber", "1-D DP", "Medium"],
   ["Coin Change", "1-D DP", "Medium"],
   ["Longest Increasing Subsequence", "1-D DP", "Medium"],
   ["Word Break", "1-D DP", "Medium"],
+  ["Min Cost Climbing Stairs", "1-D DP", "Easy"],
+  ["House Robber II", "1-D DP", "Medium"],
+  ["Decode Ways", "1-D DP", "Medium"],
+  ["Jump Game", "1-D DP", "Medium"],
+  ["Jump Game II", "1-D DP", "Medium"],
+  ["Partition Equal Subset Sum", "1-D DP", "Medium"],
+  ["Maximum Product Subarray", "1-D DP", "Medium"],
+  // 2-D DP (10)
   ["Unique Paths", "2-D DP", "Medium"],
   ["Longest Common Subsequence", "2-D DP", "Medium"],
   ["Best Time to Buy and Sell Stock with Cooldown", "2-D DP", "Medium"],
-  ["Burst Balloons", "Intervals DP", "Hard"],
   ["Regular Expression Matching", "2-D DP", "Hard"],
+  ["Coin Change II", "2-D DP", "Medium"],
+  ["Target Sum", "2-D DP", "Medium"],
+  ["Interleaving String", "2-D DP", "Medium"],
+  ["Edit Distance", "2-D DP", "Medium"],
+  ["Distinct Subsequences", "2-D DP", "Hard"],
+  ["Minimum Path Sum", "2-D DP", "Medium"],
+  // Greedy (8)
+  ["Maximum Subarray", "Greedy", "Medium"],
+  ["Jump Game III", "Greedy", "Medium"],
+  ["Gas Station", "Greedy", "Medium"],
+  ["Hand of Straights", "Greedy", "Medium"],
+  ["Merge Triplets to Form Target Triplet", "Greedy", "Medium"],
+  ["Partition Labels", "Greedy", "Medium"],
+  ["Valid Parenthesis String", "Greedy", "Medium"],
+  ["Non-overlapping Intervals", "Intervals", "Medium"],
+  // Intervals (6)
+  ["Meeting Rooms", "Intervals", "Easy"],
+  ["Meeting Rooms II", "Intervals", "Medium"],
+  ["Merge Intervals", "Intervals", "Medium"],
+  ["Insert Interval", "Intervals", "Medium"],
+  ["Minimum Interval to Include Each Query", "Intervals", "Hard"],
+  ["Employee Free Time", "Intervals", "Hard"],
+  // Bit Manipulation (8)
+  ["Single Number", "Bit Manipulation", "Easy"],
+  ["Number of 1 Bits", "Bit Manipulation", "Easy"],
+  ["Counting Bits", "Bit Manipulation", "Easy"],
+  ["Reverse Bits", "Bit Manipulation", "Easy"],
+  ["Missing Number (Bit)", "Bit Manipulation", "Easy"],
+  ["Sum of Two Integers", "Bit Manipulation", "Medium"],
+  ["Reverse Integer", "Bit Manipulation", "Medium"],
+  ["Bitwise AND of Numbers Range", "Bit Manipulation", "Medium"],
+  // Math & Geometry (5)
+  ["Rotate Image", "Math & Geometry", "Medium"],
+  ["Spiral Matrix", "Math & Geometry", "Medium"],
+  ["Set Matrix Zeroes II", "Math & Geometry", "Medium"],
+  ["Happy Number", "Math & Geometry", "Easy"],
+  ["Plus One", "Math & Geometry", "Easy"],
+  // Advanced Graphs (8)
+  ["Reconstruct Itinerary", "Advanced Graphs", "Hard"],
+  ["Min Cost to Connect All Points", "Advanced Graphs", "Medium"],
+  ["Swim in Rising Water", "Advanced Graphs", "Hard"],
+  ["Find Critical and Pseudo-Critical Edges", "Advanced Graphs", "Hard"],
+  ["Bus Routes", "Advanced Graphs", "Hard"],
+  ["Shortest Path in a Grid with Obstacles Elimination", "Advanced Graphs", "Hard"],
+  ["Minimum Number of Vertices to Reach All Nodes", "Advanced Graphs", "Medium"],
+  ["Number of Ways to Arrive at Destination", "Advanced Graphs", "Medium"],
+  // Tries extended (4)
+  ["Search Suggestions System", "Tries", "Medium"],
+  ["Implement Magic Dictionary", "Tries", "Medium"],
+  ["Maximum XOR of Two Numbers in an Array", "Tries", "Medium"],
+  ["Stream of Characters", "Tries", "Hard"],
+  // Heaps extended (4)
+  ["Merge K Sorted Lists", "Heaps", "Hard"],
+  ["Ugly Number II", "Heaps", "Medium"],
+  ["Reorganize String", "Heaps", "Medium"],
+  ["Furthest Building You Can Reach", "Heaps", "Medium"],
+  // Stack extended (3)
+  ["Next Greater Element II", "Monotonic Stack", "Medium"],
+  ["Remove K Digits", "Monotonic Stack", "Medium"],
+  ["132 Pattern", "Monotonic Stack", "Medium"],
+  // Binary Search extended (4)
+  ["Capacity to Ship Packages Within D Days", "Binary Search", "Medium"],
+  ["Split Array Largest Sum", "Binary Search", "Hard"],
+  ["Minimum Number of Days to Make m Bouquets", "Binary Search", "Medium"],
+  ["Find in Mountain Array", "Binary Search", "Hard"],
+  // 2-D DP extended (4)
+  ["Maximal Square", "2-D DP", "Medium"],
+  ["Wildcard Matching", "2-D DP", "Hard"],
+  ["Number of Dice Rolls With Target Sum", "2-D DP", "Medium"],
+  ["Minimum Falling Path Sum", "2-D DP", "Medium"],
+  // Graphs extended (4)
+  ["Open the Lock", "Graphs", "Medium"],
+  ["Snakes and Ladders", "Graphs", "Medium"],
+  ["Minimum Genetic Mutation", "Graphs", "Medium"],
+  ["Is Graph Bipartite", "Graphs", "Medium"],
+  // Math & Geometry extended (2)
+  ["Pow(x, n)", "Math & Geometry", "Medium"],
+  ["Multiply Strings", "Math & Geometry", "Medium"],
+  // Bit Manipulation extended (3)
+  ["Single Number II", "Bit Manipulation", "Medium"],
+  ["XOR Queries of a Subarray", "Bit Manipulation", "Medium"],
+  ["Minimum Flips to Make a OR b Equal to c", "Bit Manipulation", "Medium"],
+  // 1-D DP extended (4)
+  ["Longest Palindromic Subsequence", "1-D DP", "Medium"],
+  ["Perfect Squares", "1-D DP", "Medium"],
+  ["Number of Longest Increasing Subsequence", "1-D DP", "Medium"],
+  ["Maximum Sum Circular Subarray", "1-D DP", "Medium"],
+  // ── Extra 50 to reach 250 ──────────────────────────────
+  // Arrays & Hashing (6)
+  ["Subarray Sum Equals K", "Arrays & Hashing", "Medium"],
+  ["Max Area of Island", "Arrays & Hashing", "Medium"],
+  ["Longest Common Prefix", "Arrays & Hashing", "Easy"],
+  ["Range Sum Query - Immutable", "Arrays & Hashing", "Easy"],
+  ["Find All Numbers Disappeared in Array", "Arrays & Hashing", "Easy"],
+  ["Pascal's Triangle", "Arrays & Hashing", "Easy"],
+  // Two Pointers (2)
+  ["Minimum Size Subarray Sum", "Two Pointers", "Medium"],
+  ["Sort Array by Parity", "Two Pointers", "Easy"],
+  // Sliding Window (2)
+  ["Longest Subarray of 1s After Deleting One Element", "Sliding Window", "Medium"],
+  ["Grumpy Bookstore Owner", "Sliding Window", "Medium"],
+  // Stack (3)
+  ["Decode String", "Stack", "Medium"],
+  ["Asteroid Collision", "Stack", "Medium"],
+  ["Maximal Rectangle", "Stack", "Hard"],
+  // Trees (3)
+  ["Recover Binary Search Tree", "Trees", "Medium"],
+  ["Populating Next Right Pointers", "Trees", "Medium"],
+  ["Flatten Binary Tree to Linked List", "Trees", "Medium"],
+  // Graphs (4)
+  ["01 Matrix", "Graphs", "Medium"],
+  ["Shortest Path in Binary Matrix", "Graphs", "Medium"],
+  ["Jump Game IV", "Graphs", "Hard"],
+  ["Keys and Rooms", "Graphs", "Medium"],
+  // Backtracking (3)
+  ["Letter Combinations of a Phone Number", "Backtracking", "Medium"],
+  ["Restore IP Addresses", "Backtracking", "Medium"],
+  ["Remove Invalid Parentheses", "Backtracking", "Hard"],
+  // 1-D DP (3)
+  ["Delete and Earn", "1-D DP", "Medium"],
+  ["Stone Game", "1-D DP", "Medium"],
+  ["Wiggle Subsequence", "Greedy", "Medium"],
+  // 2-D DP (3)
+  ["Burst Balloons", "2-D DP", "Hard"],
+  ["Scramble String", "2-D DP", "Hard"],
+  ["Paint House II", "2-D DP", "Hard"],
+  // Greedy (3)
+  ["Minimum Number of Arrows to Burst Balloons", "Greedy", "Medium"],
+  ["Queue Reconstruction by Height", "Greedy", "Medium"],
+  ["Candy", "Greedy", "Hard"],
+  // Intervals (2)
+  ["My Calendar I", "Intervals", "Medium"],
+  ["Count of Range Sum", "Intervals", "Hard"],
+  // Linked List (3)
+  ["Odd Even Linked List", "Linked List", "Medium"],
+  ["Swap Nodes in Pairs", "Linked List", "Medium"],
+  ["Remove Duplicates from Sorted List II", "Linked List", "Medium"],
+  // Tries (2)
+  ["Prefix and Suffix Search", "Tries", "Hard"],
+  ["Palindrome Pairs", "Tries", "Hard"],
+  // Heaps (2)
+  ["IPO", "Heaps", "Hard"],
+  ["Maximum Performance of a Team", "Heaps", "Hard"],
+  // Binary Search (5)
+  ["Search a 2D Matrix II", "Binary Search", "Medium"],
+  ["Find First and Last Position of Element in Sorted Array", "Binary Search", "Medium"],
+  ["Count Negative Numbers in a Sorted Matrix", "Binary Search", "Easy"],
+  ["Sqrt(x)", "Binary Search", "Easy"],
+  ["Guess Number Higher or Lower", "Binary Search", "Easy"],
 ];
 const patterns = [
   "Arrays & Hashing",
   "Two Pointers",
   "Sliding Window",
   "Stack",
+  "Monotonic Stack",
   "Binary Search",
   "Linked List",
   "Trees",
+  "Tries",
+  "Heaps",
   "Backtracking",
   "Graphs",
+  "Advanced Graphs",
   "1-D DP",
   "2-D DP",
   "Greedy",
   "Intervals",
-  "Heaps",
   "Bit Manipulation",
+  "Math & Geometry",
 ];
-const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
-  const seed = seeds[index % seeds.length];
-  const cycle = Math.floor(index / seeds.length);
-  return {
-    number: index + 1,
-    title: cycle === 0 ? seed[0] : `${seed[0]} · Pattern ${cycle + 1}`,
-    pattern:
-      cycle === 0 ? seed[1] : patterns[(index + cycle) % patterns.length],
-    difficulty: seed[2],
-    link: `https://leetcode.com/problems/${seed[0].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}/description/?search=${encodeURIComponent(seed[0])}`,
-  };
-});
+const problems: Problem[] = seeds.map((seed, index) => ({
+  number: index + 1,
+  title: seed[0],
+  pattern: seed[1],
+  difficulty: seed[2],
+  link: `https://leetcode.com/problems/${seed[0].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}/`,
+}));
 
 const beginnerPotd = [
   { title: "Two Sum", pattern: "Arrays & Hashing", hint: "Try checking whether the matching number has appeared already." },
@@ -1347,7 +1575,7 @@ function App() {
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesError, setNotesError] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const problemLibraryRef = useRef<HTMLElement>(null);
+  const problemLibraryRef = useRef<HTMLTableElement>(null);
   const activeViewRef = useRef(activeView);
   activeViewRef.current = activeView;
   const currentUserIdRef = useRef<string | null>(user?.id ?? null);
@@ -1392,16 +1620,15 @@ function App() {
     const timer = window.setTimeout(() => {
       void import("gsap").then(({ gsap }) => {
         if (cancelled || !problemLibraryRef.current) return;
-        const rows = Array.from(problemLibraryRef.current.querySelectorAll<HTMLElement>(".library-row")).slice(0, 16);
+        const rows = Array.from(problemLibraryRef.current.querySelectorAll<HTMLElement>(".library-row")).slice(0, 20);
         const context = gsap.context(() => {
-          gsap.fromTo(rows, { y: 10, opacity: 0, filter: "blur(3px)" }, {
+          gsap.fromTo(rows, { y: 8, opacity: 0 }, {
             y: 0,
             opacity: 1,
-            filter: "blur(0px)",
-            duration: 0.38,
-            stagger: 0.022,
+            duration: 0.3,
+            stagger: 0.018,
             ease: "power2.out",
-            clearProps: "transform,opacity,filter",
+            clearProps: "transform,opacity",
           });
         }, problemLibraryRef);
         revert = () => context.revert();
@@ -1420,7 +1647,7 @@ function App() {
   const inProgress = Object.values(progress).filter(
     (item) => item.status === "In progress",
   ).length;
-  const percent = Math.round((solved / 250) * 100);
+  const percent = Math.round((solved / problems.length) * 100);
   const studyQueue = useMemo(
     () =>
       problems
@@ -2106,30 +2333,45 @@ function App() {
           <button className={activeView === "editor" ? "active" : ""} aria-label="Editor" title="Editor" aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
             <CodeXml size={16} /><span className="nav-label">Editor</span>
           </button>
-          <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { const target = event.target as HTMLElement; if (target.closest("summary")) document.querySelector(".theme-picker")?.removeAttribute("open"); if (target.closest("button")) event.currentTarget.open = false; }}>
-          <summary aria-label="Explore more tools" title="Explore more tools" className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}><span className="nav-label">Explore</span><ChevronDown size={14} /></summary>
-            <div className="nav-more-menu">
-              <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
-                <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
-                <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
-              </div>
-              <div className="nav-menu-group"><span className="nav-menu-label">STUDY TOOLS</span>
-                <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
-                <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
-                <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
-              </div>
-              <div className="nav-menu-group"><span className="nav-menu-label">COMMUNITY</span>
-                <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
-                <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
-                <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-                <button className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><CalendarDays size={16} /> Mentor session</button>
-              </div>
-              <div className="nav-menu-group"><span className="nav-menu-label">CAREER</span>
-                <button onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Job search</button>
-              </div>
-            </div>
-          </details>
         </nav>
+        <details
+          className="nav-more"
+          onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => {
+            const target = event.target as HTMLElement;
+            // close theme picker when opening this dropdown
+            if (target.closest("summary")) document.querySelector(".theme-picker")?.removeAttribute("open");
+            // close this dropdown only when a menu item button (not the summary) is clicked
+            if (target.closest(".nav-more-menu button")) event.currentTarget.open = false;
+          }}
+        >
+          <summary
+            aria-label="Explore more tools"
+            title="Explore more tools"
+            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}
+          >
+            <span className="nav-label">Explore</span><ChevronDown size={14} />
+          </summary>
+          <div className="nav-more-menu">
+            <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
+              <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
+              <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
+            </div>
+            <div className="nav-menu-group"><span className="nav-menu-label">STUDY TOOLS</span>
+              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
+              <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
+              <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
+            </div>
+            <div className="nav-menu-group"><span className="nav-menu-label">COMMUNITY</span>
+              <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
+              <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
+              <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
+              <button className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><CalendarDays size={16} /> Mentor session</button>
+            </div>
+            <div className="nav-menu-group"><span className="nav-menu-label">CAREER</span>
+              <button onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Job search</button>
+            </div>
+          </div>
+        </details>
         <div className="top-actions">
           <details className="theme-picker" onClick={(event: { target: EventTarget }) => { if ((event.target as HTMLElement).closest("summary")) document.querySelector(".nav-more")?.removeAttribute("open"); }}>
             <summary aria-label={`Choose theme, current theme ${appThemes.find((option) => option.id === theme)?.name ?? "TUF"}`} title={`Theme · ${appThemes.find((option) => option.id === theme)?.name ?? "TUF"}`}><Palette size={16} /><i className="theme-current-dot" aria-hidden="true" /><span>{appThemes.find((option) => option.id === theme)?.name ?? "TUF"}</span><ChevronDown size={13} className="theme-chevron" /></summary>
@@ -2202,7 +2444,7 @@ function App() {
                         : activeView === "calls"
                           ? "Video calls"
                         : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : "AI study coach"}{" "}
-              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : "DSA 250"}</span>
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : `DSA ${problems.length}`}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2250,7 +2492,7 @@ function App() {
             <div className="dashboard-welcome-copy">
               <span className="dashboard-welcome-kicker"><span /> YOUR PRACTICE, AT A GLANCE</span>
               <h2>Small steps make <em>strong instincts.</em></h2>
-              <p>{solved > 0 ? `You’ve solved ${solved} of 250 problems. Keep your momentum going with the next one.` : "Build a steady interview practice habit, one thoughtfully chosen problem at a time."}</p>
+              <p>{solved > 0 ? `You’ve solved ${solved} of ${problems.length} problems. Keep your momentum going with the next one.` : "Build a steady interview practice habit, one thoughtfully chosen problem at a time."}</p>
               <div className="dashboard-welcome-actions">
                 <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
                 <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
@@ -2260,7 +2502,7 @@ function App() {
               <div className="dashboard-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties & { "--progress": string }}>
                 <div><strong>{percent}<small>%</small></strong><span>COMPLETE</span></div>
               </div>
-              <span className="dashboard-progress-caption"><strong>{solved}</strong> solved <i /> 250 total</span>
+              <span className="dashboard-progress-caption"><strong>{solved}</strong> solved <i /> {problems.length} total</span>
             </div>
           </section>
           <section className="practice-path" aria-labelledby="practice-path-heading">
@@ -2287,7 +2529,7 @@ function App() {
           <span className="insight-label">Solved</span>
           <strong>
             {solved}
-            <small>/250</small>
+            <small>/{problems.length}</small>
           </strong>
           <span className="progress-line">
             <i style={{ width: `${percent}%` }} />
@@ -2314,7 +2556,7 @@ function App() {
         </div>
         <div className="insight-ai">
           <Trophy size={16} />
-          <span>{250 - solved} problems left in your path</span>
+          <span>{problems.length - solved} problems left in your path</span>
         </div>
           </section>
           <section className="beginner-rewards" aria-label="Daily beginner problem and badges">
@@ -2492,7 +2734,7 @@ function App() {
             <div className="roadmap-complete">
               <Check size={20} />
               <strong>You’ve completed the roadmap.</strong>
-              <p>All 250 problems are marked solved.</p>
+              <p>All {problems.length} problems are marked solved.</p>
             </div>
           ) : (
             <div className="roadmap-weeks">
@@ -2902,134 +3144,221 @@ function App() {
         </section>
       )}
       {activeView === "course" && <Course />}
-      {activeView === "problems" && <section className="sheet-card">
-        <div className="problems-heading">
-          <div>
-            <h2>All problems</h2>
-            <span>{visibleProblems.length} matching problems</span>
+      {activeView === "problems" && <div className="prb-split">
+
+        {/* ═══════════ LEFT: Progress Panel ═══════════ */}
+        <aside className="prb-sidebar">
+
+          {/* Overall ring */}
+          <div className="prb-ring-card">
+            <div className="prb-ring" style={{ "--pct": `${Math.round((solved / problems.length) * 100)}%` } as CSSProperties}>
+              <div className="prb-ring-inner">
+                <strong>{Math.round((solved / problems.length) * 100)}<span>%</span></strong>
+                <small>complete</small>
+              </div>
+            </div>
+            <div className="prb-ring-stats">
+              <div className="prb-ring-stat">
+                <span className="rstat-val solved-val">{solved}</span>
+                <span className="rstat-lbl">Solved</span>
+              </div>
+              <div className="prb-ring-stat">
+                <span className="rstat-val inprog-val">{inProgress}</span>
+                <span className="rstat-lbl">In Progress</span>
+              </div>
+              <div className="prb-ring-stat">
+                <span className="rstat-val">{problems.length - solved - inProgress}</span>
+                <span className="rstat-lbl">Todo</span>
+              </div>
+            </div>
+            <div className="prb-progress-bar">
+              <div className="prb-progress-solved" style={{ width: `${(solved / problems.length) * 100}%` }} />
+              <div className="prb-progress-inprog" style={{ width: `${(inProgress / problems.length) * 100}%` }} />
+            </div>
           </div>
-          <span className="problems-count">250 total</span>
-        </div>
-        <div className="sheet-controls">
-          <div className="search-box">
-            <Search size={16} />
-            <input
-              placeholder="Search problems or patterns"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+
+          {/* Difficulty breakdown */}
+          <div className="prb-sidebar-section">
+            <span className="prb-sidebar-label">By Difficulty</span>
+            {(["Easy", "Medium", "Hard"] as const).map((diff) => {
+              const total = problems.filter(p => p.difficulty === diff).length;
+              const done  = problems.filter(p => p.difficulty === diff && progress[p.number]?.status === "Solved").length;
+              const pct   = total ? Math.round((done / total) * 100) : 0;
+              return (
+                <button
+                  key={diff}
+                  className={`prb-diff-row${difficulty === diff ? " active" : ""}`}
+                  onClick={() => setDifficulty(difficulty === diff ? "All levels" : diff)}
+                  aria-pressed={difficulty === diff}
+                >
+                  <span className={`prb-diff-dot diff-${diff.toLowerCase()}`} />
+                  <span className="prb-diff-name">{diff}</span>
+                  <span className="prb-diff-count">{done}/{total}</span>
+                  <div className="prb-diff-track">
+                    <div className="prb-diff-fill" style={{ width: `${pct}%`, background: diff === "Easy" ? "#34d399" : diff === "Medium" ? "#fbbf24" : "#f87171" }} />
+                  </div>
+                </button>
+              );
+            })}
           </div>
-          <select
-            value={pattern}
-            onChange={(event) => setPattern(event.target.value)}
-          >
-            <option>All patterns</option>
-            {patterns.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            value={difficulty}
-            onChange={(event) => setDifficulty(event.target.value)}
-          >
-            <option>All levels</option>
-            <option>Easy</option>
-            <option>Medium</option>
-            <option>Hard</option>
-          </select>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option>All status</option>
-            <option>Todo</option>
-            <option>In progress</option>
-            <option>Solved</option>
-          </select>
-        </div>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Problem</th>
-                <th>Pattern</th>
-                <th>Level</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleProblems.map((problem) => {
-                const current = progress[problem.number]?.status ?? "Todo";
-                return (
-                  <tr key={problem.number}>
-                    <td className="number-cell">
-                      {String(problem.number).padStart(3, "0")}
-                    </td>
-                    <td className="problem-cell">
-                      <span
-                        className={`status-dot ${current.toLowerCase().replace(" ", "-")}`}
-                      />
-                      <strong>{problem.title}</strong>
-                    </td>
-                    <td>
-                      <span className="pattern-pill">{problem.pattern}</span>
-                    </td>
-                    <td>
-                      <span
-                        className={`difficulty ${problem.difficulty.toLowerCase()}`}
-                      >
-                        {problem.difficulty}
-                      </span>
-                    </td>
-                    <td>
-                      <select
-                        className={`status-select ${current.toLowerCase().replace(" ", "-")}`}
-                        value={current}
-                        onChange={(event) =>
-                          setProblemStatus(
-                            problem.number,
-                            event.target.value as Status,
-                          )
-                        }
-                      >
-                        <option>Todo</option>
-                        <option>In progress</option>
-                        <option>Solved</option>
-                      </select>
-                    </td>
-                    <td>
-                      <div className="problem-actions">
-                        <button type="button" className="inline-editor-button" aria-label={`Solve ${problem.title} in editor`} title="Solve in editor" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={15} /></button>
-                        <a
-                          className="external-link"
-                          href={problem.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`Open ${problem.title}`}
+
+          {/* Pattern breakdown — clickable to filter */}
+          <div className="prb-sidebar-section prb-patterns-section">
+            <div className="prb-sidebar-label-row">
+              <span className="prb-sidebar-label">By Pattern</span>
+              {pattern !== "All patterns" && (
+                <button className="prb-clear-filter" onClick={() => setPattern("All patterns")}>Clear</button>
+              )}
+            </div>
+            {patternStats.map((item) => {
+              const pct = item.total ? Math.round((item.completed / item.total) * 100) : 0;
+              const isActive = pattern === item.name;
+              return (
+                <button
+                  key={item.name}
+                  className={`prb-pat-row${isActive ? " active" : ""}`}
+                  onClick={() => setPattern(isActive ? "All patterns" : item.name)}
+                  aria-pressed={isActive}
+                >
+                  <span className="prb-pat-name">{item.name}</span>
+                  <span className="prb-pat-count">{item.completed}/{item.total}</span>
+                  <div className="prb-pat-track">
+                    <div className="prb-pat-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Streak */}
+          <div className="prb-sidebar-section prb-streak-card">
+            <Flame size={16} className="prb-streak-icon" />
+            <div>
+              <strong>{practiceStreak.current}</strong>
+              <span>day streak</span>
+            </div>
+            <span className="prb-streak-best">Best: {practiceStreak.best}</span>
+          </div>
+
+        </aside>
+
+        {/* ═══════════ RIGHT: Table Panel ═══════════ */}
+        <div className="prb-main">
+
+          {/* Filter bar */}
+          <div className="prb-filters">
+            <label className="prb-search">
+              <Search size={14} />
+              <input
+                placeholder="Search problems or patterns…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              {query && <button type="button" className="prb-clear" onClick={() => setQuery("")} aria-label="Clear">✕</button>}
+            </label>
+            <div className="prb-filter-chips">
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                <option>All levels</option>
+                <option>Easy</option>
+                <option>Medium</option>
+                <option>Hard</option>
+              </select>
+              <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option>All status</option>
+                <option>Todo</option>
+                <option>In progress</option>
+                <option>Solved</option>
+              </select>
+            </div>
+            <span className="prb-result-count">{visibleProblems.length} <em>of {problems.length}</em></span>
+          </div>
+
+          {/* Table */}
+          <div className="prb-table-wrap">
+            <table className="prb-table" ref={problemLibraryRef}>
+              <thead>
+                <tr>
+                  <th className="col-num">#</th>
+                  <th className="col-title">Problem</th>
+                  <th className="col-pattern">Pattern</th>
+                  <th className="col-diff">Level</th>
+                  <th className="col-status">Status</th>
+                  <th className="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleProblems.map((problem) => {
+                  const current = progress[problem.number]?.status ?? "Todo";
+                  const sc = current.toLowerCase().replace(" ", "-");
+                  return (
+                    <tr key={problem.number} className={`library-row prb-row prb-row-${sc}`}>
+                      <td className="col-num">
+                        <span className="prb-num">{String(problem.number).padStart(3, "0")}</span>
+                      </td>
+                      <td className="col-title">
+                        <div className="prb-title-cell">
+                          <span className={`prb-dot ${sc}`} />
+                          <button type="button" className="prb-title-btn" onClick={() => openProblemInEditor(problem.number)}>
+                            {problem.title}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="col-pattern">
+                        <button
+                          type="button"
+                          className={`prb-pattern${pattern === problem.pattern ? " active-pat" : ""}`}
+                          onClick={() => setPattern(pattern === problem.pattern ? "All patterns" : problem.pattern)}
                         >
-                          <ExternalLink size={15} />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          {problem.pattern}
+                        </button>
+                      </td>
+                      <td className="col-diff">
+                        <span className={`prb-diff diff-${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span>
+                      </td>
+                      <td className="col-status">
+                        <select
+                          className={`prb-status-select sc-${sc}`}
+                          value={current}
+                          aria-label={`Status for ${problem.title}`}
+                          onChange={(e) => setProblemStatus(problem.number, e.target.value as Status)}
+                        >
+                          <option>Todo</option>
+                          <option>In progress</option>
+                          <option>Solved</option>
+                        </select>
+                      </td>
+                      <td className="col-actions">
+                        <div className="prb-actions">
+                          <button type="button" className="prb-action-btn" title="Solve in editor" onClick={() => openProblemInEditor(problem.number)}>
+                            <CodeXml size={14} />
+                          </button>
+                          <a className="prb-action-btn" href={problem.link} target="_blank" rel="noreferrer" title="Open on LeetCode">
+                            <ExternalLink size={14} />
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {visibleProblems.length === 0 && (
+                  <tr><td colSpan={6} className="prb-empty-row">
+                    <Search size={18} />
+                    <span>No problems match your filters</span>
+                    <button type="button" onClick={() => { setQuery(""); setPattern("All patterns"); setDifficulty("All levels"); setStatus("All status"); }}>Clear all filters</button>
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div className="prb-footer">
+            <span><Target size={13} /> {visibleProblems.length} of {problems.length} shown</span>
+            <span>{user ? <><Check size={13} /> Synced</> : "Sign in to sync progress"}</span>
+          </div>
         </div>
-        <div className="sheet-footer">
-          <span>
-            <Target size={14} /> Showing {visibleProblems.length} of 250
-            problems
-          </span>
-          <span className="footer-hint">
-            <Check size={14} />{" "}
-            {user ? "Synced progress" : "Sign in to sync progress"}
-          </span>
-        </div>
-      </section>}
+
+      </div>}
 
       <footer className="footer-note">
         Use the patterns, then make the problem yours.
