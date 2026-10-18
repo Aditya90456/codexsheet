@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -13,30 +13,175 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RotateCcw,
-  Save,
   Search,
   Send,
   Terminal,
   Trash2,
+  ExternalLink,
+  CheckCircle2,
+  AlertCircle,
+  FileCode,
+  ArrowRight,
 } from "lucide-react";
 import { supabase } from "./lib/supabase";
+import { getProblemDetail, ProblemDetail } from "./lib/problemCatalog";
+import { runCodeWithInput, runBatchTestCases, TestCaseResult } from "./lib/codeRunner";
 
-type Language = "C++" | "Python" | "Java" | "JavaScript";
-type EditorProblem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard" };
-type ProblemExample = { input: string; output: string };
-type ProblemContent = { description: string; constraints: string[]; examples: ProblemExample[] };
+export type Language = "C++" | "Python" | "Java" | "JavaScript";
+export type EditorProblem = {
+  number: number;
+  title: string;
+  pattern: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+};
 
 function starterFor(language: Language, problem: EditorProblem | undefined) {
   const title = problem?.title ?? "your problem";
   const pattern = problem?.pattern ?? "DSA";
-  const comment = language === "Python" ? `# ${title} · ${pattern}` : `// ${title} · ${pattern}`;
+  const num = problem?.number ?? 1;
+
+  if (language === "Python") {
+    // Specialized templates for popular problems
+    if (num === 1) {
+      return `# Two Sum · Two Pointers / Hash Map
+import sys
+
+def solve(input_text: str) -> str:
+    lines = [line.strip() for line in input_text.strip().split("\\n") if line.strip()]
+    if not lines:
+        return ""
+    n, target = map(int, lines[0].split())
+    nums = list(map(int, lines[1].split()))
+    
+    seen = {}
+    for i, x in enumerate(nums):
+        complement = target - x
+        if complement in seen:
+            return f"{seen[complement]} {i}"
+        seen[x] = i
+    return ""
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read()))`;
+    }
+
+    if (num === 6) {
+      return `# Valid Palindrome · Two Pointers
+import sys
+
+def solve(input_text: str) -> str:
+    s = input_text.strip()
+    cleaned = "".join(ch.lower() for ch in s if ch.isalnum())
+    return "true" if cleaned == cleaned[::-1] else "false"
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read()))`;
+    }
+
+    return `# ${title} · ${pattern}
+import sys
+
+def solve(input_text: str) -> str:
+    # Read standard input and compute the solution
+    lines = [line.strip() for line in input_text.strip().split("\\n") if line.strip()]
+    if not lines:
+        return ""
+    
+    # Write your solution logic here:
+    return ""
+
+if __name__ == "__main__":
+    print(solve(sys.stdin.read()))`;
+  }
+
+  if (language === "JavaScript") {
+    if (num === 1) {
+      return `// Two Sum · Two Pointers / Hash Map
+const fs = require("fs");
+
+function solve(input) {
+  const lines = input.trim().split("\\n").filter(Boolean);
+  if (!lines.length) return "";
+  const [n, target] = lines[0].trim().split(/\\s+/).map(Number);
+  const nums = lines[1].trim().split(/\\s+/).map(Number);
+  
+  const map = new Map();
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+    if (map.has(complement)) {
+      return \`\${map.get(complement)} \${i}\`;
+    }
+    map.set(nums[i], i);
+  }
+  return "";
+}
+
+const input = fs.readFileSync(0, "utf8");
+process.stdout.write(String(solve(input)));`;
+    }
+
+    if (num === 6) {
+      return `// Valid Palindrome · Two Pointers
+const fs = require("fs");
+
+function solve(input) {
+  const clean = input.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  return clean === clean.split("").reverse().join("") ? "true" : "false";
+}
+
+const input = fs.readFileSync(0, "utf8");
+process.stdout.write(String(solve(input)));`;
+    }
+
+    return `// ${title} · ${pattern}
+const fs = require("fs");
+
+function solve(input) {
+  // Read standard input and compute the solution
+  const lines = input.trim().split("\\n").filter(Boolean);
+  
+  // Write your solution here:
+  return "";
+}
+
+const input = fs.readFileSync(0, "utf8");
+process.stdout.write(String(solve(input)));`;
+  }
+
   const templates: Record<Language, string> = {
-    "C++": `#include <bits/stdc++.h>\nusing namespace std;\n\nstring solve(const string& input) {\n    // Parse the input, solve ${title}, and return the output.\n    // Start by reading the problem brief and its examples.\n    return \"\";\n}\n\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());\n    cout << solve(input);\n}`,
-    Python: `import sys\n\ndef solve(input_text: str) -> str:\n    # Parse the input, solve ${title}, and return the output.\n    # Start by reading the problem brief and its examples.\n    return ""\n\nif __name__ == "__main__":\n    print(solve(sys.stdin.read()))`,
-    Java: `import java.io.*;\nimport java.nio.charset.StandardCharsets;\n\npublic class Main {\n    static String solve(String input) {\n        // Parse the input, solve ${title}, and return the output.\n        // Start by reading the problem brief and its examples.\n        return \"\";\n    }\n\n    public static void main(String[] args) throws Exception {\n        String input = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);\n        System.out.print(solve(input));\n    }\n}`,
-    JavaScript: `const fs = require("fs");\n\nfunction solve(input) {\n  // Parse the input, solve ${title}, and return the output.\n  // Start by reading the problem brief and its examples.\n  return "";\n}\n\nconst input = fs.readFileSync(0, "utf8");\nprocess.stdout.write(String(solve(input)));`,
+    "C++": `#include <bits/stdc++.h>
+using namespace std;
+
+string solve(const string& input) {
+    // Parse input, solve ${title}, and return output.
+    return "";
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());
+    cout << solve(input);
+    return 0;
+}`,
+    Python: ``,
+    Java: `import java.io.*;
+import java.nio.charset.StandardCharsets;
+
+public class Main {
+    static String solve(String input) {
+        // Parse input, solve ${title}, and return output.
+        return "";
+    }
+
+    public static void main(String[] args) throws Exception {
+        String input = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
+        System.out.print(solve(input));
+    }
+}`,
+    JavaScript: ``,
   };
-  return `${comment}\n${templates[language]}`;
+  return templates[language];
 }
 
 const storageKey = "codexsheet-editor-v1";
@@ -44,21 +189,37 @@ const storageKey = "codexsheet-editor-v1";
 function readSavedCode(): Record<string, string> {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "{}");
-    return value && typeof value === "object" ? value as Record<string, string> : {};
+    return value && typeof value === "object" ? (value as Record<string, string>) : {};
   } catch {
     return {};
   }
 }
 
-export default function Editor({ problems, initialProblemNumber = 1 }: { problems: EditorProblem[]; initialProblemNumber?: number }) {
-  const [language, setLanguage] = useState<Language>("JavaScript");
+export default function Editor({
+  problems,
+  initialProblemNumber = 1,
+  onStatusChange,
+  progress = {},
+}: {
+  problems: EditorProblem[];
+  initialProblemNumber?: number;
+  onStatusChange?: (number: number, status: "Todo" | "In progress" | "Solved") => void;
+  progress?: Record<number, { status: string; notes?: string }>;
+}) {
+  const [language, setLanguage] = useState<Language>("Python");
   const [problemNumber, setProblemNumber] = useState(initialProblemNumber);
   const [explorerOpen, setExplorerOpen] = useState(true);
   const [explorerSearch, setExplorerSearch] = useState("");
   const [expandedPatterns, setExpandedPatterns] = useState<Set<string>>(new Set());
+  const [problemDropdownOpen, setProblemDropdownOpen] = useState(false);
+  const [dropdownSearch, setDropdownSearch] = useState("");
+
   const [savedCode, setSavedCode] = useState(readSavedCode);
-  const initialKey = `${initialProblemNumber}:JavaScript`;
-  const [code, setCode] = useState(() => savedCode[initialKey] ?? starterFor("JavaScript", problems.find((problem) => problem.number === initialProblemNumber)));
+  const initialKey = `${initialProblemNumber}:Python`;
+  const [code, setCode] = useState(
+    () => savedCode[initialKey] ?? starterFor("Python", problems.find((p) => p.number === initialProblemNumber)),
+  );
+
   const [output, setOutput] = useState<string[]>([]);
   const [runError, setRunError] = useState(false);
   const [runNotice, setRunNotice] = useState(false);
@@ -66,25 +227,71 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
   const [stdin, setStdin] = useState("");
   const [outputOpen, setOutputOpen] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [problemContent, setProblemContent] = useState<ProblemContent | null>(null);
-  const [contentError, setContentError] = useState("");
-  const codeKey = `${problemNumber}:${language}`;
+  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
 
+  const codeKey = `${problemNumber}:${language}`;
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const currentProblem = useMemo(() => {
+    return problems.find((p) => p.number === problemNumber) ?? problems[0];
+  }, [problems, problemNumber]);
+
+  const detail = useMemo<ProblemDetail>(() => {
+    return getProblemDetail(
+      problemNumber,
+      currentProblem?.title,
+      currentProblem?.pattern,
+      currentProblem?.difficulty,
+    );
+  }, [problemNumber, currentProblem]);
+
+  // Set default stdin from first example
+  useEffect(() => {
+    if (detail.examples && detail.examples.length > 0) {
+      setStdin(detail.examples[0].input);
+    } else {
+      setStdin("");
+    }
+    setTestResults(null);
+  }, [detail]);
+
+  // Auto-save code
   useEffect(() => {
     const next = { ...savedCode, [codeKey]: code };
     const timer = window.setTimeout(() => {
       setSavedCode(next);
-      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* storage may be unavailable */ }
-    }, 400);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        /* storage may be full or blocked */
+      }
+    }, 350);
     return () => window.clearTimeout(timer);
-  }, [code, codeKey]);
+  }, [code, codeKey, savedCode]);
+
+  // Auto-expand active pattern
+  useEffect(() => {
+    if (currentProblem) {
+      setExpandedPatterns((prev) => new Set([...prev, currentProblem.pattern]));
+    }
+  }, [currentProblem]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setProblemDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const lines = useMemo(() => code.split("\n").length, [code]);
   const fileExtension = language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js";
-  const currentProblem = problems.find((problem) => problem.number === problemNumber) ?? problems[0];
 
-  // Explorer: group problems by pattern, filter by search
-  const filteredProblems = useMemo(() => {
+  // Filtered problems for explorer
+  const explorerFiltered = useMemo(() => {
     const q = explorerSearch.trim().toLowerCase();
     if (!q) return problems;
     return problems.filter(
@@ -97,131 +304,106 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
 
   const patternGroups = useMemo(() => {
     const map = new Map<string, EditorProblem[]>();
-    for (const p of filteredProblems) {
+    for (const p of explorerFiltered) {
       if (!map.has(p.pattern)) map.set(p.pattern, []);
       map.get(p.pattern)!.push(p);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [filteredProblems]);
+  }, [explorerFiltered]);
 
-  // Auto-expand the pattern of the current problem
-  useEffect(() => {
-    const current = problems.find((p) => p.number === problemNumber);
-    if (current) setExpandedPatterns((prev) => new Set([...prev, current.pattern]));
-  }, [problemNumber, problems]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setProblemContent(null);
-    setContentError("");
-    if (!supabase) {
-      setContentError("Connect Supabase to load the problem brief and examples.");
-      return;
-    }
-    void supabase
-      .from("dsa_problem_content")
-      .select("description, constraints, examples")
-      .eq("problem_number", problemNumber)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          setContentError("Could not load the problem brief from Supabase.");
-          return;
-        }
-        if (!data) {
-          setContentError("No problem brief is available for this problem yet.");
-          return;
-        }
-        const examples = Array.isArray(data.examples) ? data.examples.filter((item): item is ProblemExample =>
-          typeof item === "object" && item !== null && "input" in item && "output" in item && typeof item.input === "string" && typeof item.output === "string",
-        ) : [];
-        setProblemContent({ description: data.description, constraints: data.constraints ?? [], examples });
-      });
-    return () => { cancelled = true; };
-  }, [problemNumber]);
+  // Filtered problems for dropdown
+  const dropdownFiltered = useMemo(() => {
+    const q = dropdownSearch.trim().toLowerCase();
+    if (!q) return problems;
+    return problems.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        p.pattern.toLowerCase().includes(q) ||
+        String(p.number).includes(q),
+    );
+  }, [problems, dropdownSearch]);
 
   function changeLanguage(next: Language) {
-    setSavedCode((current) => ({ ...current, [codeKey]: code }));
+    setSavedCode((cur) => ({ ...cur, [codeKey]: code }));
     setLanguage(next);
     setCode(savedCode[`${problemNumber}:${next}`] ?? starterFor(next, currentProblem));
     setOutput([]);
+    setTestResults(null);
   }
 
   function changeProblem(nextNumber: number) {
-    setSavedCode((current) => ({ ...current, [codeKey]: code }));
+    setSavedCode((cur) => ({ ...cur, [codeKey]: code }));
     setProblemNumber(nextNumber);
-    const nextProblem = problems.find((problem) => problem.number === nextNumber);
-    setCode(savedCode[`${nextNumber}:${language}`] ?? starterFor(language, nextProblem));
+    const nextProb = problems.find((p) => p.number === nextNumber);
+    setCode(savedCode[`${nextNumber}:${language}`] ?? starterFor(language, nextProb));
     setOutput([]);
     setRunError(false);
     setRunNotice(false);
+    setTestResults(null);
+    setProblemDropdownOpen(false);
   }
 
-  async function runCode(customInput = stdin) {
+  async function handleRunCode(inputToRun = stdin) {
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
-    if (!supabase) {
-      setRunError(true);
-      setOutput(["Connect Supabase before running code."]);
-      return;
-    }
-    const languageIds: Record<Language, number> = {
-      "C++": 54,
-      Java: 62,
-      Python: 71,
-      JavaScript: 63,
-    };
-    const languageId = languageIds[language];
-    if (!languageId) {
-      setRunError(true);
-      setOutput([`${language} execution is not configured yet.`]);
-      return;
-    }
-    if (code.length > 30000 || customInput.length > 10000) {
-      setRunError(true);
-      setOutput(["Code is limited to 30 KB and input to 10 KB per run."]);
-      return;
-    }
+    setTestResults(null);
     setIsRunning(true);
+
     try {
-      const { data, error } = await supabase.functions.invoke("run-code", {
-        body: { problemNumber, languageId, sourceCode: code, customInput },
-      });
-      if (error) throw error;
-      const result = data as {
-        error?: string;
-        summary?: string;
-        passed?: number;
-        total?: number;
-        results?: Array<{ label?: string; status?: string; stdout?: string; stderr?: string }>;
-      } | null;
-      if (!result || result.error) throw new Error(result?.error || "The code runner returned no result.");
-      const caseOutput = (result.results ?? []).flatMap((item) => [
-        `${item.label || "Test case"}: ${item.status || "Finished"}`,
-        item.stdout?.trimEnd(),
-        item.stderr?.trimEnd(),
-      ].filter((line): line is string => Boolean(line)));
-      const failed = (result.results ?? []).some((item) => item.status !== "Passed" && item.status !== "Executed");
-      setRunError(failed);
-      setOutput([result.summary, ...caseOutput].filter((line): line is string => Boolean(line)));
-    } catch (error) {
-      setRunError(true);
-      let message = error instanceof Error && error.name === "AbortError"
-        ? "Execution took too long. Try a shorter-running solution."
-        : error instanceof Error && error.message === "Failed to fetch"
-          ? "Could not reach the code runner. Check your connection or try again later."
-          : error instanceof Error ? error.message : String(error);
-      const context = error instanceof Error ? (error as Error & { context?: unknown }).context : undefined;
-      if (context instanceof Response) {
-        const details = await context.clone().json().catch(() => null) as { error?: unknown } | null;
-        if (typeof details?.error === "string" && details.error.trim()) message = details.error;
-        else if (context.status === 401) message = "Your sign-in session was rejected by the code runner. Sign in again and retry.";
-      }
-      setOutput([message]);
-    } finally {
+      const result = await runCodeWithInput(code, language, inputToRun);
       setIsRunning(false);
+      if (!result.success) {
+        setRunError(true);
+        setOutput([result.error || "Execution failed."]);
+      } else {
+        setRunError(false);
+        const timeNote = result.executionTimeMs ? `[Finished in ${result.executionTimeMs}ms]` : "";
+        setOutput([result.output, timeNote].filter(Boolean));
+      }
+    } catch (err) {
+      setIsRunning(false);
+      setRunError(true);
+      setOutput([err instanceof Error ? err.message : String(err)]);
+    }
+  }
+
+  async function handleSubmit() {
+    setOutputOpen(true);
+    setRunError(false);
+    setRunNotice(false);
+    setIsRunning(true);
+
+    try {
+      const cases = detail.testCases && detail.testCases.length > 0
+        ? detail.testCases
+        : detail.examples.map((ex) => ({ stdin: ex.input, expected: ex.output }));
+
+      const batch = await runBatchTestCases(code, language, cases);
+      setIsRunning(false);
+      setTestResults(batch.results);
+
+      if (batch.allPassed) {
+        setRunError(false);
+        setOutput([
+          `🎉 Accepted! All ${batch.totalCount} test cases passed.`,
+          `Status updated to Solved. Keep the streak going!`,
+        ]);
+        if (onStatusChange) {
+          onStatusChange(problemNumber, "Solved");
+        }
+      } else {
+        setRunError(true);
+        const failedCase = batch.results.find((r) => !r.passed);
+        setOutput([
+          `❌ Test case ${failedCase?.caseIndex || 1} failed (${batch.passedCount}/${batch.totalCount} passed).`,
+          failedCase?.error ? `Error: ${failedCase.error}` : `Expected:\n${failedCase?.expected}\n\nActual:\n${failedCase?.actual}`,
+        ]);
+      }
+    } catch (err) {
+      setIsRunning(false);
+      setRunError(true);
+      setOutput([err instanceof Error ? err.message : String(err)]);
     }
   }
 
@@ -233,96 +415,528 @@ export default function Editor({ problems, initialProblemNumber = 1 }: { problem
     } catch {
       setOutputOpen(true);
       setRunError(true);
-      setRunNotice(false);
-      setOutput(["Clipboard access is unavailable. Select the code and copy it manually."]);
+      setOutput(["Clipboard access is unavailable. Select the code and copy manually."]);
     }
   }
 
+  function resetCode() {
+    setCode(starterFor(language, currentProblem));
+    setOutput([]);
+    setRunError(false);
+    setRunNotice(false);
+    setTestResults(null);
+  }
+
+  const problemStatus = progress[problemNumber]?.status ?? "Todo";
+
   return (
     <main className="editor-page">
+      {/* ── Context Header ── */}
       <header className="editor-context">
-        <div className="editor-context-icon"><Code2 size={22} /></div>
+        <div className="editor-context-icon">
+          <Code2 size={22} />
+        </div>
         <div className="editor-context-copy">
           <span className="editor-kicker">PRACTICE WORKSPACE</span>
-          <h2>Write, run, <em>refine.</em></h2>
-          <p>A quiet space to work through a coding problem.</p>
+          <h2>
+            Write, run, <em>refine.</em>
+          </h2>
+          <p>Full in-browser sandbox for JavaScript & Python with real test case verification.</p>
         </div>
-        <div className="editor-problem-chip">
-          <span>PROBLEM LIBRARY · {problems.length}</span>
-          <select className="editor-problem-select" value={problemNumber} onChange={(event) => changeProblem(Number(event.target.value))} aria-label="Choose a problem">
-            {problems.map((problem) => <option value={problem.number} key={problem.number}>{String(problem.number).padStart(3, "0")} · {problem.title}</option>)}
-          </select>
-          <small>{currentProblem?.pattern} <i /> {currentProblem?.difficulty}</small>
+
+        {/* ── Problem selector dropdown (wide, searchable) ── */}
+        <div className="editor-problem-chip-wrap" ref={dropdownRef}>
+          <button
+            type="button"
+            className="editor-problem-chip-btn"
+            onClick={() => setProblemDropdownOpen((prev) => !prev)}
+            aria-expanded={problemDropdownOpen}
+            aria-haspopup="listbox"
+          >
+            <div className="chip-btn-left">
+              <span className="chip-badge">#{String(problemNumber).padStart(3, "0")}</span>
+              <strong className="chip-title">{currentProblem?.title}</strong>
+            </div>
+            <div className="chip-btn-right">
+              <span className={`chip-diff diff-${currentProblem?.difficulty.toLowerCase()}`}>
+                {currentProblem?.difficulty}
+              </span>
+              <span className={`chip-status-dot status-${problemStatus.toLowerCase().replace(" ", "-")}`} />
+              <ChevronDown size={14} className={problemDropdownOpen ? "rotate-180" : ""} />
+            </div>
+          </button>
+
+          {problemDropdownOpen && (
+            <div className="editor-dropdown-menu" role="listbox">
+              <div className="dropdown-search-box">
+                <Search size={14} />
+                <input
+                  type="text"
+                  placeholder="Search 250 problems or patterns…"
+                  value={dropdownSearch}
+                  onChange={(e) => setDropdownSearch(e.target.value)}
+                  autoFocus
+                />
+                {dropdownSearch && (
+                  <button type="button" className="dropdown-clear-btn" onClick={() => setDropdownSearch("")}>
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="dropdown-list">
+                {dropdownFiltered.map((p) => {
+                  const stat = progress[p.number]?.status ?? "Todo";
+                  const isCurrent = p.number === problemNumber;
+                  return (
+                    <button
+                      key={p.number}
+                      type="button"
+                      className={`dropdown-item${isCurrent ? " is-current" : ""}`}
+                      onClick={() => changeProblem(p.number)}
+                      role="option"
+                      aria-selected={isCurrent}
+                    >
+                      <span className="dropdown-num">{String(p.number).padStart(3, "0")}</span>
+                      <div className="dropdown-info">
+                        <strong>{p.title}</strong>
+                        <small>{p.pattern}</small>
+                      </div>
+                      <span className={`dropdown-diff diff-${p.difficulty.toLowerCase()}`}>{p.difficulty}</span>
+                      <span className={`dropdown-status status-${stat.toLowerCase().replace(" ", "-")}`}>
+                        {stat === "Solved" ? <Check size={12} /> : null}
+                      </span>
+                    </button>
+                  );
+                })}
+                {dropdownFiltered.length === 0 && (
+                  <div className="dropdown-empty">No problems match "{dropdownSearch}"</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
+      {/* ── Main Workspace ── */}
       <section className="editor-workspace" aria-label="Code editor">
-        <aside className="editor-rail">
-          <span className="editor-rail-heading">WORKSPACE</span>
-          <span className="editor-rail-group">LANGUAGE</span>
-          {(["C++", "Python", "Java", "JavaScript"] as Language[]).map((item) => (
-            <button className={`editor-language${language === item ? " active" : ""}`} key={item} onClick={() => changeLanguage(item)} type="button" aria-pressed={language === item}>
-              <span className="editor-language-badge">{item === "JavaScript" ? "JS" : item === "Python" ? "PY" : item === "C++" ? "C+" : "JV"}</span>{item}
-              {language === item && <i />}
+        {/* ── Left Rail: Language switcher + Problem Explorer Drawer ── */}
+        <aside className={`editor-rail${explorerOpen ? " has-explorer" : ""}`}>
+          <div className="editor-rail-header">
+            <span className="editor-rail-heading">EXPLORER</span>
+            <button
+              type="button"
+              className="rail-toggle-btn"
+              onClick={() => setExplorerOpen((o) => !o)}
+              title={explorerOpen ? "Collapse problem tree" : "Expand problem tree"}
+            >
+              {explorerOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
             </button>
-          ))}
+          </div>
+
+          <div className="editor-rail-group">LANGUAGE</div>
+          <div className="editor-language-list">
+            {(["Python", "JavaScript", "C++", "Java"] as Language[]).map((item) => (
+              <button
+                className={`editor-language${language === item ? " active" : ""}`}
+                key={item}
+                onClick={() => changeLanguage(item)}
+                type="button"
+                aria-pressed={language === item}
+              >
+                <span className="editor-language-badge">
+                  {item === "JavaScript" ? "JS" : item === "Python" ? "PY" : item === "C++" ? "C+" : "JV"}
+                </span>
+                <span>{item}</span>
+                {language === item && <i />}
+              </button>
+            ))}
+          </div>
+
+          {/* Collapsible Problem Explorer Tree */}
+          {explorerOpen && (
+            <div className="editor-explorer-panel">
+              <div className="explorer-search">
+                <Search size={13} />
+                <input
+                  type="text"
+                  placeholder="Filter problems…"
+                  value={explorerSearch}
+                  onChange={(e) => setExplorerSearch(e.target.value)}
+                />
+              </div>
+
+              <div className="explorer-tree">
+                {patternGroups.map(([pat, pList]) => {
+                  const isExpanded = expandedPatterns.has(pat);
+                  const solvedInGroup = pList.filter((p) => progress[p.number]?.status === "Solved").length;
+                  return (
+                    <div className="explorer-group" key={pat}>
+                      <button
+                        type="button"
+                        className="explorer-group-head"
+                        onClick={() => {
+                          setExpandedPatterns((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(pat)) next.delete(pat);
+                            else next.add(pat);
+                            return next;
+                          });
+                        }}
+                      >
+                        <ChevronRight size={12} className={isExpanded ? "rotate-90" : ""} />
+                        {isExpanded ? <FolderOpen size={13} /> : <Folder size={13} />}
+                        <span className="group-title">{pat}</span>
+                        <span className="group-count">
+                          {solvedInGroup}/{pList.length}
+                        </span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="explorer-group-items">
+                          {pList.map((p) => {
+                            const isCurrent = p.number === problemNumber;
+                            const st = progress[p.number]?.status ?? "Todo";
+                            return (
+                              <button
+                                key={p.number}
+                                type="button"
+                                className={`explorer-item${isCurrent ? " active" : ""}`}
+                                onClick={() => changeProblem(p.number)}
+                              >
+                                <FileCode size={12} className="explorer-item-icon" />
+                                <span className="explorer-item-num">{String(p.number).padStart(3, "0")}</span>
+                                <span className="explorer-item-title">{p.title}</span>
+                                <span className={`explorer-diff diff-${p.difficulty.toLowerCase()}`}>
+                                  {p.difficulty[0]}
+                                </span>
+                                {st === "Solved" && <Check size={11} className="explorer-solved-icon" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="editor-rail-bottom">
-            <div className="editor-rail-note-icon"><Save size={15} /></div>
-            <strong>Your work is saved</strong>
-            <span>Code stays in this browser while you practice.</span>
+            <div className="editor-rail-note-icon">
+              <Check size={14} />
+            </div>
+            <strong>In-Browser Execution</strong>
+            <span>Python 3 and JavaScript run locally with zero latency.</span>
           </div>
         </aside>
 
+        {/* ── Editor Main (Code Canvas + Side Panels) ── */}
         <div className="editor-main">
+          {/* ── Canvas ── */}
           <div className="editor-canvas">
-          <div className="editor-tabs">
-            <div className="editor-tab"><span className="editor-tab-badge">{language === "JavaScript" ? "JS" : language === "Python" ? "PY" : language === "C++" ? "C+" : "JV"}</span>solution.{fileExtension}<i /></div>
-            <span className="editor-saved-tag"><Check size={13} /> Autosave on</span>
-          </div>
-          <div className="editor-actions">
-            <div className="editor-problem-label"><i className="editor-easy-dot" /> #{String(problemNumber).padStart(3, "0")} · {currentProblem?.title} <span>· {currentProblem?.difficulty}</span></div>
-            <div className="editor-action-buttons">
-              <button className="editor-tool-button" onClick={() => void copyCode()} type="button" title="Copy code">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copied" : "Copy"}</span></button>
-              <button className="editor-tool-button" onClick={() => { setCode(starterFor(language, currentProblem)); setOutput([]); setRunError(false); setRunNotice(false); }} type="button" title="Reset code"><RotateCcw size={13} /><span>Reset</span></button>
-              <button className="editor-run" onClick={() => void runCode()} type="button" disabled={isRunning}><span className={isRunning ? "editor-spinner" : ""}>{isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}</span><span>{isRunning ? "Running…" : "Run code"}</span><kbd>Ctrl ↵</kbd></button>
-              <button className="editor-submit" onClick={() => void runCode("")} type="button" disabled={isRunning}><Send size={13} /><span>{isRunning ? "Submitting…" : "Submit"}</span></button>
+            {/* Tabs */}
+            <div className="editor-tabs">
+              <div className="editor-tab">
+                <span className="editor-tab-badge">
+                  {language === "JavaScript" ? "JS" : language === "Python" ? "PY" : language === "C++" ? "C+" : "JV"}
+                </span>
+                solution.{fileExtension}
+                <i />
+              </div>
+              <span className="editor-saved-tag">
+                <Check size={13} /> Autosave on
+              </span>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="editor-actions">
+              <div className="editor-problem-label">
+                <i className={`editor-dot status-${problemStatus.toLowerCase().replace(" ", "-")}`} />#
+                {String(problemNumber).padStart(3, "0")} · {currentProblem?.title}
+                <span>· {currentProblem?.difficulty}</span>
+              </div>
+              <div className="editor-action-buttons">
+                <button
+                  className="editor-tool-button"
+                  onClick={() => void copyCode()}
+                  type="button"
+                  title="Copy code"
+                >
+                  {copied ? <Check size={13} /> : <Copy size={13} />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </button>
+                <button
+                  className="editor-tool-button"
+                  onClick={resetCode}
+                  type="button"
+                  title="Reset code"
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset</span>
+                </button>
+                <button
+                  className="editor-run"
+                  onClick={() => void handleRunCode()}
+                  type="button"
+                  disabled={isRunning}
+                  title="Run with Custom Input (Ctrl+Enter)"
+                >
+                  <span className={isRunning ? "editor-spinner" : ""}>
+                    {isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}
+                  </span>
+                  <span>{isRunning ? "Running…" : "Run code"}</span>
+                  <kbd>Ctrl ↵</kbd>
+                </button>
+                <button
+                  className="editor-submit"
+                  onClick={() => void handleSubmit()}
+                  type="button"
+                  disabled={isRunning}
+                  title="Run tests and verify solution"
+                >
+                  <Send size={13} />
+                  <span>{isRunning ? "Testing…" : "Submit"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Code Textarea & Gutter */}
+            <div className="editor-code-area">
+              <div className="editor-gutter" aria-hidden="true">
+                {Array.from({ length: lines }, (_, index) => (
+                  <span key={index}>{index + 1}</span>
+                ))}
+              </div>
+              <textarea
+                className="editor-textarea"
+                aria-label={`${language} code`}
+                autoCapitalize="off"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                    event.preventDefault();
+                    void handleRunCode();
+                  }
+                  if (event.key === "Tab") {
+                    event.preventDefault();
+                    const start = event.currentTarget.selectionStart;
+                    const end = event.currentTarget.selectionEnd;
+                    const next = `${code.slice(0, start)}  ${code.slice(end)}`;
+                    setCode(next);
+                    requestAnimationFrame(() => {
+                      if (event.currentTarget) {
+                        event.currentTarget.selectionStart = event.currentTarget.selectionEnd = start + 2;
+                      }
+                    });
+                  }
+                }}
+              />
+            </div>
+
+            {/* Status bar */}
+            <div className="editor-statusbar">
+              <span>
+                <i className="editor-live-dot" /> Ready
+              </span>
+              <span>
+                Ln {lines}, Col 1 <i /> UTF-8 <i /> {language}
+              </span>
             </div>
           </div>
-          <div className="editor-code-area">
-            <div className="editor-gutter" aria-hidden="true">{Array.from({ length: lines }, (_, index) => <span key={index}>{index + 1}</span>)}</div>
-            <textarea className="editor-textarea" aria-label={`${language} code`} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} onKeyDown={(event: { ctrlKey: boolean; metaKey: boolean; key: string; preventDefault(): void; currentTarget: { selectionStart: number; selectionEnd: number } }) => {
-              if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); runCode(); }
-              if (event.key === "Tab") { event.preventDefault(); const start = event.currentTarget.selectionStart; const end = event.currentTarget.selectionEnd; const next = `${code.slice(0, start)}  ${code.slice(end)}`; setCode(next); requestAnimationFrame(() => { event.currentTarget.selectionStart = event.currentTarget.selectionEnd = start + 2; }); }
-            }} />
-          </div>
-          <div className="editor-statusbar"><span><i className="editor-live-dot" /> Ready</span><span>Ln {lines}, Col 1 <i /> UTF-8 <i /> {language}</span></div>
-          </div>
+
+          {/* ── Side Panels (Brief + Stdin + Output) ── */}
           <aside className="editor-sidepanels">
-          <section className="editor-problem-brief" aria-label="Problem description and examples">
-            <header><span><BookOpen size={14} /> PROBLEM BRIEF</span><small>Loaded from Supabase</small></header>
-            {problemContent ? <>
-              <p>{problemContent.description}</p>
-              {problemContent.constraints.length > 0 && <ul className="editor-constraints">{problemContent.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}</ul>}
-              {problemContent.examples.map((example, index) => <details className="editor-example" key={`${index}-${example.input}`}><summary>Example {index + 1}</summary><div><span>INPUT</span><pre>{example.input}</pre><span>OUTPUT</span><pre>{example.output}</pre></div></details>)}
-            </> : <p className="editor-brief-state">{contentError || "Loading the problem brief…"}</p>}
-            <p className="editor-tests-note">Submit checks your solution against private test cases stored in Supabase. Example inputs are shown here; hidden expected answers stay on the server.</p>
-          </section>
-          <div className="editor-stdin-panel">
-            <label htmlFor="editor-stdin">CUSTOM INPUT <span>Optional · sent to stdin</span></label>
-            <textarea id="editor-stdin" aria-label="Program input" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Add input for your program (optional)" />
-            <small>Code runs in an isolated Judge0 sandbox.</small>
-          </div>
-          <section className={`editor-output${outputOpen ? " open" : ""}`}>
-            <div className="editor-output-head">
-              <button className="editor-output-toggle" type="button" onClick={() => setOutputOpen((open) => !open)}><Terminal size={14} /> OUTPUT {isRunning && <span className="editor-output-state">RUNNING</span>}{output.length > 0 && !isRunning && <span className={`editor-output-state${runError ? " is-error" : ""}`}>{runError ? "ERROR" : runNotice ? "INFO" : "DONE"}</span>}<ChevronDown size={13} className={outputOpen ? "" : "collapsed"} /></button>
-              <button className="editor-output-close" type="button" aria-label="Clear output" onClick={() => { setOutput([]); setRunError(false); setRunNotice(false); }}><Trash2 size={13} /></button>
+            {/* Problem Brief */}
+            <section className="editor-problem-brief" aria-label="Problem brief">
+              <header>
+                <span>
+                  <BookOpen size={14} /> PROBLEM BRIEF
+                </span>
+                <small>{currentProblem?.pattern}</small>
+              </header>
+
+              <div className="brief-content">
+                <p className="brief-description">{detail.description}</p>
+
+                {detail.constraints && detail.constraints.length > 0 && (
+                  <div className="brief-constraints-box">
+                    <span className="brief-section-lbl">CONSTRAINTS</span>
+                    <ul className="editor-constraints">
+                      {detail.constraints.map((c, i) => (
+                        <li key={i}>{c}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {detail.examples && detail.examples.length > 0 && (
+                  <div className="brief-examples-box">
+                    <span className="brief-section-lbl">EXAMPLES</span>
+                    {detail.examples.map((example, idx) => (
+                      <div className="editor-example" key={idx}>
+                        <div className="example-header">
+                          <strong>Example {idx + 1}</strong>
+                          <button
+                            type="button"
+                            className="example-use-btn"
+                            onClick={() => {
+                              setStdin(example.input);
+                              setOutputOpen(true);
+                            }}
+                            title="Load this input into Custom Input below"
+                          >
+                            Use as Input <ArrowRight size={11} />
+                          </button>
+                        </div>
+                        <div className="example-body">
+                          <span>INPUT</span>
+                          <pre>{example.input}</pre>
+                          <span>OUTPUT</span>
+                          <pre>{example.output}</pre>
+                          {example.explanation && (
+                            <small className="example-expl">{example.explanation}</small>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Stdin Panel */}
+            <div className="editor-stdin-panel">
+              <div className="stdin-header">
+                <label htmlFor="editor-stdin">
+                  CUSTOM INPUT <span>sent to standard input</span>
+                </label>
+                {detail.examples?.[0] && (
+                  <button
+                    type="button"
+                    className="stdin-reset-link"
+                    onClick={() => setStdin(detail.examples[0].input)}
+                  >
+                    Load Ex 1
+                  </button>
+                )}
+              </div>
+              <textarea
+                id="editor-stdin"
+                aria-label="Program standard input"
+                value={stdin}
+                onChange={(event) => setStdin(event.target.value)}
+                placeholder="Enter custom input here..."
+              />
             </div>
-            {outputOpen && <div className={`editor-output-body${runError ? " is-error" : ""}${runNotice ? " is-notice" : ""}`}>{isRunning ? <span><LoaderCircle size={13} className="editor-spinner" /> Compiling and running in sandbox…</span> : output.length ? <pre>{output.join("\n")}</pre> : <span><ChevronRight size={13} /> Run your code to see the output here.</span>}</div>}
-          </section>
+
+            {/* Output Panel */}
+            <section className={`editor-output${outputOpen ? " open" : ""}`}>
+              <div className="editor-output-head">
+                <button
+                  className="editor-output-toggle"
+                  type="button"
+                  onClick={() => setOutputOpen((open) => !open)}
+                >
+                  <Terminal size={14} /> OUTPUT{" "}
+                  {isRunning && <span className="editor-output-state is-running">RUNNING</span>}
+                  {output.length > 0 && !isRunning && (
+                    <span className={`editor-output-state${runError ? " is-error" : " is-success"}`}>
+                      {runError ? "ERROR" : runNotice ? "INFO" : "DONE"}
+                    </span>
+                  )}
+                  <ChevronDown size={13} className={outputOpen ? "" : "collapsed"} />
+                </button>
+                <button
+                  className="editor-output-close"
+                  type="button"
+                  aria-label="Clear output"
+                  onClick={() => {
+                    setOutput([]);
+                    setRunError(false);
+                    setRunNotice(false);
+                    setTestResults(null);
+                  }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+
+              {outputOpen && (
+                <div
+                  className={`editor-output-body${runError ? " is-error" : ""}${runNotice ? " is-notice" : ""}`}
+                >
+                  {isRunning ? (
+                    <span>
+                      <LoaderCircle size={13} className="editor-spinner" /> Running in sandbox…
+                    </span>
+                  ) : testResults ? (
+                    <div className="test-results-container">
+                      <div className="test-results-summary">
+                        <strong>
+                          Test Suite:{" "}
+                          {testResults.filter((t) => t.passed).length} / {testResults.length} Passed
+                        </strong>
+                      </div>
+                      <div className="test-case-chips">
+                        {testResults.map((tc) => (
+                          <div
+                            key={tc.caseIndex}
+                            className={`test-case-item${tc.passed ? " passed" : " failed"}`}
+                          >
+                            <div className="case-status-row">
+                              {tc.passed ? (
+                                <CheckCircle2 size={13} className="tc-icon-pass" />
+                              ) : (
+                                <AlertCircle size={13} className="tc-icon-fail" />
+                              )}
+                              <span>Case {tc.caseIndex}</span>
+                              <small>{tc.passed ? "Passed" : "Wrong Answer"}</small>
+                              <span className="case-time">{tc.executionTimeMs}ms</span>
+                            </div>
+                            {!tc.passed && (
+                              <div className="case-diff-details">
+                                <div>
+                                  <span className="lbl">Expected:</span>
+                                  <pre>{tc.expected}</pre>
+                                </div>
+                                <div>
+                                  <span className="lbl">Actual:</span>
+                                  <pre>{tc.actual}</pre>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : output.length ? (
+                    <pre>{output.join("\n")}</pre>
+                  ) : (
+                    <span>
+                      <ChevronRight size={13} /> Run your code to see the output here.
+                    </span>
+                  )}
+                </div>
+              )}
+            </section>
           </aside>
         </div>
       </section>
-      <footer className="editor-footer"><span><span className="editor-footer-spark">✳</span> Start with a small example. Build from there.</span><span>Run your code with <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span></footer>
+
+      {/* ── Footer ── */}
+      <footer className="editor-footer">
+        <span>
+          <span className="editor-footer-spark">✳</span> Tip: Start by solving the base case, then step through the examples.
+        </span>
+        <span>
+          Run with <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+        </span>
+      </footer>
     </main>
   );
 }

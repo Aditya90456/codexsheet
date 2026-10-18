@@ -5,7 +5,7 @@ import {
   UserButton,
   useAuth,
   useUser,
-} from "@clerk/clerk-react";
+} from "./lib/auth";
 import {
   ArrowRight,
   Briefcase,
@@ -53,6 +53,7 @@ import {
   RotateCcw,
   CodeXml,
   Palette,
+  Compass,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -63,6 +64,7 @@ import Course from "./Course";
 import MentorSession from "./MentorSession";
 import InterviewCoach from "./InterviewCoach";
 import DailyPlanner from "./DailyPlanner";
+import ExploreHub from "./ExploreHub";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -101,7 +103,7 @@ const appThemes: Array<{ id: ThemeName; name: string; color: string; description
   { id: "violet", name: "Violet", color: "#8066a3", description: "Soft purple" },
   { id: "ember", name: "Ember", color: "#be7457", description: "Warm clay" },
 ];
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor" | "explore";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -118,6 +120,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   articles: "/articles",
   course: "/course",
   mentor: "/mentor",
+  explore: "/explore",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -1543,6 +1546,37 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".nav-more")) {
+        document.querySelectorAll<HTMLDetailsElement>(".nav-more[open]").forEach((el) => {
+          el.removeAttribute("open");
+        });
+      }
+      if (!target.closest(".theme-picker")) {
+        document.querySelectorAll<HTMLDetailsElement>(".theme-picker[open]").forEach((el) => {
+          el.removeAttribute("open");
+        });
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        document.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((el) => {
+          el.removeAttribute("open");
+        });
+      }
+    }
+
+    document.addEventListener("click", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -2028,7 +2062,27 @@ function App() {
   }, [activeView, chatLoadedFor, chatMessages, user?.id]);
 
   async function savePersonalNote(note: PersonalNote) {
-    if (!user || !supabase) return false;
+    if (!user) return false;
+    if (!supabase) {
+      const savedAt = new Date().toISOString();
+      setPersonalNotes((current) => {
+        const next = current.map((item) =>
+          item.id === note.id
+            ? {
+                ...item,
+                savedTitle: note.title,
+                savedContent: note.content,
+                updatedAt: savedAt,
+              }
+            : item,
+        );
+        try {
+          localStorage.setItem("codexsheet-personal-notes", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      return true;
+    }
     const requestUserId = user.id;
     setNotesSaving(true);
     try {
@@ -2086,13 +2140,34 @@ function App() {
   }
 
   async function createPersonalNote() {
-    if (!user || !supabase || creatingNote) return;
+    if (!user || creatingNote) return;
     if (
       selectedNote &&
       (selectedNote.title !== selectedNote.savedTitle ||
         selectedNote.content !== selectedNote.savedContent) &&
       !(await savePersonalNote(selectedNote))
     ) return;
+
+    if (!supabase) {
+      const now = new Date().toISOString();
+      const newNote: PersonalNote = {
+        id: Date.now(),
+        title: "Untitled note",
+        content: "",
+        savedTitle: "Untitled note",
+        savedContent: "",
+        updatedAt: now,
+      };
+      setPersonalNotes((current) => {
+        const next = [newNote, ...current];
+        try {
+          localStorage.setItem("codexsheet-personal-notes", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+      setSelectedNoteId(newNote.id);
+      return;
+    }
 
     setCreatingNote(true);
     setNotesError("");
@@ -2136,7 +2211,41 @@ function App() {
     setNotesError("");
     if (!isLoaded || !user) return;
     if (!supabase) {
-      setNotesError("Connect Supabase to load your private notebook.");
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("codexsheet-personal-notes") ?? "[]",
+        ) as PersonalNote[];
+        const initialNotes =
+          saved.length > 0
+            ? saved
+            : [
+                {
+                  id: 1,
+                  title: "Two Sum · Pattern Insight",
+                  content:
+                    "Use a hash map to trade space for time O(n). Store value -> index as you scan. Always check if complement exists before inserting current number.",
+                  savedTitle: "Two Sum · Pattern Insight",
+                  savedContent:
+                    "Use a hash map to trade space for time O(n). Store value -> index as you scan. Always check if complement exists before inserting current number.",
+                  updatedAt: new Date().toISOString(),
+                },
+                {
+                  id: 2,
+                  title: "Sliding Window Checklist",
+                  content:
+                    "1. Expand right boundary until condition is violated.\n2. Shrink left boundary until window is valid again.\n3. Keep updating the best result.",
+                  savedTitle: "Sliding Window Checklist",
+                  savedContent:
+                    "1. Expand right boundary until condition is violated.\n2. Shrink left boundary until window is valid again.\n3. Keep updating the best result.",
+                  updatedAt: new Date().toISOString(),
+                },
+              ];
+        setPersonalNotes(initialNotes);
+        setSelectedNoteId(initialNotes[0]?.id ?? null);
+        setNotesLoadedFor(user.id);
+      } catch {
+        setPersonalNotes([]);
+      }
       return;
     }
 
@@ -2347,11 +2456,29 @@ function App() {
           <summary
             aria-label="Explore more tools"
             title="Explore more tools"
-            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}
+            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" || activeView === "explore" ? "active" : ""}
           >
             <span className="nav-label">Explore</span><ChevronDown size={14} />
           </summary>
           <div className="nav-more-menu">
+            <div className="nav-menu-group" style={{ gridColumn: "1 / -1", borderBottom: "1px solid var(--c-border)", paddingBottom: "6px", marginBottom: "4px" }}>
+              <button
+                className={activeView === "explore" ? "active" : ""}
+                aria-pressed={activeView === "explore"}
+                onClick={() => navigateToView("explore")}
+                style={{
+                  background: activeView === "explore" ? "var(--c-surface-3)" : "rgba(99,102,241,0.1)",
+                  color: "var(--c-accent-2)",
+                  fontWeight: 600,
+                  justifyContent: "space-between",
+                }}
+              >
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
+                  <Compass size={16} /> Explore All Tools
+                </span>
+                <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", background: "var(--c-accent-bg)" }}>14 tools</span>
+              </button>
+            </div>
             <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
               <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
@@ -2415,15 +2542,15 @@ function App() {
                       ? "Code editor"
                     : activeView === "calendar"
                       ? "Calendar"
-                      : activeView === "roadmap"
-                        ? "Roadmap"
+                    : activeView === "roadmap"
+                      ? "Roadmap"
                     : activeView === "chat"
                       ? "Group chat"
                         : activeView === "notes"
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : "AI coach"}
+                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : activeView === "explore" ? "Explore directory" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -2443,8 +2570,8 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : "AI study coach"}{" "}
-              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : `DSA ${problems.length}`}</span>
+                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : activeView === "explore" ? "Explore directory" : "AI study coach"}{" "}
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : activeView === "explore" ? "14 TOOLS" : `DSA ${problems.length}`}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2463,7 +2590,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : activeView === "explore" ? "Discover all learning resources, practice environments, study tools, and career support." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
@@ -2483,9 +2610,17 @@ function App() {
       />}
       {activeView === "articles" && <ArticlesPage />}
       {activeView === "companies" && <CompanyProblems />}
-      {activeView === "editor" && <Editor initialProblemNumber={editorProblemNumber} problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
+      {activeView === "editor" && (
+        <Editor
+          initialProblemNumber={editorProblemNumber}
+          problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))}
+          onStatusChange={setProblemStatus}
+          progress={progress}
+        />
+      )}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "mentor" && <MentorSession />}
+      {activeView === "explore" && <ExploreHub onNavigate={navigateToView} />}
       {activeView === "dashboard" && (
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
@@ -3143,7 +3278,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "course" && <Course />}
+      {activeView === "course" && <Course onOpenProblem={openProblemInEditor} />}
       {activeView === "problems" && <div className="prb-split">
 
         {/* ═══════════ LEFT: Progress Panel ═══════════ */}
@@ -3256,7 +3391,7 @@ function App() {
               />
               {query && <button type="button" className="prb-clear" onClick={() => setQuery("")} aria-label="Clear">✕</button>}
             </label>
-            <div className="prb-filter-chips">
+            <div className="prb-filter-selects">
               <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                 <option>All levels</option>
                 <option>Easy</option>
