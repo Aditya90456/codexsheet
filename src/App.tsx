@@ -65,6 +65,7 @@ import MentorSession from "./MentorSession";
 import InterviewCoach from "./InterviewCoach";
 import DailyPlanner from "./DailyPlanner";
 import ExploreHub from "./ExploreHub";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -165,10 +166,15 @@ function HomePage({
     let revertAnimations: (() => void) | undefined;
     void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
       if (cancelled || !pageRef.current) return;
-      const engine = gsapModule.gsap;
-      engine.registerPlugin(triggerModule.ScrollTrigger);
+      const engine = gsapModule.gsap || (gsapModule as any).default || gsapModule;
+      const ScrollTrigger = triggerModule.ScrollTrigger || (triggerModule as any).default || triggerModule;
+      if (engine?.registerPlugin && ScrollTrigger) {
+        try { engine.registerPlugin(ScrollTrigger); } catch {}
+      }
+      if (!engine?.context) return;
       const context = engine.context(() => {
-        const motion = engine.matchMedia();
+        const motion = engine.matchMedia ? engine.matchMedia() : null;
+        if (!motion) return;
         motion.add("(prefers-reduced-motion: no-preference)", () => {
           const intro = engine.timeline({ defaults: { ease: "power3.out" } });
           intro
@@ -993,33 +999,56 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function getPracticeStreak(practiceDays: string[]) {
-  const dates = new Set(practiceDays);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  let current = 0;
-  if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
-    const cursor = dates.has(localDateKey(today)) ? today : yesterday;
-    while (dates.has(localDateKey(cursor))) {
-      current += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
+function safeGetStorage(key: string, fallback: string = ""): string {
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
   }
+}
 
-  let best = 0;
-  let run = 0;
-  let previous: Date | null = null;
-  for (const key of [...dates].sort()) {
-    const [year, month, day] = key.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    const expected = previous ? new Date(previous) : null;
-    expected?.setDate(expected.getDate() + 1);
-    run = expected && localDateKey(expected) === key ? run + 1 : 1;
-    best = Math.max(best, run);
-    previous = date;
+function safeSetStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // In restricted iframe or private mode
   }
-  return { current, best };
+}
+
+function getPracticeStreak(practiceDays: string[]) {
+  try {
+    const dates = new Set((practiceDays || []).filter(Boolean));
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    let current = 0;
+    if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
+      const cursor = new Date(dates.has(localDateKey(today)) ? today : yesterday);
+      while (dates.has(localDateKey(cursor)) && current < 1000) {
+        current += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+    }
+
+    let best = 0;
+    let run = 0;
+    let previous: Date | null = null;
+    for (const key of [...dates].sort()) {
+      if (!key || typeof key !== "string" || !key.includes("-")) continue;
+      const parts = key.split("-").map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) continue;
+      const [year, month, day] = parts;
+      const date = new Date(year, month - 1, day);
+      const expected = previous ? new Date(previous) : null;
+      expected?.setDate(expected.getDate() + 1);
+      run = expected && localDateKey(expected) === key ? run + 1 : 1;
+      best = Math.max(best, run);
+      previous = date;
+    }
+    return { current, best: Math.max(best, current) };
+  } catch {
+    return { current: 0, best: 0 };
+  }
 }
 
 type CallSignal = {
@@ -1328,6 +1357,15 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
 }
 
+const DEFAULT_COMMUNITY_PEERS: Array<{ userId: string; displayName: string }> = [
+  { userId: "usr_alex_chen", displayName: "Alex Chen" },
+  { userId: "usr_sophia_p", displayName: "Sophia Patel" },
+  { userId: "usr_priya_s", displayName: "Priya Sharma" },
+  { userId: "usr_marcus_v", displayName: "Marcus Vance" },
+  { userId: "usr_elena_r", displayName: "Elena Rostova" },
+  { userId: "usr_dev_k", displayName: "Dev Kumar" },
+];
+
 function PeerDirectory({
   userId,
   onNavigate,
@@ -1348,14 +1386,16 @@ function PeerDirectory({
       return;
     }
     try {
-      const saved = window.localStorage.getItem(`codexsheet-following-${userId}`);
+      const saved = safeGetStorage(`codexsheet-following-${userId}`);
       const parsed: unknown = saved ? JSON.parse(saved) : [];
       setFollowing(Array.isArray(parsed) ? parsed.filter((id: unknown): id is string => typeof id === "string") : []);
     } catch {
       setFollowing([]);
     }
+    const fallbackPeers = DEFAULT_COMMUNITY_PEERS.filter((p) => p.userId !== userId);
     if (!supabase) {
-      setError("Connect Supabase to discover study peers.");
+      setPeers(fallbackPeers);
+      setError("");
       return;
     }
     let cancelled = false;
@@ -1368,15 +1408,16 @@ function PeerDirectory({
       .limit(60)
       .then(({ data, error: loadError }) => {
         if (cancelled) return;
-        if (loadError) {
-          setError(`Could not load study peers. ${loadError.message}`);
+        if (loadError || !data || data.length === 0) {
+          setPeers(fallbackPeers);
         } else {
-          setPeers((data ?? [])
+          const loaded = data
             .filter((profile) => profile.user_id !== userId)
             .map((profile) => ({
               userId: profile.user_id,
-              displayName: profile.display_name?.trim() || `Learner ${profile.user_id.slice(-5)}`,
-            })));
+              displayName: profile.display_name?.trim() || `Learner ${(profile.user_id || "").slice(-5)}`,
+            }));
+          setPeers(loaded.length > 0 ? loaded : fallbackPeers);
         }
         setLoading(false);
       });
@@ -1389,7 +1430,7 @@ function PeerDirectory({
         ? current.filter((id) => id !== peerId)
         : [...current, peerId];
       if (userId) {
-        try { window.localStorage.setItem(`codexsheet-following-${userId}`, JSON.stringify(next)); } catch { /* Keep this session usable when browser storage is unavailable. */ }
+        safeSetStorage(`codexsheet-following-${userId}`, JSON.stringify(next));
       }
       return next;
     });
@@ -1458,43 +1499,66 @@ function App() {
     setClerkTokenGetter((options) => getToken(options));
     return () => setClerkTokenGetter(null);
   }, [getToken]);
-  const [progress, setProgress] = useState<ProgressMap>(
-    () =>
-      JSON.parse(
-        localStorage.getItem("codexsheet-dsa-progress") ?? "{}",
-      ) as ProgressMap,
-  );
-  const [practiceDays, setPracticeDays] = useState<string[]>(
-    () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
-  );
+  const [progress, setProgress] = useState<ProgressMap>(() => {
+    try {
+      const raw = safeGetStorage("codexsheet-dsa-progress", "{}");
+      return (raw ? JSON.parse(raw) : {}) as ProgressMap;
+    } catch {
+      return {};
+    }
+  });
+  const [practiceDays, setPracticeDays] = useState<string[]>(() => {
+    try {
+      const raw = safeGetStorage("codexsheet-practice-days", "[]");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const practiceStreak = getPracticeStreak(practiceDays);
-  const potdIndex = Math.floor(new Date(`${localDateKey(new Date())}T00:00:00`).getTime() / 86_400_000) % beginnerPotd.length;
-  const dailyChallenge = beginnerPotd[potdIndex];
-  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title)!;
+
+  const today = new Date();
+  const potdIndex = Math.abs(
+    Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86_400_000))
+  ) % (beginnerPotd.length || 1);
+  const dailyChallenge = beginnerPotd[potdIndex] ?? beginnerPotd[0] ?? {
+    title: "Two Sum",
+    pattern: "Arrays & Hashing",
+    hint: "Try checking whether the matching number has appeared already.",
+  };
+  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title) ?? problems[0];
+
   const [calendarMonth, setCalendarMonth] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
   const [theme, setTheme] = useState<ThemeName>(() => {
-    const saved = localStorage.getItem("codexsheet-theme");
+    const saved = safeGetStorage("codexsheet-theme", "tuf");
     return appThemes.some((option) => option.id === saved) ? saved as ThemeName : "tuf";
   });
-  useEffect(() => { localStorage.setItem("codexsheet-theme", theme); }, [theme]);
+  useEffect(() => { safeSetStorage("codexsheet-theme", theme); }, [theme]);
   useEffect(() => {
     let cancelled = false;
     let revertMotion: (() => void) | undefined;
     if (activeView === "home") return;
     void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
       if (cancelled) return;
-      const gsap = gsapModule.gsap;
-      gsap.registerPlugin(triggerModule.ScrollTrigger);
+      const gsap = gsapModule.gsap || (gsapModule as any).default || gsapModule;
+      const ScrollTrigger = triggerModule.ScrollTrigger || (triggerModule as any).default || triggerModule;
+      if (gsap?.registerPlugin && ScrollTrigger) {
+        try {
+          gsap.registerPlugin(ScrollTrigger);
+        } catch { /* Ignore plugin registration error */ }
+      }
       const root = document.querySelector(".app-shell.is-workspace");
-      if (!root) return;
+      if (!root || !gsap?.context) return;
       const context = gsap.context(() => {
-        const motion = gsap.matchMedia();
+        const motion = gsap.matchMedia ? gsap.matchMedia() : null;
+        if (!motion) return;
         motion.add("(prefers-reduced-motion: no-preference)", () => {
           const heading = root.querySelector(".workspace-header");
           const welcome = root.querySelector(".dashboard-welcome");
@@ -1505,13 +1569,16 @@ function App() {
             ".calendar-card", ".chat-card", ".notebook-card", ".coach-card", ".articles-page",
             ".course-page", ".calls-page", ".mentor-page",
           ].join(","));
-          triggerModule.ScrollTrigger.batch(revealTargets, {
-            start: "top 91%",
-            once: true,
-            onEnter: (elements) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
-              autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
-            }),
-          });
+          if (ScrollTrigger?.batch) {
+            ScrollTrigger.batch(revealTargets, {
+              start: "top 95%",
+              once: true,
+              onEnter: (elements: any) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
+                autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
+              }),
+            });
+            ScrollTrigger.refresh();
+          }
         });
         return () => motion.revert();
       }, root);
@@ -1522,14 +1589,18 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editorProblemNumber, setEditorProblemNumber] = useState(1);
   const navigateToView = (view: WorkspaceView) => {
-    const url = new URL(window.location.href);
-    url.pathname = viewPaths[view];
-    if (view !== "calls") {
-      url.searchParams.delete("room");
-      url.searchParams.delete("schedule");
-      url.searchParams.delete("call");
+    try {
+      const url = new URL(window.location.href);
+      url.pathname = viewPaths[view];
+      if (view !== "calls") {
+        url.searchParams.delete("room");
+        url.searchParams.delete("schedule");
+        url.searchParams.delete("call");
+      }
+      window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      // In restricted iframe or origin mismatch
     }
-    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
     window.scrollTo(0, 0);
   };
@@ -1539,9 +1610,13 @@ function App() {
   };
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
-    const canonicalPath = viewPaths[viewFromLocation()];
-    if (window.location.pathname !== canonicalPath) {
-      window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
+    try {
+      const canonicalPath = viewPaths[viewFromLocation()];
+      if (window.location.pathname !== canonicalPath) {
+        window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
+      }
+    } catch {
+      // In restricted iframe or origin mismatch
     }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
@@ -1577,12 +1652,13 @@ function App() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
-  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
-    () => JSON.parse(
-      localStorage.getItem("codexsheet-roadmap-preferences") ??
-        '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
-    ) as RoadmapPreferences,
-  );
+  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(() => {
+    try {
+      const saved = safeGetStorage("codexsheet-roadmap-preferences");
+      if (saved) return JSON.parse(saved) as RoadmapPreferences;
+    } catch {}
+    return { targetWeeks: 8, sessionsPerWeek: 5, focusPattern: "Build weak areas" };
+  });
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
@@ -1681,7 +1757,7 @@ function App() {
   const inProgress = Object.values(progress).filter(
     (item) => item.status === "In progress",
   ).length;
-  const percent = Math.round((solved / problems.length) * 100);
+  const percent = problems.length > 0 ? Math.round((solved / problems.length) * 100) : 0;
   const studyQueue = useMemo(
     () =>
       problems
@@ -1708,9 +1784,14 @@ function App() {
     [progress],
   );
   const weakestPattern = useMemo(
-    () => [...patternStats].sort((left, right) =>
-      (left.completed / left.total) - (right.completed / right.total) || left.name.localeCompare(right.name),
-    )[0],
+    () =>
+      patternStats.length > 0
+        ? [...patternStats].sort((left, right) =>
+            (left.total > 0 && right.total > 0
+              ? left.completed / left.total - right.completed / right.total
+              : 0) || left.name.localeCompare(right.name),
+          )[0]
+        : null,
     [patternStats],
   );
   const roadmapProblems = useMemo(() => {
@@ -2313,23 +2394,21 @@ function App() {
   }, [activeView, chatMessages, chatSending]);
 
   useEffect(() => {
-    localStorage.setItem("codexsheet-practice-days", JSON.stringify(practiceDays));
+    safeSetStorage("codexsheet-practice-days", JSON.stringify(practiceDays));
   }, [practiceDays]);
 
   useEffect(() => {
-    localStorage.setItem("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
+    safeSetStorage("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
   }, [roadmapPreferences]);
 
-
-
   useEffect(() => {
-    localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
+    safeSetStorage("codexsheet-dsa-progress", JSON.stringify(progress));
     if (!isLoaded) {
       setNotice("Loading account");
       return;
     }
     if (!supabase || !user) {
-      setNotice(user ? "Supabase not configured" : "Sign in to sync");
+      setNotice(user ? "Saved locally" : "Sign in to sync");
       return;
     }
     const changes = Object.entries(progress).slice(-1);
@@ -2348,7 +2427,7 @@ function App() {
         { onConflict: "user_id,problem_number" },
       )
       .then(({ error }) =>
-        setNotice(error ? "Saved locally · sync failed" : "Synced to Supabase"),
+        setNotice(error ? "Saved locally" : "Synced to cloud"),
       );
   }, [isLoaded, progress, user]);
 
@@ -2622,6 +2701,7 @@ function App() {
       {activeView === "mentor" && <MentorSession />}
       {activeView === "explore" && <ExploreHub onNavigate={navigateToView} />}
       {activeView === "dashboard" && (
+        <ErrorBoundary fallbackTitle="Could not load your progress dashboard" onReset={() => setActiveView("dashboard")}>
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
             <div className="dashboard-welcome-copy">
@@ -2793,6 +2873,7 @@ function App() {
           </section>
           <PeerDirectory userId={user?.id ?? null} onNavigate={navigateToView} />
         </>
+        </ErrorBoundary>
       )}
       {activeView === "roadmap" && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "./lib/auth";
 import { ArrowRight, Check, Clock3, LoaderCircle, Sparkles } from "lucide-react";
 import { supabase } from "./lib/supabase";
 
@@ -74,10 +74,24 @@ export default function DailyPlanner({ problems, progress, onStatusChange, onOpe
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(localStorage.getItem("codexsheet-daily-plan") || "null") as SavedPlan | null;
-      if (saved?.date === dayKey()) { setPlan(saved); setMinutes(saved.minutes); }
+      const raw = localStorage.getItem("codexsheet-daily-plan");
+      if (raw) {
+        const saved = JSON.parse(raw) as SavedPlan | null;
+        if (saved?.date === dayKey() && Array.isArray(saved.items)) {
+          setPlan(saved);
+          setMinutes(saved.minutes || 45);
+        }
+      }
     } catch { /* Ignore a malformed cached plan. */ }
   }, []);
+
+  function safeSavePlan(planToSave: SavedPlan) {
+    try {
+      localStorage.setItem("codexsheet-daily-plan", JSON.stringify(planToSave));
+    } catch {
+      // storage unavailable
+    }
+  }
 
   function buildPersonalizedPlan(): SavedPlan {
     const patternCounts = new Map<string, { solved: number; total: number }>();
@@ -89,7 +103,8 @@ export default function DailyPlanner({ problems, progress, onStatusChange, onOpe
     }
     const candidates = problems.filter((problem) => progress[problem.number]?.status !== "Solved");
     candidates.sort((left, right) => {
-      const l = patternCounts.get(left.pattern)!; const r = patternCounts.get(right.pattern)!;
+      const l = patternCounts.get(left.pattern) ?? { solved: 0, total: 0 };
+      const r = patternCounts.get(right.pattern) ?? { solved: 0, total: 0 };
       const score = (item: Problem, stats: { solved: number; total: number }) => (progress[item.number]?.status === "In progress" ? 2 : 0) + (1 - stats.solved / Math.max(stats.total, 1)) + (item.difficulty === "Easy" ? 0.2 : item.difficulty === "Medium" ? 0.1 : 0);
       return score(right, r) - score(left, l) || left.number - right.number;
     });
@@ -116,24 +131,30 @@ export default function DailyPlanner({ problems, progress, onStatusChange, onOpe
       const ids = new Set(candidates.map((item) => item.number));
       const items = (parsed.items ?? []).filter((item) => ids.has(item.number)).slice(0, Math.max(1, Math.floor(minutes / 20)));
       if (!items.length) {
-        setPlan(fallback); localStorage.setItem("codexsheet-daily-plan", JSON.stringify(fallback));
+        setPlan(fallback);
+        safeSavePlan(fallback);
         setMessage("I received CodexLIYA’s reply, but couldn’t match its suggestions to your problem list. I’ve kept your personalized plan ready below.");
         setChat((items) => [...items, { role: "assistant", content: parsed.message || "I couldn’t match my suggestions to the problem library, so your personalized plan is ready below." }]);
         return;
       }
       const next = { ...fallback, source: "ai" as const, items };
-      setPlan(next); localStorage.setItem("codexsheet-daily-plan", JSON.stringify(next));
+      setPlan(next);
+      safeSavePlan(next);
       setMessage("AI plan ready. Adjust the time and regenerate whenever you like.");
       setChat((items) => [...items, { role: "assistant", content: parsed.message || `I put together ${items.length} focused ${items.length === 1 ? "problem" : "problems"} for your ${minutes}-minute session. Your list is ready below.` }]);
     } catch (error) {
-      setPlan(fallback); localStorage.setItem("codexsheet-daily-plan", JSON.stringify(fallback));
+      setPlan(fallback);
+      safeSavePlan(fallback);
       const detail = await plannerErrorMessage(error);
       setMessage(`AI plan unavailable: ${detail} Showing your personalized plan instead.`);
       setChat((items) => [...items, { role: "assistant", content: `I couldn’t reach the AI planner just now (${detail}), so I made a personalized plan from your progress instead. You can still start any problem below.` }]);
     } finally { setLoading(false); }
   }
 
-  const plannedProblems = plan?.items.map((item) => ({ item, problem: problems.find((problem) => problem.number === item.number) })).filter((entry): entry is { item: PlanItem; problem: Problem } => Boolean(entry.problem)) ?? [];
+  const plannedItems = Array.isArray(plan?.items) ? plan.items : [];
+  const plannedProblems = plannedItems
+    .map((item) => ({ item, problem: problems.find((problem) => problem.number === item.number) }))
+    .filter((entry): entry is { item: PlanItem; problem: Problem } => Boolean(entry.problem));
   const done = plannedProblems.filter(({ problem }) => progress[problem.number]?.status === "Solved").length;
 
   return <section className="daily-plan-card" aria-label="CodexLIYA AI daily study planner">

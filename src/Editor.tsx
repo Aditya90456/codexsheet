@@ -22,7 +22,9 @@ import {
   AlertCircle,
   FileCode,
   ArrowRight,
+  Lock,
 } from "lucide-react";
+import { useAuth } from "./lib/auth";
 import { supabase } from "./lib/supabase";
 import { getProblemDetail, ProblemDetail } from "./lib/problemCatalog";
 import { runCodeWithInput, runBatchTestCases, TestCaseResult } from "./lib/codeRunner";
@@ -36,124 +38,61 @@ export type EditorProblem = {
 };
 
 function starterFor(language: Language, problem: EditorProblem | undefined) {
-  const title = problem?.title ?? "your problem";
+  const title = problem?.title ?? "Problem";
   const pattern = problem?.pattern ?? "DSA";
-  const num = problem?.number ?? 1;
 
   if (language === "Python") {
-    // Specialized templates for popular problems
-    if (num === 1) {
-      return `# Two Sum · Two Pointers / Hash Map
-import sys
-
-def solve(input_text: str) -> str:
-    lines = [line.strip() for line in input_text.strip().split("\\n") if line.strip()]
-    if not lines:
-        return ""
-    n, target = map(int, lines[0].split())
-    nums = list(map(int, lines[1].split()))
-    
-    seen = {}
-    for i, x in enumerate(nums):
-        complement = target - x
-        if complement in seen:
-            return f"{seen[complement]} {i}"
-        seen[x] = i
-    return ""
-
-if __name__ == "__main__":
-    print(solve(sys.stdin.read()))`;
-    }
-
-    if (num === 6) {
-      return `# Valid Palindrome · Two Pointers
-import sys
-
-def solve(input_text: str) -> str:
-    s = input_text.strip()
-    cleaned = "".join(ch.lower() for ch in s if ch.isalnum())
-    return "true" if cleaned == cleaned[::-1] else "false"
-
-if __name__ == "__main__":
-    print(solve(sys.stdin.read()))`;
-    }
-
     return `# ${title} · ${pattern}
+# Complete the function below to solve the problem.
+
 import sys
 
 def solve(input_text: str) -> str:
-    # Read standard input and compute the solution
+    """
+    Parse the problem input and return the expected answer as a string.
+    """
     lines = [line.strip() for line in input_text.strip().split("\\n") if line.strip()]
     if not lines:
         return ""
-    
+
     # Write your solution logic here:
-    return ""
+    pass
 
 if __name__ == "__main__":
-    print(solve(sys.stdin.read()))`;
+    result = solve(sys.stdin.read())
+    if result is not None:
+        print(result)`;
   }
 
   if (language === "JavaScript") {
-    if (num === 1) {
-      return `// Two Sum · Two Pointers / Hash Map
-const fs = require("fs");
-
-function solve(input) {
-  const lines = input.trim().split("\\n").filter(Boolean);
-  if (!lines.length) return "";
-  const [n, target] = lines[0].trim().split(/\\s+/).map(Number);
-  const nums = lines[1].trim().split(/\\s+/).map(Number);
-  
-  const map = new Map();
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i];
-    if (map.has(complement)) {
-      return \`\${map.get(complement)} \${i}\`;
-    }
-    map.set(nums[i], i);
-  }
-  return "";
-}
-
-const input = fs.readFileSync(0, "utf8");
-process.stdout.write(String(solve(input)));`;
-    }
-
-    if (num === 6) {
-      return `// Valid Palindrome · Two Pointers
-const fs = require("fs");
-
-function solve(input) {
-  const clean = input.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-  return clean === clean.split("").reverse().join("") ? "true" : "false";
-}
-
-const input = fs.readFileSync(0, "utf8");
-process.stdout.write(String(solve(input)));`;
-    }
-
     return `// ${title} · ${pattern}
+// Complete the function below to solve the problem.
+
 const fs = require("fs");
 
 function solve(input) {
   // Read standard input and compute the solution
   const lines = input.trim().split("\\n").filter(Boolean);
-  
-  // Write your solution here:
+  if (!lines.length) return "";
+
+  // Write your solution logic here:
   return "";
 }
 
 const input = fs.readFileSync(0, "utf8");
-process.stdout.write(String(solve(input)));`;
+const result = solve(input);
+if (result !== undefined) {
+  process.stdout.write(String(result));
+}`;
   }
 
-  const templates: Record<Language, string> = {
-    "C++": `#include <bits/stdc++.h>
+  if (language === "C++") {
+    return `// ${title} · ${pattern}
+#include <bits/stdc++.h>
 using namespace std;
 
 string solve(const string& input) {
-    // Parse input, solve ${title}, and return output.
+    // Write your solution logic here:
     return "";
 }
 
@@ -163,14 +102,17 @@ int main() {
     string input((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());
     cout << solve(input);
     return 0;
-}`,
-    Python: ``,
-    Java: `import java.io.*;
+}`;
+  }
+
+  // Java
+  return `// ${title} · ${pattern}
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 public class Main {
     static String solve(String input) {
-        // Parse input, solve ${title}, and return output.
+        // Write your solution logic here:
         return "";
     }
 
@@ -178,10 +120,7 @@ public class Main {
         String input = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
         System.out.print(solve(input));
     }
-}`,
-    JavaScript: ``,
-  };
-  return templates[language];
+}`;
 }
 
 const storageKey = "codexsheet-editor-v1";
@@ -206,6 +145,7 @@ export default function Editor({
   onStatusChange?: (number: number, status: "Todo" | "In progress" | "Solved") => void;
   progress?: Record<number, { status: string; notes?: string }>;
 }) {
+  const { isSignedIn, openSignUp, openSignIn } = useAuth();
   const [language, setLanguage] = useState<Language>("Python");
   const [problemNumber, setProblemNumber] = useState(initialProblemNumber);
   const [explorerOpen, setExplorerOpen] = useState(true);
@@ -344,6 +284,10 @@ export default function Editor({
   }
 
   async function handleRunCode(inputToRun = stdin) {
+    if (!isSignedIn) {
+      openSignUp();
+      return;
+    }
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
@@ -369,6 +313,10 @@ export default function Editor({
   }
 
   async function handleSubmit() {
+    if (!isSignedIn) {
+      openSignUp();
+      return;
+    }
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
@@ -657,6 +605,17 @@ export default function Editor({
                 <span>· {currentProblem?.difficulty}</span>
               </div>
               <div className="editor-action-buttons">
+                {!isSignedIn && (
+                  <button
+                    type="button"
+                    className="editor-auth-gate-badge"
+                    onClick={openSignUp}
+                    title="Sign up to run and edit code"
+                  >
+                    <Lock size={12} />
+                    <span>Sign up to code</span>
+                  </button>
+                )}
                 <button
                   className="editor-tool-button"
                   onClick={() => void copyCode()}
@@ -680,7 +639,7 @@ export default function Editor({
                   onClick={() => void handleRunCode()}
                   type="button"
                   disabled={isRunning}
-                  title="Run with Custom Input (Ctrl+Enter)"
+                  title={!isSignedIn ? "Sign up to run code" : "Run with Custom Input (Ctrl+Enter)"}
                 >
                   <span className={isRunning ? "editor-spinner" : ""}>
                     {isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}
@@ -693,7 +652,7 @@ export default function Editor({
                   onClick={() => void handleSubmit()}
                   type="button"
                   disabled={isRunning}
-                  title="Run tests and verify solution"
+                  title={!isSignedIn ? "Sign up to submit code" : "Run tests and verify solution"}
                 >
                   <Send size={13} />
                   <span>{isRunning ? "Testing…" : "Submit"}</span>
@@ -703,21 +662,70 @@ export default function Editor({
 
             {/* Code Textarea & Gutter */}
             <div className="editor-code-area">
+              {!isSignedIn && (
+                <div className="editor-auth-gate-overlay">
+                  <div className="editor-auth-gate-modal">
+                    <div className="editor-auth-gate-icon">
+                      <Lock size={22} />
+                    </div>
+                    <h3>Sign up to use the Editor</h3>
+                    <p>
+                      You must create an account or sign in to edit code, execute algorithms, run custom test cases, and save your solutions.
+                    </p>
+                    <div className="editor-auth-gate-buttons">
+                      <button
+                        type="button"
+                        className="editor-auth-primary-btn"
+                        onClick={openSignUp}
+                      >
+                        Create Free Account
+                      </button>
+                      <button
+                        type="button"
+                        className="editor-auth-secondary-btn"
+                        onClick={openSignIn}
+                      >
+                        Sign In
+                      </button>
+                    </div>
+                    <div className="editor-auth-gate-features">
+                      <span>✓ In-browser Python & JS runner</span>
+                      <span>✓ 75+ Curated problems</span>
+                      <span>✓ Custom test inputs</span>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="editor-gutter" aria-hidden="true">
                 {Array.from({ length: lines }, (_, index) => (
                   <span key={index}>{index + 1}</span>
                 ))}
               </div>
               <textarea
-                className="editor-textarea"
+                className={`editor-textarea${!isSignedIn ? " locked" : ""}`}
                 aria-label={`${language} code`}
+                readOnly={!isSignedIn}
+                onClick={() => {
+                  if (!isSignedIn) openSignUp();
+                }}
                 autoCapitalize="off"
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
                 value={code}
-                onChange={(event) => setCode(event.target.value)}
+                onChange={(event) => {
+                  if (!isSignedIn) {
+                    openSignUp();
+                    return;
+                  }
+                  setCode(event.target.value);
+                }}
                 onKeyDown={(event) => {
+                  if (!isSignedIn) {
+                    event.preventDefault();
+                    openSignUp();
+                    return;
+                  }
                   if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
                     event.preventDefault();
                     void handleRunCode();
@@ -741,7 +749,19 @@ export default function Editor({
             {/* Status bar */}
             <div className="editor-statusbar">
               <span>
-                <i className="editor-live-dot" /> Ready
+                {!isSignedIn ? (
+                  <span
+                    className="editor-auth-status-hint"
+                    onClick={openSignUp}
+                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", color: "var(--c-accent-2, #818cf8)" }}
+                  >
+                    <Lock size={11} /> Sign up required to run code
+                  </span>
+                ) : (
+                  <>
+                    <i className="editor-live-dot" /> Ready
+                  </>
+                )}
               </span>
               <span>
                 Ln {lines}, Col 1 <i /> UTF-8 <i /> {language}
