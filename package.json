@@ -4,26 +4,25 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/react": "^6.17.8",
+    "@clerk/clerk-react": "^5.61.10",
     "@supabase/supabase-js": "^2.117.2",
+    "@vitejs/plugin-react": "latest",
     "gsap": "^3.15.0",
-    "lucide-react": "^1.60.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "three": "^0.186.1"
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "three": "^0.186.1",
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@types/three": "^0.186.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "supabase": "^2.119.0",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "supabase": "^2.119.0"
   }
 }

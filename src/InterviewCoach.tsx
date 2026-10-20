@@ -74,51 +74,7 @@ export default function InterviewCoach() {
 
   async function requestCoach(history: Message[], showUserMessage = true) {
     if (!supabase) {
-      setError("");
-      setLoading(true);
-      const latestMessage = history[history.length - 1];
-      if (showUserMessage && latestMessage) setMessages((current) => [...current, latestMessage]);
-      window.setTimeout(() => {
-        let reply = "";
-        const userMsg = latestMessage?.content?.toLowerCase() ?? "";
-        if (!showUserMessage || history.length <= 1) {
-          reply =
-            "Hello! Welcome to your technical mock interview. Let's start with a problem: Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. Each input has exactly one solution, and you may not use the same element twice. How would you approach this problem?";
-        } else if (
-          userMsg.includes("hash") ||
-          userMsg.includes("map") ||
-          userMsg.includes("dictionary") ||
-          userMsg.includes("dict")
-        ) {
-          reply =
-            "That's the optimal direction! Using a hash map lets you achieve O(n) time complexity. As you iterate through the array, what exactly would you store as keys and values in the map, and when do you check for the complement?";
-        } else if (
-          userMsg.includes("loop") ||
-          userMsg.includes("nested") ||
-          userMsg.includes("brute") ||
-          userMsg.includes("o(n^2)") ||
-          userMsg.includes("n^2")
-        ) {
-          reply =
-            "A brute-force two-pointer or nested loop scan gives O(n²) time and O(1) space. It's good to mention the naive solution first! Can we do better in time complexity by trading some additional space?";
-        } else if (
-          userMsg.includes("index") ||
-          userMsg.includes("complement") ||
-          userMsg.includes("target -") ||
-          userMsg.includes("target-")
-        ) {
-          reply =
-            "Spot on! By checking if target - current exists in the hash map before inserting the current number, we find our answer in a single pass with O(n) time and O(n) space. Are there any edge cases you'd test for?";
-        } else {
-          reply =
-            "Good thoughts! Walk me through your proposed time and space complexity, and how you would handle edge cases such as negative integers or duplicate numbers.";
-        }
-        const answer: Message = { role: "assistant", content: reply };
-        historyRef.current = [...history.slice(-8), answer];
-        setMessages((current) => [...current, answer]);
-        speak(reply);
-        setLoading(false);
-      }, 700);
+      setError("AI interview is unavailable because Supabase is not configured.");
       return;
     }
     setError("");

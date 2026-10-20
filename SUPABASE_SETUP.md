@@ -11,41 +11,26 @@ These are browser-facing keys. Never put a Supabase `service_role` key in a
 `VITE_` variable or client code. Restart the Vite dev server after changing
 `.env`.
 
-## Authentication (Clerk)
+## Authentication and database schema
 
-Users sign in with [Clerk](https://clerk.com), not Supabase Auth. The browser
-client (`src/lib/supabase.ts`) sends the Clerk session token as the Supabase
-access token, so RLS policies identify the user with `auth.jwt() ->> 'sub'`
-(the Clerk user ID, e.g. `user_2abc...`). Clerk user IDs are not UUIDs, so do
-not use `auth.uid()` in policies.
-
-Set `VITE_CLERK_PUBLISHABLE_KEY` in `.env` and in the hosting provider (Vercel).
-Without it the app falls back to a local demo login whose tokens Supabase
-rejects, so syncing, code execution, and the interview coach will not work.
-
-Connect Clerk to the Supabase project once:
-
-1. **Clerk:** open Clerk's [Connect with Supabase](https://dashboard.clerk.com/setup/supabase)
-   page and activate it for your instance. This adds the `role: "authenticated"`
-   claim Supabase needs to session tokens. Note the Clerk domain it shows
-   (e.g. `<name>.clerk.accounts.dev`).
-2. **Supabase Dashboard > Authentication > Third-Party Auth:** add a **Clerk**
-   integration with that domain. For the local Supabase CLI, add
-   `[auth.third_party.clerk]` with `enabled = true` and `domain = "<clerk-domain>"`
-   to `supabase/config.toml` instead.
-3. **Supabase Edge Function secrets:** set `CLERK_JWT_ISSUER` to the same
-   Clerk domain. `run-code` and `dsa-tutor` verify Clerk tokens against it
-   (they default to the development instance).
-
-Use the production Clerk instance's domain and publishable key for the
-production deployment; repeat steps 2–3 if the domain changes.
-
-## Database schema
+The app uses Supabase Auth email/password accounts. In the Supabase Dashboard,
+enable Email under **Authentication > Sign In / Providers**, then set the Site
+URL and allowed redirect URLs under **Authentication > URL Configuration** to
+include the app's production URL and local development URL.
 
 Run [`db/schema.sql`](db/schema.sql) in **SQL Editor** to create the profile
-table and secure it with RLS. The app creates each user's profile row on first
-sign-in. The `auth.users` trigger and backfill in the scripts only apply to
-legacy Supabase Auth accounts and are harmless with Clerk.
+table, secure it with RLS, backfill existing Supabase Auth users, and install a
+trigger that creates a profile row whenever a user signs up. Email confirmation
+is controlled by **Authentication > Sign In / Providers**; when it is enabled,
+new users must confirm their email before they can sign in.
+
+Confirmation and password-reset email delivery uses the project's SMTP settings.
+Configure a working provider under **Authentication > SMTP Settings** (host,
+port, username, password, and a verified sender address). The Supabase Auth
+logs report delivery failures. For example, `535 5.7.8 Username and Password
+not accepted` means the SMTP provider rejected its credentials; update them
+there and retry signup. Supabase recommends a dedicated transactional email
+provider for production rather than relying on a personal mailbox.
 
 Run [`supabase.sql`](supabase.sql) as well to create the app's other tables,
 policies, and triggers (including private notes, DSA progress, chat, and calls).
@@ -79,7 +64,7 @@ secrets take effect without a redeploy.
 
 Run [`db/schema.sql`](db/schema.sql) and then the complete `supabase.sql`
 script in Supabase Dashboard > SQL Editor. They create or migrate the progress
-and profile tables, apply Clerk-token RLS,
+and profile tables, apply Supabase Auth RLS,
 grants the authenticated role the required table/identity-sequence permissions,
 and configures profile synchronization, private notes, shared group chat,
 per-message read receipts, and peer video rooms. Signed-in users create a room
