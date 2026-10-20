@@ -1,0 +1,36 @@
+declare module "react" {
+  export type ReactNode = unknown;
+  export type CSSProperties = { [property: string]: string | number | undefined };
+  export type FormEvent<T = HTMLFormElement> = { preventDefault(): void; target: T };
+  export function useRef<T>(initialValue: T): { current: T };
+  export function useRef<T>(initialValue: T | null): { current: T | null };
+  export function useState<S>(initialState: S | (() => S)): [S, (next: S | ((current: S) => S)) => void];
+  export function useEffect(effect: () => void | (() => void), dependencies?: readonly unknown[]): void;
+  export function useMemo<T>(factory: () => T, dependencies: readonly unknown[]): T;
+  export function StrictMode(props: { children?: ReactNode }): unknown;
+}
+
+declare module "three";
+
+declare module "react-dom/client" {
+  export function createRoot(container: Element | DocumentFragment): { render(children: unknown): void };
+}
+
+declare module "react/jsx-runtime" {
+  export function jsx(type: unknown, props: unknown, key?: unknown): unknown;
+  export function jsxs(type: unknown, props: unknown, key?: unknown): unknown;
+  export const Fragment: unknown;
+}
+
+declare namespace JSX {
+  interface IntrinsicAttributes { key?: string | number }
+  interface IntrinsicElements {
+    [element: string]: {
+      [property: string]: unknown;
+      onChange?: (event: { target: { value: string } }) => void;
+      onSubmit?: (event: import("react").FormEvent<HTMLFormElement>) => void;
+      onMouseDown?: (event: { stopPropagation(): void }) => void;
+      onKeyDown?: (event: any) => void;
+    };
+  }
+}

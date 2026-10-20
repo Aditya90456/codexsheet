@@ -1,5 +1,4 @@
--- Run this in Supabase SQL Editor to create the public profile table.
--- Users authenticate with Clerk; RLS matches the Clerk user ID in auth.jwt() ->> 'sub'.
+-- Run this in Supabase SQL Editor to create/sync one public profile per Auth user.
 -- User IDs stay text-compatible with the app's existing tables and stored data.
 
 create table if not exists public.profiles (
@@ -22,14 +21,14 @@ drop policy if exists "Users can create their own profile" on public.profiles;
 create policy "Users can create their own profile"
   on public.profiles for insert
   to authenticated
-  with check ((select auth.jwt() ->> 'sub') = user_id);
+  with check ((select auth.uid())::text = user_id);
 
 drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
   on public.profiles for update
   to authenticated
-  using ((select auth.jwt() ->> 'sub') = user_id)
-  with check ((select auth.jwt() ->> 'sub') = user_id);
+  using ((select auth.uid())::text = user_id)
+  with check ((select auth.uid())::text = user_id);
 
 revoke all on public.profiles from anon, authenticated;
 grant select (user_id, display_name) on public.profiles to authenticated;

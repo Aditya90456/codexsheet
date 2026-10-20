@@ -5,7 +5,7 @@ import {
   UserButton,
   useAuth,
   useUser,
-} from "./lib/auth";
+} from "@clerk/clerk-react";
 import {
   ArrowRight,
   Briefcase,
@@ -53,7 +53,6 @@ import {
   RotateCcw,
   CodeXml,
   Palette,
-  Compass,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -64,8 +63,6 @@ import Course from "./Course";
 import MentorSession from "./MentorSession";
 import InterviewCoach from "./InterviewCoach";
 import DailyPlanner from "./DailyPlanner";
-import ExploreHub from "./ExploreHub";
-import { ErrorBoundary } from "./ErrorBoundary";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -104,7 +101,7 @@ const appThemes: Array<{ id: ThemeName; name: string; color: string; description
   { id: "violet", name: "Violet", color: "#8066a3", description: "Soft purple" },
   { id: "ember", name: "Ember", color: "#be7457", description: "Warm clay" },
 ];
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor" | "explore";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -121,7 +118,6 @@ const viewPaths: Record<WorkspaceView, string> = {
   articles: "/articles",
   course: "/course",
   mentor: "/mentor",
-  explore: "/explore",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -166,15 +162,10 @@ function HomePage({
     let revertAnimations: (() => void) | undefined;
     void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
       if (cancelled || !pageRef.current) return;
-      const engine = gsapModule.gsap || (gsapModule as any).default || gsapModule;
-      const ScrollTrigger = triggerModule.ScrollTrigger || (triggerModule as any).default || triggerModule;
-      if (engine?.registerPlugin && ScrollTrigger) {
-        try { engine.registerPlugin(ScrollTrigger); } catch {}
-      }
-      if (!engine?.context) return;
+      const engine = gsapModule.gsap;
+      engine.registerPlugin(triggerModule.ScrollTrigger);
       const context = engine.context(() => {
-        const motion = engine.matchMedia ? engine.matchMedia() : null;
-        if (!motion) return;
+        const motion = engine.matchMedia();
         motion.add("(prefers-reduced-motion: no-preference)", () => {
           const intro = engine.timeline({ defaults: { ease: "power3.out" } });
           intro
@@ -999,56 +990,33 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function safeGetStorage(key: string, fallback: string = ""): string {
-  try {
-    return window.localStorage.getItem(key) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function safeSetStorage(key: string, value: string): void {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // In restricted iframe or private mode
-  }
-}
-
 function getPracticeStreak(practiceDays: string[]) {
-  try {
-    const dates = new Set((practiceDays || []).filter(Boolean));
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    let current = 0;
-    if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
-      const cursor = new Date(dates.has(localDateKey(today)) ? today : yesterday);
-      while (dates.has(localDateKey(cursor)) && current < 1000) {
-        current += 1;
-        cursor.setDate(cursor.getDate() - 1);
-      }
+  const dates = new Set(practiceDays);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  let current = 0;
+  if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
+    const cursor = dates.has(localDateKey(today)) ? today : yesterday;
+    while (dates.has(localDateKey(cursor))) {
+      current += 1;
+      cursor.setDate(cursor.getDate() - 1);
     }
-
-    let best = 0;
-    let run = 0;
-    let previous: Date | null = null;
-    for (const key of [...dates].sort()) {
-      if (!key || typeof key !== "string" || !key.includes("-")) continue;
-      const parts = key.split("-").map(Number);
-      if (parts.length !== 3 || parts.some(isNaN)) continue;
-      const [year, month, day] = parts;
-      const date = new Date(year, month - 1, day);
-      const expected = previous ? new Date(previous) : null;
-      expected?.setDate(expected.getDate() + 1);
-      run = expected && localDateKey(expected) === key ? run + 1 : 1;
-      best = Math.max(best, run);
-      previous = date;
-    }
-    return { current, best: Math.max(best, current) };
-  } catch {
-    return { current: 0, best: 0 };
   }
+
+  let best = 0;
+  let run = 0;
+  let previous: Date | null = null;
+  for (const key of [...dates].sort()) {
+    const [year, month, day] = key.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    const expected = previous ? new Date(previous) : null;
+    expected?.setDate(expected.getDate() + 1);
+    run = expected && localDateKey(expected) === key ? run + 1 : 1;
+    best = Math.max(best, run);
+    previous = date;
+  }
+  return { current, best };
 }
 
 type CallSignal = {
@@ -1357,15 +1325,6 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
 }
 
-const DEFAULT_COMMUNITY_PEERS: Array<{ userId: string; displayName: string }> = [
-  { userId: "usr_alex_chen", displayName: "Alex Chen" },
-  { userId: "usr_sophia_p", displayName: "Sophia Patel" },
-  { userId: "usr_priya_s", displayName: "Priya Sharma" },
-  { userId: "usr_marcus_v", displayName: "Marcus Vance" },
-  { userId: "usr_elena_r", displayName: "Elena Rostova" },
-  { userId: "usr_dev_k", displayName: "Dev Kumar" },
-];
-
 function PeerDirectory({
   userId,
   onNavigate,
@@ -1386,16 +1345,14 @@ function PeerDirectory({
       return;
     }
     try {
-      const saved = safeGetStorage(`codexsheet-following-${userId}`);
+      const saved = window.localStorage.getItem(`codexsheet-following-${userId}`);
       const parsed: unknown = saved ? JSON.parse(saved) : [];
       setFollowing(Array.isArray(parsed) ? parsed.filter((id: unknown): id is string => typeof id === "string") : []);
     } catch {
       setFollowing([]);
     }
-    const fallbackPeers = DEFAULT_COMMUNITY_PEERS.filter((p) => p.userId !== userId);
     if (!supabase) {
-      setPeers(fallbackPeers);
-      setError("");
+      setError("Connect Supabase to discover study peers.");
       return;
     }
     let cancelled = false;
@@ -1408,16 +1365,15 @@ function PeerDirectory({
       .limit(60)
       .then(({ data, error: loadError }) => {
         if (cancelled) return;
-        if (loadError || !data || data.length === 0) {
-          setPeers(fallbackPeers);
+        if (loadError) {
+          setError(`Could not load study peers. ${loadError.message}`);
         } else {
-          const loaded = data
+          setPeers((data ?? [])
             .filter((profile) => profile.user_id !== userId)
             .map((profile) => ({
               userId: profile.user_id,
-              displayName: profile.display_name?.trim() || `Learner ${(profile.user_id || "").slice(-5)}`,
-            }));
-          setPeers(loaded.length > 0 ? loaded : fallbackPeers);
+              displayName: profile.display_name?.trim() || `Learner ${profile.user_id.slice(-5)}`,
+            })));
         }
         setLoading(false);
       });
@@ -1430,7 +1386,7 @@ function PeerDirectory({
         ? current.filter((id) => id !== peerId)
         : [...current, peerId];
       if (userId) {
-        safeSetStorage(`codexsheet-following-${userId}`, JSON.stringify(next));
+        try { window.localStorage.setItem(`codexsheet-following-${userId}`, JSON.stringify(next)); } catch { /* Keep this session usable when browser storage is unavailable. */ }
       }
       return next;
     });
@@ -1499,66 +1455,43 @@ function App() {
     setClerkTokenGetter((options) => getToken(options));
     return () => setClerkTokenGetter(null);
   }, [getToken]);
-  const [progress, setProgress] = useState<ProgressMap>(() => {
-    try {
-      const raw = safeGetStorage("codexsheet-dsa-progress", "{}");
-      return (raw ? JSON.parse(raw) : {}) as ProgressMap;
-    } catch {
-      return {};
-    }
-  });
-  const [practiceDays, setPracticeDays] = useState<string[]>(() => {
-    try {
-      const raw = safeGetStorage("codexsheet-practice-days", "[]");
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [progress, setProgress] = useState<ProgressMap>(
+    () =>
+      JSON.parse(
+        localStorage.getItem("codexsheet-dsa-progress") ?? "{}",
+      ) as ProgressMap,
+  );
+  const [practiceDays, setPracticeDays] = useState<string[]>(
+    () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
+  );
   const practiceStreak = getPracticeStreak(practiceDays);
-
-  const today = new Date();
-  const potdIndex = Math.abs(
-    Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86_400_000))
-  ) % (beginnerPotd.length || 1);
-  const dailyChallenge = beginnerPotd[potdIndex] ?? beginnerPotd[0] ?? {
-    title: "Two Sum",
-    pattern: "Arrays & Hashing",
-    hint: "Try checking whether the matching number has appeared already.",
-  };
-  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title) ?? problems[0];
-
+  const potdIndex = Math.floor(new Date(`${localDateKey(new Date())}T00:00:00`).getTime() / 86_400_000) % beginnerPotd.length;
+  const dailyChallenge = beginnerPotd[potdIndex];
+  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title)!;
   const [calendarMonth, setCalendarMonth] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
   const [theme, setTheme] = useState<ThemeName>(() => {
-    const saved = safeGetStorage("codexsheet-theme", "tuf");
+    const saved = localStorage.getItem("codexsheet-theme");
     return appThemes.some((option) => option.id === saved) ? saved as ThemeName : "tuf";
   });
-  useEffect(() => { safeSetStorage("codexsheet-theme", theme); }, [theme]);
+  useEffect(() => { localStorage.setItem("codexsheet-theme", theme); }, [theme]);
   useEffect(() => {
     let cancelled = false;
     let revertMotion: (() => void) | undefined;
     if (activeView === "home") return;
     void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
       if (cancelled) return;
-      const gsap = gsapModule.gsap || (gsapModule as any).default || gsapModule;
-      const ScrollTrigger = triggerModule.ScrollTrigger || (triggerModule as any).default || triggerModule;
-      if (gsap?.registerPlugin && ScrollTrigger) {
-        try {
-          gsap.registerPlugin(ScrollTrigger);
-        } catch { /* Ignore plugin registration error */ }
-      }
+      const gsap = gsapModule.gsap;
+      gsap.registerPlugin(triggerModule.ScrollTrigger);
       const root = document.querySelector(".app-shell.is-workspace");
-      if (!root || !gsap?.context) return;
+      if (!root) return;
       const context = gsap.context(() => {
-        const motion = gsap.matchMedia ? gsap.matchMedia() : null;
-        if (!motion) return;
+        const motion = gsap.matchMedia();
         motion.add("(prefers-reduced-motion: no-preference)", () => {
           const heading = root.querySelector(".workspace-header");
           const welcome = root.querySelector(".dashboard-welcome");
@@ -1569,16 +1502,13 @@ function App() {
             ".calendar-card", ".chat-card", ".notebook-card", ".coach-card", ".articles-page",
             ".course-page", ".calls-page", ".mentor-page",
           ].join(","));
-          if (ScrollTrigger?.batch) {
-            ScrollTrigger.batch(revealTargets, {
-              start: "top 95%",
-              once: true,
-              onEnter: (elements: any) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
-                autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
-              }),
-            });
-            ScrollTrigger.refresh();
-          }
+          triggerModule.ScrollTrigger.batch(revealTargets, {
+            start: "top 91%",
+            once: true,
+            onEnter: (elements) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
+              autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
+            }),
+          });
         });
         return () => motion.revert();
       }, root);
@@ -1589,18 +1519,14 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editorProblemNumber, setEditorProblemNumber] = useState(1);
   const navigateToView = (view: WorkspaceView) => {
-    try {
-      const url = new URL(window.location.href);
-      url.pathname = viewPaths[view];
-      if (view !== "calls") {
-        url.searchParams.delete("room");
-        url.searchParams.delete("schedule");
-        url.searchParams.delete("call");
-      }
-      window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
-    } catch {
-      // In restricted iframe or origin mismatch
+    const url = new URL(window.location.href);
+    url.pathname = viewPaths[view];
+    if (view !== "calls") {
+      url.searchParams.delete("room");
+      url.searchParams.delete("schedule");
+      url.searchParams.delete("call");
     }
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
     window.scrollTo(0, 0);
   };
@@ -1610,55 +1536,19 @@ function App() {
   };
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
-    try {
-      const canonicalPath = viewPaths[viewFromLocation()];
-      if (window.location.pathname !== canonicalPath) {
-        window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
-      }
-    } catch {
-      // In restricted iframe or origin mismatch
+    const canonicalPath = viewPaths[viewFromLocation()];
+    if (window.location.pathname !== canonicalPath) {
+      window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
     }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      const target = event.target as HTMLElement;
-      if (!target.closest(".nav-more")) {
-        document.querySelectorAll<HTMLDetailsElement>(".nav-more[open]").forEach((el) => {
-          el.removeAttribute("open");
-        });
-      }
-      if (!target.closest(".theme-picker")) {
-        document.querySelectorAll<HTMLDetailsElement>(".theme-picker[open]").forEach((el) => {
-          el.removeAttribute("open");
-        });
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        document.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((el) => {
-          el.removeAttribute("open");
-        });
-      }
-    }
-
-    document.addEventListener("click", handleOutsideClick);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("click", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(() => {
-    try {
-      const saved = safeGetStorage("codexsheet-roadmap-preferences");
-      if (saved) return JSON.parse(saved) as RoadmapPreferences;
-    } catch {}
-    return { targetWeeks: 8, sessionsPerWeek: 5, focusPattern: "Build weak areas" };
-  });
+  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
+    () => JSON.parse(
+      localStorage.getItem("codexsheet-roadmap-preferences") ??
+        '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
+    ) as RoadmapPreferences,
+  );
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
@@ -1757,7 +1647,7 @@ function App() {
   const inProgress = Object.values(progress).filter(
     (item) => item.status === "In progress",
   ).length;
-  const percent = problems.length > 0 ? Math.round((solved / problems.length) * 100) : 0;
+  const percent = Math.round((solved / problems.length) * 100);
   const studyQueue = useMemo(
     () =>
       problems
@@ -1784,14 +1674,9 @@ function App() {
     [progress],
   );
   const weakestPattern = useMemo(
-    () =>
-      patternStats.length > 0
-        ? [...patternStats].sort((left, right) =>
-            (left.total > 0 && right.total > 0
-              ? left.completed / left.total - right.completed / right.total
-              : 0) || left.name.localeCompare(right.name),
-          )[0]
-        : null,
+    () => [...patternStats].sort((left, right) =>
+      (left.completed / left.total) - (right.completed / right.total) || left.name.localeCompare(right.name),
+    )[0],
     [patternStats],
   );
   const roadmapProblems = useMemo(() => {
@@ -2143,27 +2028,7 @@ function App() {
   }, [activeView, chatLoadedFor, chatMessages, user?.id]);
 
   async function savePersonalNote(note: PersonalNote) {
-    if (!user) return false;
-    if (!supabase) {
-      const savedAt = new Date().toISOString();
-      setPersonalNotes((current) => {
-        const next = current.map((item) =>
-          item.id === note.id
-            ? {
-                ...item,
-                savedTitle: note.title,
-                savedContent: note.content,
-                updatedAt: savedAt,
-              }
-            : item,
-        );
-        try {
-          localStorage.setItem("codexsheet-personal-notes", JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-      return true;
-    }
+    if (!user || !supabase) return false;
     const requestUserId = user.id;
     setNotesSaving(true);
     try {
@@ -2221,34 +2086,13 @@ function App() {
   }
 
   async function createPersonalNote() {
-    if (!user || creatingNote) return;
+    if (!user || !supabase || creatingNote) return;
     if (
       selectedNote &&
       (selectedNote.title !== selectedNote.savedTitle ||
         selectedNote.content !== selectedNote.savedContent) &&
       !(await savePersonalNote(selectedNote))
     ) return;
-
-    if (!supabase) {
-      const now = new Date().toISOString();
-      const newNote: PersonalNote = {
-        id: Date.now(),
-        title: "Untitled note",
-        content: "",
-        savedTitle: "Untitled note",
-        savedContent: "",
-        updatedAt: now,
-      };
-      setPersonalNotes((current) => {
-        const next = [newNote, ...current];
-        try {
-          localStorage.setItem("codexsheet-personal-notes", JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-      setSelectedNoteId(newNote.id);
-      return;
-    }
 
     setCreatingNote(true);
     setNotesError("");
@@ -2292,41 +2136,7 @@ function App() {
     setNotesError("");
     if (!isLoaded || !user) return;
     if (!supabase) {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem("codexsheet-personal-notes") ?? "[]",
-        ) as PersonalNote[];
-        const initialNotes =
-          saved.length > 0
-            ? saved
-            : [
-                {
-                  id: 1,
-                  title: "Two Sum · Pattern Insight",
-                  content:
-                    "Use a hash map to trade space for time O(n). Store value -> index as you scan. Always check if complement exists before inserting current number.",
-                  savedTitle: "Two Sum · Pattern Insight",
-                  savedContent:
-                    "Use a hash map to trade space for time O(n). Store value -> index as you scan. Always check if complement exists before inserting current number.",
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  id: 2,
-                  title: "Sliding Window Checklist",
-                  content:
-                    "1. Expand right boundary until condition is violated.\n2. Shrink left boundary until window is valid again.\n3. Keep updating the best result.",
-                  savedTitle: "Sliding Window Checklist",
-                  savedContent:
-                    "1. Expand right boundary until condition is violated.\n2. Shrink left boundary until window is valid again.\n3. Keep updating the best result.",
-                  updatedAt: new Date().toISOString(),
-                },
-              ];
-        setPersonalNotes(initialNotes);
-        setSelectedNoteId(initialNotes[0]?.id ?? null);
-        setNotesLoadedFor(user.id);
-      } catch {
-        setPersonalNotes([]);
-      }
+      setNotesError("Connect Supabase to load your private notebook.");
       return;
     }
 
@@ -2394,21 +2204,23 @@ function App() {
   }, [activeView, chatMessages, chatSending]);
 
   useEffect(() => {
-    safeSetStorage("codexsheet-practice-days", JSON.stringify(practiceDays));
+    localStorage.setItem("codexsheet-practice-days", JSON.stringify(practiceDays));
   }, [practiceDays]);
 
   useEffect(() => {
-    safeSetStorage("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
+    localStorage.setItem("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
   }, [roadmapPreferences]);
 
+
+
   useEffect(() => {
-    safeSetStorage("codexsheet-dsa-progress", JSON.stringify(progress));
+    localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
     if (!isLoaded) {
       setNotice("Loading account");
       return;
     }
     if (!supabase || !user) {
-      setNotice(user ? "Saved locally" : "Sign in to sync");
+      setNotice(user ? "Supabase not configured" : "Sign in to sync");
       return;
     }
     const changes = Object.entries(progress).slice(-1);
@@ -2427,7 +2239,7 @@ function App() {
         { onConflict: "user_id,problem_number" },
       )
       .then(({ error }) =>
-        setNotice(error ? "Saved locally" : "Synced to cloud"),
+        setNotice(error ? "Saved locally · sync failed" : "Synced to Supabase"),
       );
   }, [isLoaded, progress, user]);
 
@@ -2535,29 +2347,11 @@ function App() {
           <summary
             aria-label="Explore more tools"
             title="Explore more tools"
-            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" || activeView === "explore" ? "active" : ""}
+            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}
           >
             <span className="nav-label">Explore</span><ChevronDown size={14} />
           </summary>
           <div className="nav-more-menu">
-            <div className="nav-menu-group" style={{ gridColumn: "1 / -1", borderBottom: "1px solid var(--c-border)", paddingBottom: "6px", marginBottom: "4px" }}>
-              <button
-                className={activeView === "explore" ? "active" : ""}
-                aria-pressed={activeView === "explore"}
-                onClick={() => navigateToView("explore")}
-                style={{
-                  background: activeView === "explore" ? "var(--c-surface-3)" : "rgba(99,102,241,0.1)",
-                  color: "var(--c-accent-2)",
-                  fontWeight: 600,
-                  justifyContent: "space-between",
-                }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
-                  <Compass size={16} /> Explore All Tools
-                </span>
-                <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "10px", background: "var(--c-accent-bg)" }}>14 tools</span>
-              </button>
-            </div>
             <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
               <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
@@ -2621,15 +2415,15 @@ function App() {
                       ? "Code editor"
                     : activeView === "calendar"
                       ? "Calendar"
-                    : activeView === "roadmap"
-                      ? "Roadmap"
+                      : activeView === "roadmap"
+                        ? "Roadmap"
                     : activeView === "chat"
                       ? "Group chat"
                         : activeView === "notes"
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : activeView === "explore" ? "Explore directory" : "AI coach"}
+                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -2649,8 +2443,8 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : activeView === "explore" ? "Explore directory" : "AI study coach"}{" "}
-              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : activeView === "explore" ? "14 TOOLS" : `DSA ${problems.length}`}</span>
+                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : "AI study coach"}{" "}
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : `DSA ${problems.length}`}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2669,7 +2463,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : activeView === "explore" ? "Discover all learning resources, practice environments, study tools, and career support." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
@@ -2689,19 +2483,10 @@ function App() {
       />}
       {activeView === "articles" && <ArticlesPage />}
       {activeView === "companies" && <CompanyProblems />}
-      {activeView === "editor" && (
-        <Editor
-          initialProblemNumber={editorProblemNumber}
-          problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))}
-          onStatusChange={setProblemStatus}
-          progress={progress}
-        />
-      )}
+      {activeView === "editor" && <Editor initialProblemNumber={editorProblemNumber} problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "mentor" && <MentorSession />}
-      {activeView === "explore" && <ExploreHub onNavigate={navigateToView} />}
       {activeView === "dashboard" && (
-        <ErrorBoundary fallbackTitle="Could not load your progress dashboard" onReset={() => setActiveView("dashboard")}>
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
             <div className="dashboard-welcome-copy">
@@ -2873,7 +2658,6 @@ function App() {
           </section>
           <PeerDirectory userId={user?.id ?? null} onNavigate={navigateToView} />
         </>
-        </ErrorBoundary>
       )}
       {activeView === "roadmap" && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
@@ -3359,7 +3143,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "course" && <Course onOpenProblem={openProblemInEditor} />}
+      {activeView === "course" && <Course />}
       {activeView === "problems" && <div className="prb-split">
 
         {/* ═══════════ LEFT: Progress Panel ═══════════ */}
@@ -3472,7 +3256,7 @@ function App() {
               />
               {query && <button type="button" className="prb-clear" onClick={() => setQuery("")} aria-label="Clear">✕</button>}
             </label>
-            <div className="prb-filter-selects">
+            <div className="prb-filter-chips">
               <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                 <option>All levels</option>
                 <option>Easy</option>
