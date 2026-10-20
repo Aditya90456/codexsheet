@@ -1696,6 +1696,17 @@ tbody tr:hover { background: rgba(255,255,255,.03); }
 .roadmap-week header h3 { font-size: 14px; font-weight: 700; color: var(--c-ink); letter-spacing: -.03em; }
 .roadmap-week-count { font: 600 11px 'DM Mono', monospace; color: var(--c-ink-3); flex: 0 0 auto; margin-top: 3px; }
 .roadmap-task-list { display: grid; padding: 4px 26px 16px; gap: 2px; }
+.roadmap-stage { padding: 12px 26px 0; }
+.roadmap-stage .roadmap-task-list { padding: 4px 0 12px; }
+.roadmap-stage-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.roadmap-stage-head strong { font-size: 13px; font-weight: 700; color: var(--c-ink); }
+.roadmap-stage-head small { margin-left: auto; font: 600 11px 'DM Mono', monospace; color: var(--c-ink-3); }
+.roadmap-stage-step { font: 700 10px 'DM Mono', monospace; color: var(--c-ink-4); }
+.roadmap-stage-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font: 700 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--c-accent-2); background: var(--c-surface-3); }
+.roadmap-stage-badge.done { color: var(--c-easy); background: rgba(52,211,153,.1); }
+.roadmap-stage.current .roadmap-stage-step { color: var(--c-accent-2); }
+.roadmap-stage.done .roadmap-task-list { opacity: .7; }
+.roadmap-stage-track { display: block; margin-bottom: 4px; }
 .roadmap-task {
   display: flex;
   align-items: flex-start;

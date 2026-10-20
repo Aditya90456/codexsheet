@@ -91,7 +91,6 @@ type PersonalNote = {
 type RoadmapPreferences = {
   targetWeeks: number;
   sessionsPerWeek: number;
-  focusPattern: string;
 };
 type ThemeName = "tuf" | "moss" | "ocean" | "violet" | "ember";
 const appThemes: Array<{ id: ThemeName; name: string; color: string; description: string }> = [
@@ -1546,7 +1545,7 @@ function App() {
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
-        '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
+        '{"targetWeeks":8,"sessionsPerWeek":5}',
     ) as RoadmapPreferences,
   );
   const [pattern, setPattern] = useState("All patterns");
@@ -1673,45 +1672,43 @@ function App() {
         .filter((item) => item.total > 0),
     [progress],
   );
-  const weakestPattern = useMemo(
-    () => [...patternStats].sort((left, right) =>
-      (left.completed / left.total) - (right.completed / right.total) || left.name.localeCompare(right.name),
-    )[0],
-    [patternStats],
-  );
-  const roadmapProblems = useMemo(() => {
-    const completionByPattern = new Map(
-      patternStats.map((item) => [item.name, item.completed / item.total]),
-    );
-    return problems
-      .filter((problem) => progress[problem.number]?.status !== "Solved")
-      .sort((left, right) => {
-        const leftInProgress = progress[left.number]?.status === "In progress";
-        const rightInProgress = progress[right.number]?.status === "In progress";
-        if (leftInProgress !== rightInProgress) return Number(rightInProgress) - Number(leftInProgress);
-        if (roadmapPreferences.focusPattern === "Build weak areas") {
-          const weaknessDifference =
-            (completionByPattern.get(left.pattern) ?? 0) -
-            (completionByPattern.get(right.pattern) ?? 0);
-          if (weaknessDifference !== 0) return weaknessDifference;
-        } else if (roadmapPreferences.focusPattern !== "All patterns") {
-          const focusDifference =
-            Number(right.pattern === roadmapPreferences.focusPattern) -
-            Number(left.pattern === roadmapPreferences.focusPattern);
-          if (focusDifference !== 0) return focusDifference;
-        }
-        return left.number - right.number;
-      });
-  }, [patternStats, progress, roadmapPreferences.focusPattern]);
+  const roadmapStages = useMemo(() => {
+    const difficultyRank = { Easy: 0, Medium: 1, Hard: 2 } as const;
+    return patterns
+      .map((name) => {
+        const stageProblems = problems
+          .filter((problem) => problem.pattern === name)
+          .sort((left, right) =>
+            difficultyRank[left.difficulty] - difficultyRank[right.difficulty] || left.number - right.number,
+          );
+        const completed = stageProblems.filter((problem) => progress[problem.number]?.status === "Solved").length;
+        return { name, problems: stageProblems, completed, remaining: stageProblems.length - completed };
+      })
+      .filter((stage) => stage.problems.length > 0)
+      .map((stage, index) => ({ ...stage, step: index + 1 }));
+  }, [progress]);
+  const currentStage = roadmapStages.find((stage) => stage.remaining > 0);
+  const nextStage = currentStage ? roadmapStages.find((stage) => stage.step > currentStage.step && stage.remaining > 0) : undefined;
+  const roadmapRemaining = roadmapStages.reduce((sum, stage) => sum + stage.remaining, 0);
   const roadmapWeeks = useMemo(() => {
-    if (roadmapProblems.length === 0) return [];
-    const weekCount = Math.min(roadmapPreferences.targetWeeks, roadmapProblems.length);
-    const problemsPerWeek = Math.ceil(roadmapProblems.length / weekCount);
-    return Array.from({ length: weekCount }, (_, index) => ({
-      number: index + 1,
-      problems: roadmapProblems.slice(index * problemsPerWeek, (index + 1) * problemsPerWeek),
-    }));
-  }, [roadmapPreferences.targetWeeks, roadmapProblems]);
+    if (roadmapRemaining === 0) return [];
+    const { targetWeeks } = roadmapPreferences;
+    const perWeek = Math.ceil(roadmapRemaining / targetWeeks);
+    const weekOf = (position: number) => Math.min(targetWeeks, Math.floor(position / perWeek) + 1);
+    const weeks: Array<{ start: number; end: number; stages: typeof roadmapStages }> = [];
+    let solvedBefore = 0;
+    for (const stage of roadmapStages) {
+      const week = weekOf(solvedBefore + stage.remaining / 2);
+      const last = weeks[weeks.length - 1];
+      if (last && last.start >= week) last.stages.push(stage);
+      else weeks.push({ start: weeks.length === 0 ? 1 : week, end: week, stages: [stage] });
+      solvedBefore += stage.remaining;
+    }
+    weeks.forEach((week, index) => {
+      week.end = index + 1 < weeks.length ? weeks[index + 1].start - 1 : targetWeeks;
+    });
+    return weeks;
+  }, [roadmapPreferences, roadmapRemaining, roadmapStages]);
   function getDisplayName(userId: string) {
     if (userId === user?.id) return "You";
     const profile = profileByUserId[userId];
@@ -2456,7 +2453,7 @@ function App() {
                   : activeView === "calendar"
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
-                      ? "A study plan shaped around your pace and the patterns you want to master."
+                      ? "Work through every DSA pattern in order, one stage at a time."
                   : activeView === "chat"
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
@@ -2660,13 +2657,13 @@ function App() {
         </>
       )}
       {activeView === "roadmap" && (
-        <section className="roadmap-card" aria-label="Customized DSA roadmap">
+        <section className="roadmap-card" aria-label="Pattern-wise DSA roadmap">
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
             <div>
-              <span className="roadmap-eyebrow">ADAPTIVE PREPARATION</span>
+              <span className="roadmap-eyebrow">PATTERN-WISE PREPARATION</span>
               <h2>Your DSA roadmap</h2>
-              <p>A focused plan built around your progress and weekly availability.</p>
+              <p>Master one pattern at a time, in order, from easy to hard.</p>
             </div>
           </header>
           <div className="roadmap-controls">
@@ -2699,104 +2696,95 @@ function App() {
                 <option value={7}>7 days</option>
               </select>
             </label>
-            <label>
-              <span>Focus area</span>
-              <select
-                value={roadmapPreferences.focusPattern}
-                onChange={(event) => setRoadmapPreferences((current) => ({
-                  ...current,
-                  focusPattern: event.target.value,
-                }))}
-              >
-                <option>Build weak areas</option>
-                <option>All patterns</option>
-                {patterns.map((item) => <option key={item}>{item}</option>)}
-              </select>
-            </label>
           </div>
           <div className="roadmap-insight" aria-live="polite">
             <div className="roadmap-insight-mark"><Target size={17} /></div>
             <div className="roadmap-insight-copy">
-              <span className="roadmap-insight-label">YOUR NEXT FOCUS</span>
-            {weakestPattern ? (
-              <p><strong>{weakestPattern.name}</strong> is your least-practiced pattern ({weakestPattern.completed} of {weakestPattern.total} solved). {roadmapPreferences.focusPattern === "Build weak areas" ? "It is prioritized in your plan." : "Choose Build weak areas to prioritize it."}</p>
-            ) : (
-              <p>As you solve problems, the plan will identify patterns where you need more practice and adjust the order.</p>
-            )}
+              <span className="roadmap-insight-label">YOUR CURRENT PATTERN</span>
+              {currentStage ? (
+                <p><strong>{String(currentStage.step).padStart(2, "0")} · {currentStage.name}</strong>: {currentStage.completed} of {currentStage.problems.length} solved. {nextStage ? `Finish it, then move on to ${nextStage.name}.` : "This is the last pattern left."}</p>
+              ) : (
+                <p>Every pattern is complete.</p>
+              )}
             </div>
           </div>
           <div className="roadmap-load" aria-live="polite">
-            <div className="roadmap-stat"><strong>{roadmapProblems.length}</strong><span>problems remaining</span></div>
-            <div className="roadmap-stat"><strong>{Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong><span>problems per study day</span></div>
-            <div className="roadmap-stat"><strong>{roadmapPreferences.sessionsPerWeek}</strong><span>study days each week</span></div>
+            <div className="roadmap-stat"><strong>{roadmapStages.filter((stage) => stage.remaining === 0).length}/{roadmapStages.length}</strong><span>patterns mastered</span></div>
+            <div className="roadmap-stat"><strong>{roadmapRemaining}</strong><span>problems remaining</span></div>
+            <div className="roadmap-stat"><strong>{Math.ceil(roadmapRemaining / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong><span>problems per study day</span></div>
           </div>
           {roadmapWeeks.length === 0 ? (
             <div className="roadmap-complete">
               <Check size={20} />
               <strong>You’ve completed the roadmap.</strong>
-              <p>All {problems.length} problems are marked solved.</p>
+              <p>All {problems.length} problems across {roadmapStages.length} patterns are marked solved.</p>
             </div>
           ) : (
             <div className="roadmap-weeks">
               {roadmapWeeks.map((week) => (
-                <article className="roadmap-week" key={week.number}>
+                <article className="roadmap-week" key={week.start}>
                   <header>
                     <div>
-                      <span className="roadmap-week-label">WEEK {String(week.number).padStart(2, "0")}</span>
-                      <h3>
-                        {week.problems.some((problem) => progress[problem.number]?.status === "In progress")
-                          ? "Continue and build momentum"
-                          : roadmapPreferences.focusPattern === "Build weak areas"
-                            ? "Strengthen your foundations"
-                            : roadmapPreferences.focusPattern === "All patterns"
-                              ? "Keep a balanced pace"
-                              : `Focus on ${roadmapPreferences.focusPattern}`}
-                      </h3>
+                      <span className="roadmap-week-label">
+                        {week.end > week.start
+                          ? `WEEKS ${String(week.start).padStart(2, "0")}–${String(week.end).padStart(2, "0")}`
+                          : `WEEK ${String(week.start).padStart(2, "0")}`}
+                      </span>
+                      <h3>{week.stages.map((stage) => stage.name).join(" · ")}</h3>
                     </div>
-                    <span className="roadmap-week-count">{week.problems.length} problems</span>
+                    <span className="roadmap-week-count">{week.stages.reduce((sum, stage) => sum + stage.remaining, 0)} to solve</span>
                   </header>
-                  <div className="roadmap-task-list">
-                    {week.problems.map((problem) => {
-                      const current = progress[problem.number]?.status ?? "Todo";
-                      const problemPatternStats = patternStats.find((item) => item.name === problem.pattern);
-                      const reason = current === "In progress"
-                        ? "Continue where you left off"
-                        : roadmapPreferences.focusPattern !== "All patterns" && roadmapPreferences.focusPattern !== "Build weak areas"
-                          ? `Matches your ${problem.pattern} focus`
-                          : problem.pattern === weakestPattern?.name
-                            ? "Targets your least-practiced pattern"
-                            : `${problemPatternStats?.completed ?? 0}/${problemPatternStats?.total ?? 0} in this pattern solved`;
-                      return (
-                        <div className="roadmap-task" key={problem.number}>
-                          <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
-                          <div className="roadmap-task-info">
-                            <a
-                              className="roadmap-problem-link"
-                              href={problem.link}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <strong>{problem.title}</strong>
-                              <ExternalLink size={12} />
-                            </a>
-                            <span>{problem.pattern} · {problem.difficulty}</span>
-                            <span className="roadmap-reason">{reason}</span>
-                            <button type="button" className="roadmap-editor-button" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={13} /> Solve in editor</button>
-                          </div>
-                          <select
-                            className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
-                            aria-label={`Status for ${problem.title}`}
-                            value={current}
-                            onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
-                          >
-                            <option>Todo</option>
-                            <option>In progress</option>
-                            <option>Solved</option>
-                          </select>
+                  {week.stages.map((stage) => {
+                    const isCurrent = stage === currentStage;
+                    const isDone = stage.remaining === 0;
+                    return (
+                      <div className={`roadmap-stage${isCurrent ? " current" : ""}${isDone ? " done" : ""}`} key={stage.name}>
+                        <div className="roadmap-stage-head">
+                          <span className="roadmap-stage-step">{String(stage.step).padStart(2, "0")}</span>
+                          <strong>{stage.name}</strong>
+                          {isCurrent && <span className="roadmap-stage-badge">Current</span>}
+                          {isDone && <span className="roadmap-stage-badge done"><Check size={11} /> Mastered</span>}
+                          <small>{stage.completed}/{stage.problems.length}</small>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <span className="pattern-track roadmap-stage-track">
+                          <i style={{ width: `${Math.round((stage.completed / stage.problems.length) * 100)}%` }} />
+                        </span>
+                        <div className="roadmap-task-list">
+                          {stage.problems.map((problem) => {
+                            const current = progress[problem.number]?.status ?? "Todo";
+                            return (
+                              <div className="roadmap-task" key={problem.number}>
+                                <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
+                                <div className="roadmap-task-info">
+                                  <a
+                                    className="roadmap-problem-link"
+                                    href={problem.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <strong>{problem.title}</strong>
+                                    <ExternalLink size={12} />
+                                  </a>
+                                  <span>{problem.difficulty}</span>
+                                  <button type="button" className="roadmap-editor-button" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={13} /> Solve in editor</button>
+                                </div>
+                                <select
+                                  className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
+                                  aria-label={`Status for ${problem.title}`}
+                                  value={current}
+                                  onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
+                                >
+                                  <option>Todo</option>
+                                  <option>In progress</option>
+                                  <option>Solved</option>
+                                </select>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </article>
               ))}
             </div>
