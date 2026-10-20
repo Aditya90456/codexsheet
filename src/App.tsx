@@ -53,6 +53,8 @@ import {
   RotateCcw,
   CodeXml,
   Palette,
+  Compass,
+  GraduationCap,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -1518,6 +1520,30 @@ function App() {
   }, [activeView]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [editorProblemNumber, setEditorProblemNumber] = useState(1);
+  const [expandedRoadmapWeek, setExpandedRoadmapWeek] = useState(1);
+  const exploreMenuRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    function closeExploreMenu() {
+      const menu = exploreMenuRef.current;
+      if (menu?.open) menu.open = false;
+    }
+    function onPointerDown(event: MouseEvent) {
+      const menu = exploreMenuRef.current;
+      if (!menu?.open) return;
+      if (event.target instanceof Node && !menu.contains(event.target)) closeExploreMenu();
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeExploreMenu();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
@@ -1712,6 +1738,21 @@ function App() {
       problems: roadmapProblems.slice(index * problemsPerWeek, (index + 1) * problemsPerWeek),
     }));
   }, [roadmapPreferences.targetWeeks, roadmapProblems]);
+  const roadmapSolvedCount = useMemo(
+    () => problems.filter((problem) => progress[problem.number]?.status === "Solved").length,
+    [problems, progress],
+  );
+  const roadmapPercent = problems.length === 0 ? 0 : Math.round((roadmapSolvedCount / problems.length) * 100);
+  const problemsPerStudyDay = Math.max(
+    1,
+    Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek)),
+  );
+  useEffect(() => {
+    if (roadmapWeeks.length === 0) return;
+    setExpandedRoadmapWeek((current) =>
+      roadmapWeeks.some((week) => week.number === current) ? current : (roadmapWeeks[0]?.number ?? 1),
+    );
+  }, [roadmapWeeks]);
   function getDisplayName(userId: string) {
     if (userId === user?.id) return "You";
     const profile = profileByUserId[userId];
@@ -2335,12 +2376,26 @@ function App() {
           </button>
         </nav>
         <details
+          ref={exploreMenuRef}
           className="nav-more"
+          onToggle={(event) => {
+            const details = event.currentTarget;
+            const menu = details.querySelector(".nav-more-menu");
+            if (!(menu instanceof HTMLElement)) return;
+            if (!details.open) {
+              menu.classList.remove("is-flip");
+              return;
+            }
+            // Measure after paint so absolute layout is ready
+            requestAnimationFrame(() => {
+              const rect = menu.getBoundingClientRect();
+              const overflowRight = rect.right > window.innerWidth - 12;
+              menu.classList.toggle("is-flip", overflowRight);
+            });
+          }}
           onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => {
             const target = event.target as HTMLElement;
-            // close theme picker when opening this dropdown
             if (target.closest("summary")) document.querySelector(".theme-picker")?.removeAttribute("open");
-            // close this dropdown only when a menu item button (not the summary) is clicked
             if (target.closest(".nav-more-menu button")) event.currentTarget.open = false;
           }}
         >
@@ -2349,26 +2404,32 @@ function App() {
             title="Explore more tools"
             className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}
           >
-            <span className="nav-label">Explore</span><ChevronDown size={14} />
+            <Compass size={16} className="nav-more-icon" aria-hidden="true" />
+            <span className="nav-label">Explore</span>
+            <ChevronDown size={14} className="nav-more-chevron" />
           </summary>
-          <div className="nav-more-menu">
-            <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
-              <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
-              <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
+          <div className="nav-more-menu" role="menu" aria-label="Explore more tools">
+            <div className="nav-menu-group" role="group" aria-label="Learn">
+              <span className="nav-menu-label">LEARN</span>
+              <button type="button" role="menuitem" className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
+              <button type="button" role="menuitem" className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
             </div>
-            <div className="nav-menu-group"><span className="nav-menu-label">STUDY TOOLS</span>
-              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
-              <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
-              <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
+            <div className="nav-menu-group" role="group" aria-label="Study tools">
+              <span className="nav-menu-label">STUDY TOOLS</span>
+              <button type="button" role="menuitem" className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
+              <button type="button" role="menuitem" className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
+              <button type="button" role="menuitem" className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
             </div>
-            <div className="nav-menu-group"><span className="nav-menu-label">COMMUNITY</span>
-              <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
-              <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
-              <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-              <button className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><CalendarDays size={16} /> Mentor session</button>
+            <div className="nav-menu-group" role="group" aria-label="Community">
+              <span className="nav-menu-label">COMMUNITY</span>
+              <button type="button" role="menuitem" className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Company problems</button>
+              <button type="button" role="menuitem" className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
+              <button type="button" role="menuitem" className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
+              <button type="button" role="menuitem" className={activeView === "mentor" ? "active" : ""} aria-pressed={activeView === "mentor"} onClick={() => navigateToView("mentor")}><GraduationCap size={16} /> Mentor session</button>
             </div>
-            <div className="nav-menu-group"><span className="nav-menu-label">CAREER</span>
-              <button onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Job search</button>
+            <div className="nav-menu-group" role="group" aria-label="Career">
+              <span className="nav-menu-label">CAREER</span>
+              <button type="button" role="menuitem" onClick={() => { navigateToView("home"); window.history.replaceState(null, "", "/#home-jobs"); window.setTimeout(() => document.getElementById("home-jobs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }}><Briefcase size={16} /> Job search</button>
             </div>
           </div>
         </details>
@@ -2663,12 +2724,20 @@ function App() {
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
-            <div>
+            <div className="roadmap-heading-copy">
               <span className="roadmap-eyebrow">ADAPTIVE PREPARATION</span>
               <h2>Your DSA roadmap</h2>
-              <p>A focused plan built around your progress and weekly availability.</p>
+              <p>A focused weekly plan built around your pace, progress, and weak patterns.</p>
+            </div>
+            <div className="roadmap-heading-progress" aria-label={`${roadmapPercent}% of sheet completed`}>
+              <strong>{roadmapPercent}%</strong>
+              <span>{roadmapSolvedCount}/{problems.length} solved</span>
+              <div className="roadmap-progress-track" aria-hidden="true">
+                <i style={{ width: `${roadmapPercent}%` }} />
+              </div>
             </div>
           </header>
+
           <div className="roadmap-controls">
             <label>
               <span>Finish in</span>
@@ -2686,7 +2755,7 @@ function App() {
               </select>
             </label>
             <label>
-              <span>Study days each week</span>
+              <span>Study days / week</span>
               <select
                 value={roadmapPreferences.sessionsPerWeek}
                 onChange={(event) => setRoadmapPreferences((current) => ({
@@ -2699,7 +2768,7 @@ function App() {
                 <option value={7}>7 days</option>
               </select>
             </label>
-            <label>
+            <label className="roadmap-focus-control">
               <span>Focus area</span>
               <select
                 value={roadmapPreferences.focusPattern}
@@ -2714,92 +2783,186 @@ function App() {
               </select>
             </label>
           </div>
-          <div className="roadmap-insight" aria-live="polite">
-            <div className="roadmap-insight-mark"><Target size={17} /></div>
-            <div className="roadmap-insight-copy">
-              <span className="roadmap-insight-label">YOUR NEXT FOCUS</span>
-            {weakestPattern ? (
-              <p><strong>{weakestPattern.name}</strong> is your least-practiced pattern ({weakestPattern.completed} of {weakestPattern.total} solved). {roadmapPreferences.focusPattern === "Build weak areas" ? "It is prioritized in your plan." : "Choose Build weak areas to prioritize it."}</p>
-            ) : (
-              <p>As you solve problems, the plan will identify patterns where you need more practice and adjust the order.</p>
-            )}
+
+          <div className="roadmap-overview">
+            <div className="roadmap-insight" aria-live="polite">
+              <div className="roadmap-insight-mark"><Target size={17} /></div>
+              <div className="roadmap-insight-copy">
+                <span className="roadmap-insight-label">YOUR NEXT FOCUS</span>
+                {weakestPattern ? (
+                  <p>
+                    <strong>{weakestPattern.name}</strong> is your least-practiced pattern
+                    ({weakestPattern.completed} of {weakestPattern.total} solved).{" "}
+                    {roadmapPreferences.focusPattern === "Build weak areas"
+                      ? "It is prioritized in your plan."
+                      : "Choose Build weak areas to prioritize it."}
+                  </p>
+                ) : (
+                  <p>As you solve problems, the plan will identify patterns where you need more practice and adjust the order.</p>
+                )}
+              </div>
+            </div>
+            <div className="roadmap-load" aria-live="polite">
+              <div className="roadmap-stat">
+                <strong>{roadmapProblems.length}</strong>
+                <span>remaining</span>
+              </div>
+              <div className="roadmap-stat">
+                <strong>{problemsPerStudyDay}</strong>
+                <span>per study day</span>
+              </div>
+              <div className="roadmap-stat">
+                <strong>{roadmapPreferences.sessionsPerWeek}</strong>
+                <span>days / week</span>
+              </div>
+              <div className="roadmap-stat">
+                <strong>{roadmapWeeks.length || roadmapPreferences.targetWeeks}</strong>
+                <span>week plan</span>
+              </div>
             </div>
           </div>
-          <div className="roadmap-load" aria-live="polite">
-            <div className="roadmap-stat"><strong>{roadmapProblems.length}</strong><span>problems remaining</span></div>
-            <div className="roadmap-stat"><strong>{Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong><span>problems per study day</span></div>
-            <div className="roadmap-stat"><strong>{roadmapPreferences.sessionsPerWeek}</strong><span>study days each week</span></div>
-          </div>
+
           {roadmapWeeks.length === 0 ? (
             <div className="roadmap-complete">
-              <Check size={20} />
+              <Check size={22} />
               <strong>You’ve completed the roadmap.</strong>
-              <p>All {problems.length} problems are marked solved.</p>
+              <p>All {problems.length} problems are marked solved. Keep revising patterns that still feel shaky.</p>
             </div>
           ) : (
-            <div className="roadmap-weeks">
-              {roadmapWeeks.map((week) => (
-                <article className="roadmap-week" key={week.number}>
-                  <header>
-                    <div>
-                      <span className="roadmap-week-label">WEEK {String(week.number).padStart(2, "0")}</span>
-                      <h3>
-                        {week.problems.some((problem) => progress[problem.number]?.status === "In progress")
-                          ? "Continue and build momentum"
-                          : roadmapPreferences.focusPattern === "Build weak areas"
-                            ? "Strengthen your foundations"
-                            : roadmapPreferences.focusPattern === "All patterns"
-                              ? "Keep a balanced pace"
-                              : `Focus on ${roadmapPreferences.focusPattern}`}
-                      </h3>
-                    </div>
-                    <span className="roadmap-week-count">{week.problems.length} problems</span>
-                  </header>
-                  <div className="roadmap-task-list">
-                    {week.problems.map((problem) => {
-                      const current = progress[problem.number]?.status ?? "Todo";
-                      const problemPatternStats = patternStats.find((item) => item.name === problem.pattern);
-                      const reason = current === "In progress"
-                        ? "Continue where you left off"
-                        : roadmapPreferences.focusPattern !== "All patterns" && roadmapPreferences.focusPattern !== "Build weak areas"
-                          ? `Matches your ${problem.pattern} focus`
-                          : problem.pattern === weakestPattern?.name
-                            ? "Targets your least-practiced pattern"
-                            : `${problemPatternStats?.completed ?? 0}/${problemPatternStats?.total ?? 0} in this pattern solved`;
-                      return (
-                        <div className="roadmap-task" key={problem.number}>
-                          <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
-                          <div className="roadmap-task-info">
-                            <a
-                              className="roadmap-problem-link"
-                              href={problem.link}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <strong>{problem.title}</strong>
-                              <ExternalLink size={12} />
-                            </a>
-                            <span>{problem.pattern} · {problem.difficulty}</span>
-                            <span className="roadmap-reason">{reason}</span>
-                            <button type="button" className="roadmap-editor-button" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={13} /> Solve in editor</button>
-                          </div>
-                          <select
-                            className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
-                            aria-label={`Status for ${problem.title}`}
-                            value={current}
-                            onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
-                          >
-                            <option>Todo</option>
-                            <option>In progress</option>
-                            <option>Solved</option>
-                          </select>
+            <>
+              <nav className="roadmap-timeline" aria-label="Roadmap weeks">
+                {roadmapWeeks.map((week) => {
+                  const inProgressCount = week.problems.filter(
+                    (problem) => progress[problem.number]?.status === "In progress",
+                  ).length;
+                  const isExpanded = expandedRoadmapWeek === week.number;
+                  return (
+                    <button
+                      key={week.number}
+                      type="button"
+                      className={`roadmap-timeline-week${isExpanded ? " is-active" : ""}${inProgressCount > 0 ? " has-progress" : ""}`}
+                      aria-pressed={isExpanded}
+                      onClick={() => setExpandedRoadmapWeek(week.number)}
+                    >
+                      <span className="roadmap-timeline-index">W{String(week.number).padStart(2, "0")}</span>
+                      <strong>{week.problems.length}</strong>
+                      <small>{inProgressCount > 0 ? `${inProgressCount} active` : "queued"}</small>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              <div className="roadmap-weeks">
+                {roadmapWeeks.map((week) => {
+                  const isExpanded = expandedRoadmapWeek === week.number;
+                  const inProgressCount = week.problems.filter(
+                    (problem) => progress[problem.number]?.status === "In progress",
+                  ).length;
+                  const hasActive = week.problems.some((problem) => progress[problem.number]?.status === "In progress");
+                  const focusTitles =
+                    roadmapPreferences.focusPattern === "Build weak areas"
+                      ? ["Strengthen weak patterns", "Close gaps early", "Rebuild confidence", "Stabilize foundations"]
+                      : roadmapPreferences.focusPattern === "All patterns"
+                        ? ["Build momentum", "Stay balanced", "Deepen coverage", "Finish strong"]
+                        : [
+                            `Start with ${roadmapPreferences.focusPattern}`,
+                            `Drill ${roadmapPreferences.focusPattern}`,
+                            `Apply ${roadmapPreferences.focusPattern}`,
+                            `Master ${roadmapPreferences.focusPattern}`,
+                          ];
+                  const weekTitle = hasActive
+                    ? "Continue and build momentum"
+                    : focusTitles[(week.number - 1) % focusTitles.length];
+                  const weekPatterns = [...new Set(week.problems.map((problem) => problem.pattern))].slice(0, 4);
+                  return (
+                    <article
+                      className={`roadmap-week${isExpanded ? " is-open" : ""}`}
+                      key={week.number}
+                    >
+                      <button
+                        type="button"
+                        className="roadmap-week-toggle"
+                        aria-expanded={isExpanded}
+                        onClick={() => setExpandedRoadmapWeek(week.number)}
+                      >
+                        <span className="roadmap-week-toggle-main">
+                          <span className="roadmap-week-label">WEEK {String(week.number).padStart(2, "0")}</span>
+                          <h3>{weekTitle}</h3>
+                          <span className="roadmap-week-patterns">
+                            {weekPatterns.map((pattern) => (
+                              <span className="roadmap-pattern-chip" key={pattern}>{pattern}</span>
+                            ))}
+                          </span>
+                        </span>
+                        <span className="roadmap-week-toggle-meta">
+                          {inProgressCount > 0 && (
+                            <span className="roadmap-week-active">{inProgressCount} in progress</span>
+                          )}
+                          <span className="roadmap-week-count">{week.problems.length} problems</span>
+                          <ChevronDown size={16} className="roadmap-week-chevron" />
+                        </span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="roadmap-task-list">
+                          {week.problems.map((problem, index) => {
+                            const current = progress[problem.number]?.status ?? "Todo";
+                            const problemPatternStats = patternStats.find((item) => item.name === problem.pattern);
+                            const reason = current === "In progress"
+                              ? "Continue where you left off"
+                              : roadmapPreferences.focusPattern !== "All patterns" && roadmapPreferences.focusPattern !== "Build weak areas"
+                                ? `Matches your ${problem.pattern} focus`
+                                : problem.pattern === weakestPattern?.name
+                                  ? "Targets your least-practiced pattern"
+                                  : `${problemPatternStats?.completed ?? 0}/${problemPatternStats?.total ?? 0} in this pattern solved`;
+                            return (
+                              <div className={`roadmap-task${current === "In progress" ? " is-active" : ""}`} key={problem.number}>
+                                <span className="roadmap-task-number">{String(index + 1).padStart(2, "0")}</span>
+                                <div className="roadmap-task-info">
+                                  <div className="roadmap-task-title-row">
+                                    <a
+                                      className="roadmap-problem-link"
+                                      href={problem.link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      <strong>{problem.title}</strong>
+                                      <ExternalLink size={12} />
+                                    </a>
+                                    <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span>
+                                  </div>
+                                  <div className="roadmap-task-meta">
+                                    <span className="roadmap-pattern-chip">{problem.pattern}</span>
+                                    <span className="roadmap-reason">{reason}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="roadmap-editor-button"
+                                    onClick={() => openProblemInEditor(problem.number)}
+                                  >
+                                    <CodeXml size={13} /> Solve in editor
+                                  </button>
+                                </div>
+                                <select
+                                  className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
+                                  aria-label={`Status for ${problem.title}`}
+                                  value={current}
+                                  onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
+                                >
+                                  <option>Todo</option>
+                                  <option>In progress</option>
+                                  <option>Solved</option>
+                                </select>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </article>
-              ))}
-            </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
       )}
