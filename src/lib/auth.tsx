@@ -1,4 +1,15 @@
-import { createContext, useContext, useState, useEffect, type ReactNode, type FormEvent, type MouseEvent } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode, type FormEvent, type MouseEvent } from "react";
+import {
+  ClerkProvider,
+  UserButton as ClerkUserButton,
+  useAuth as useClerkAuth,
+  useClerk,
+  useUser as useClerkUser,
+} from "@clerk/react";
+
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
+export const hasClerkPublishableKey =
+  Boolean(clerkPublishableKey) && !/(your|replace|placeholder)/i.test(clerkPublishableKey ?? "");
 
 export interface AuthUser {
   id: string;
@@ -11,6 +22,7 @@ export interface AuthUser {
 }
 
 interface AuthContextType {
+  mode: "clerk" | "demo";
   isLoaded: boolean;
   isSignedIn: boolean;
   user: AuthUser | null;
@@ -53,6 +65,7 @@ const DEFAULT_USERS: AuthUser[] = [
 ];
 
 const AuthContext = createContext<AuthContextType>({
+  mode: "demo",
   isLoaded: true,
   isSignedIn: false,
   user: null,
@@ -65,6 +78,55 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  if (hasClerkPublishableKey) {
+    return (
+      <ClerkProvider publishableKey={clerkPublishableKey}>
+        <ClerkAuthBridge>{children}</ClerkAuthBridge>
+      </ClerkProvider>
+    );
+  }
+  return <DemoAuthProvider>{children}</DemoAuthProvider>;
+}
+
+function ClerkAuthBridge({ children }: { children: ReactNode }) {
+  const clerk = useClerk();
+  const { isLoaded, isSignedIn, getToken, signOut } = useClerkAuth();
+  const { user: clerkUser } = useClerkUser();
+
+  const value = useMemo<AuthContextType>(() => {
+    const user: AuthUser | null = clerkUser
+      ? {
+          id: clerkUser.id,
+          fullName: clerkUser.fullName ?? "",
+          firstName: clerkUser.firstName ?? undefined,
+          lastName: clerkUser.lastName ?? undefined,
+          username: clerkUser.username ?? "",
+          primaryEmailAddress: { emailAddress: clerkUser.primaryEmailAddress?.emailAddress ?? "" },
+          imageUrl: clerkUser.imageUrl,
+        }
+      : null;
+    const openAuthModal = (mode: "signin" | "signup") => (mode === "signup" ? clerk.openSignUp() : clerk.openSignIn());
+    return {
+      mode: "clerk",
+      isLoaded,
+      isSignedIn: Boolean(isSignedIn),
+      user,
+      signIn: () => openAuthModal("signin"),
+      signUp: () => openAuthModal("signup"),
+      signOut: () => void signOut(),
+      getToken: (options) => getToken(options),
+      openAuthModal,
+      closeAuthModal: () => {
+        clerk.closeSignIn();
+        clerk.closeSignUp();
+      },
+    };
+  }, [clerk, clerkUser, getToken, isLoaded, isSignedIn, signOut]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+function DemoAuthProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(true);
   const [modalMode, setModalMode] = useState<"signin" | "signup" | null>(null);
 
@@ -161,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
+        mode: "demo",
         isLoaded,
         isSignedIn,
         user,
@@ -587,6 +650,11 @@ function AuthModal({
 }
 
 export function UserButton() {
+  const { mode } = useContext(AuthContext);
+  return mode === "clerk" ? <ClerkUserButton /> : <DemoUserButton />;
+}
+
+function DemoUserButton() {
   const { user, signOut } = useContext(AuthContext);
   const [open, setOpen] = useState(false);
 
