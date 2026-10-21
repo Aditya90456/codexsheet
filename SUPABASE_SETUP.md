@@ -12,6 +12,22 @@ These are browser-facing keys. Never put a Clerk secret key or Supabase
 `service_role` key in a `VITE_` variable or client code. Restart the Vite dev
 server after changing `.env`.
 
+## Production deployment
+
+Create and activate a Clerk production instance for the owned application
+domain. In the hosting provider, set `VITE_CLERK_PUBLISHABLE_KEY` to that
+instance's `pk_live_` key for the **Production** environment. Keep the
+development `pk_test_` key scoped to local development and preview deployments.
+Vite embeds `VITE_` values during the build, so redeploy after changing a
+hosting environment variable. The app displays a configuration error instead
+of rendering a broken auth page if a production build receives a `pk_test_` key.
+
+Configure the production app URL, allowed redirect URLs, and any social sign-in
+credentials in the Clerk production instance. Add that production Clerk
+instance as a third-party auth provider in the production Supabase project.
+The development Clerk domain in `supabase/config.toml` is only for the local
+Supabase CLI stack and does not configure the hosted project.
+
 ## Authentication and database schema
 
 The app uses Clerk for sign-in and passes Clerk session tokens to Supabase.

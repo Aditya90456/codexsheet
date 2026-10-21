@@ -9,6 +9,11 @@ import {
 import type { ReactNode } from "react";
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
+const authConfigurationError = !publishableKey
+  ? "Set VITE_CLERK_PUBLISHABLE_KEY in the deployment environment and rebuild the app."
+  : import.meta.env.PROD && !publishableKey.startsWith("pk_live_")
+    ? "This production build is using a development Clerk key. Set VITE_CLERK_PUBLISHABLE_KEY to the pk_live_ key from your Clerk production instance, then redeploy."
+    : null;
 
 export { UserButton, useUser };
 
@@ -22,18 +27,18 @@ export function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  if (!publishableKey) {
+  if (authConfigurationError) {
     return (
       <main role="alert" style={{ maxWidth: 560, margin: "12vh auto", padding: 24, fontFamily: "sans-serif" }}>
-        <h1>Clerk is not configured</h1>
-        <p>Set VITE_CLERK_PUBLISHABLE_KEY in your .env file, then restart the development server.</p>
+        <h1>Authentication is not configured</h1>
+        <p>{authConfigurationError}</p>
       </main>
     );
   }
 
   return (
     <ClerkProvider
-      publishableKey={publishableKey}
+      publishableKey={publishableKey!}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/"
