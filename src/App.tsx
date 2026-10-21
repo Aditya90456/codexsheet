@@ -5,7 +5,7 @@ import {
   UserButton,
   useAuth,
   useUser,
-} from "@clerk/clerk-react";
+} from "./lib/auth";
 import {
   ArrowRight,
   Briefcase,
@@ -17,9 +17,11 @@ import {
   ChevronRight,
   CircleHelp,
   Code2,
+  Compass,
   ExternalLink,
   Flame,
   GitBranch,
+  GraduationCap,
   House,
   LayoutDashboard,
   LoaderCircle,
@@ -53,8 +55,6 @@ import {
   RotateCcw,
   CodeXml,
   Palette,
-  Compass,
-  GraduationCap,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -65,6 +65,8 @@ import Course from "./Course";
 import MentorSession from "./MentorSession";
 import InterviewCoach from "./InterviewCoach";
 import DailyPlanner from "./DailyPlanner";
+import ExploreHub from "./ExploreHub";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -103,7 +105,7 @@ const appThemes: Array<{ id: ThemeName; name: string; color: string; description
   { id: "violet", name: "Violet", color: "#8066a3", description: "Soft purple" },
   { id: "ember", name: "Ember", color: "#be7457", description: "Warm clay" },
 ];
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles" | "course" | "mentor" | "explore";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -120,6 +122,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   articles: "/articles",
   course: "/course",
   mentor: "/mentor",
+  explore: "/explore",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -164,10 +167,15 @@ function HomePage({
     let revertAnimations: (() => void) | undefined;
     void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
       if (cancelled || !pageRef.current) return;
-      const engine = gsapModule.gsap;
-      engine.registerPlugin(triggerModule.ScrollTrigger);
+      const engine = gsapModule.gsap || (gsapModule as any).default || gsapModule;
+      const ScrollTrigger = triggerModule.ScrollTrigger || (triggerModule as any).default || triggerModule;
+      if (engine?.registerPlugin && ScrollTrigger) {
+        try { engine.registerPlugin(ScrollTrigger); } catch { }
+      }
+      if (!engine?.context) return;
       const context = engine.context(() => {
-        const motion = engine.matchMedia();
+        const motion = engine.matchMedia ? engine.matchMedia() : null;
+        if (!motion) return;
         motion.add("(prefers-reduced-motion: no-preference)", () => {
           const intro = engine.timeline({ defaults: { ease: "power3.out" } });
           intro
@@ -391,16 +399,16 @@ function HomePage({
         </div>
         <div className="home-portfolio-grid">
           <a className="home-portfolio-card portfolio-featured" href="/problems">
-            <span className="home-portfolio-label">01 · PRACTICE PLATFORM</span><span className="home-portfolio-art portfolio-art-sheet"><Rows3 size={31}/><i>250</i></span>
-            <strong>Codexsheet DSA Practice</strong><span>Pattern based problem practice with progress tracking, notes, and a focused study flow.</span><span className="home-service-link">Explore the problem sheet <ArrowRight size={14}/></span>
+            <span className="home-portfolio-label">01 · PRACTICE PLATFORM</span><span className="home-portfolio-art portfolio-art-sheet"><Rows3 size={31} /><i>250</i></span>
+            <strong>Codexsheet DSA Practice</strong><span>Pattern based problem practice with progress tracking, notes, and a focused study flow.</span><span className="home-service-link">Explore the problem sheet <ArrowRight size={14} /></span>
           </a>
           <a className="home-portfolio-card" href="/roadmap">
-            <span className="home-portfolio-label">02 · LEARNING PLAN</span><span className="home-portfolio-art portfolio-art-roadmap"><MapIcon size={30}/><span><i/><i/><i/></span></span>
-            <strong>Adaptive DSA Roadmap</strong><span>A weekly plan shaped around your timeline, practice pace, and focus patterns.</span><span className="home-service-link">Build a roadmap <ArrowRight size={14}/></span>
+            <span className="home-portfolio-label">02 · LEARNING PLAN</span><span className="home-portfolio-art portfolio-art-roadmap"><MapIcon size={30} /><span><i /><i /><i /></span></span>
+            <strong>Adaptive DSA Roadmap</strong><span>A weekly plan shaped around your timeline, practice pace, and focus patterns.</span><span className="home-service-link">Build a roadmap <ArrowRight size={14} /></span>
           </a>
           <a className="home-portfolio-card" href="/articles">
-            <span className="home-portfolio-label">03 · EDITORIAL</span><span className="home-portfolio-art portfolio-art-journal"><BookOpen size={30}/><span>FIELD<br/>NOTES</span></span>
-            <strong>DSA Field Notes</strong><span>Short visual explainers for the ideas behind common coding interview patterns.</span><span className="home-service-link">Read the journal <ArrowRight size={14}/></span>
+            <span className="home-portfolio-label">03 · EDITORIAL</span><span className="home-portfolio-art portfolio-art-journal"><BookOpen size={30} /><span>FIELD<br />NOTES</span></span>
+            <strong>DSA Field Notes</strong><span>Short visual explainers for the ideas behind common coding interview patterns.</span><span className="home-service-link">Read the journal <ArrowRight size={14} /></span>
           </a>
         </div>
       </section>
@@ -440,7 +448,7 @@ function HomePage({
           <div className="home-pattern-list">{patterns.slice(0, 3).map((item) => <span key={item.name}>{item.name}<small>{item.completed}/{item.total}</small></span>)}</div>
         </div>
       </section>
-      <footer className="home-footer"><span>codexsheet</span><span>One pattern. One problem. One step forward.</span><nav className="home-social-links" aria-label="Social profiles"><a href="https://www.instagram.com/adityabakshi10/" target="_blank" rel="noreferrer" aria-label="Instagram: adityabakshi10"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg> adityabakshi10</a><a href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer" aria-label="Aditya Bakshi on LinkedIn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4ZM3.4 9.5h3.7v11H3.4v-11Zm6 0h3.5V11h.1c.5-.9 1.7-1.9 3.5-1.9 3.8 0 4.5 2.4 4.5 5.5v5.9h-3.7v-5.2c0-1.2 0-2.8-1.8-2.8s-2.1 1.3-2.1 2.7v5.3H9.4v-11Z"/></svg> LinkedIn</a></nav><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
+      <footer className="home-footer"><span>codexsheet</span><span>One pattern. One problem. One step forward.</span><nav className="home-social-links" aria-label="Social profiles"><a href="https://www.instagram.com/adityabakshi10/" target="_blank" rel="noreferrer" aria-label="Instagram: adityabakshi10"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none" /></svg> adityabakshi10</a><a href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer" aria-label="Aditya Bakshi on LinkedIn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4ZM3.4 9.5h3.7v11H3.4v-11Zm6 0h3.5V11h.1c.5-.9 1.7-1.9 3.5-1.9 3.8 0 4.5 2.4 4.5 5.5v5.9h-3.7v-5.2c0-1.2 0-2.8-1.8-2.8s-2.1 1.3-2.1 2.7v5.3H9.4v-11Z" /></svg> LinkedIn</a></nav><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
     </main>
   );
 }
@@ -575,7 +583,7 @@ function BinarySearch3D({ step }: { step: number }) {
       ground.geometry.dispose(); ground.material.dispose(); renderer.dispose(); renderer.domElement.remove();
     };
   }, []);
-  return <div className="binary-3d-wrap"><div className="binary-3d-hint"><span>DRAG TO ROTATE</span><span>ARRAY · 8 VALUES</span></div><div className="binary-3d-canvas" ref={hostRef} role="img" aria-label="Interactive 3D binary search array. Drag to rotate the array."><div className="binary-3d-fallback" aria-hidden="true">{[2,5,8,12,16,21,27,34].map((value,index)=><div key={value} className={`${index === (step >= 2 ? 5 : 3) ? "is-mid" : ""} ${step >= 2 && index < 4 ? "is-discarded" : ""}`}><small>{index}</small><strong>{value}</strong></div>)}</div></div><div className="binary-3d-caption"><i/> midpoint <span>·</span> faded values are ruled out</div></div>;
+  return <div className="binary-3d-wrap"><div className="binary-3d-hint"><span>DRAG TO ROTATE</span><span>ARRAY · 8 VALUES</span></div><div className="binary-3d-canvas" ref={hostRef} role="img" aria-label="Interactive 3D binary search array. Drag to rotate the array."><div className="binary-3d-fallback" aria-hidden="true">{[2, 5, 8, 12, 16, 21, 27, 34].map((value, index) => <div key={value} className={`${index === (step >= 2 ? 5 : 3) ? "is-mid" : ""} ${step >= 2 && index < 4 ? "is-discarded" : ""}`}><small>{index}</small><strong>{value}</strong></div>)}</div></div><div className="binary-3d-caption"><i /> midpoint <span>·</span> faded values are ruled out</div></div>;
 }
 
 function ConceptDiagram({ article, lesson }: { article: (typeof dsaArticles)[number]; lesson: (typeof articleLessons)[string] }) {
@@ -589,22 +597,22 @@ function ConceptDiagram({ article, lesson }: { article: (typeof dsaArticles)[num
   }, [lesson.steps.length, playing]);
   const family = article.concept;
   const current = step % lesson.steps.length;
-  return <div className={`lesson-diagram diagram-${family.toLowerCase().replace(/[^a-z]+/g,"-")}`}>
-    <div className="lesson-diagram-top"><span>CONCEPT IN MOTION</span><span>{String(current + 1).padStart(2,"0")} / {String(lesson.steps.length).padStart(2,"0")}</span></div>
+  return <div className={`lesson-diagram diagram-${family.toLowerCase().replace(/[^a-z]+/g, "-")}`}>
+    <div className="lesson-diagram-top"><span>CONCEPT IN MOTION</span><span>{String(current + 1).padStart(2, "0")} / {String(lesson.steps.length).padStart(2, "0")}</span></div>
     <div className={`lesson-visual-stage visual-step-${current}`} aria-label={`${family} illustration: ${lesson.steps[current]}`}>
-      {family === "Complexity" && <svg viewBox="0 0 360 205" role="img" aria-label="Algorithm growth curves"><path className="chart-gridline" d="M42 20V170H340M42 132H340M42 94H340M42 56H340"/><path className="chart-line chart-linear" d="M46 165 C120 154 211 132 328 99"/><path className="chart-line chart-log" d="M46 160 C90 112 177 92 328 82"/><path className="chart-line chart-quadratic" d="M46 165 C120 160 201 112 268 24"/><text x="278" y="92">log n</text><text x="303" y="107">n</text><text x="254" y="35">n²</text><text x="16" y="21">WORK</text><text x="310" y="190">INPUT →</text></svg>}
-      {family === "Hash map" && <div className="hash-diagram"><span className="diagram-input">value: 7 <b>→</b> need: 5</span><div className="hash-buckets">{[2,5,7,9].map((value,index)=><div className={`hash-bucket ${current >= 2 && index===1 || current===1 && index===2 ? "is-active" : ""}`} key={value}><small>key {value}</small><strong>{index===1?"idx 0":`idx ${index+2}`}</strong></div>)}</div><span className="diagram-result">{current < 2 ? "LOOK UP THE COMPLEMENT" : "MATCH FOUND · RETURN PAIR"}</span></div>}
+      {family === "Complexity" && <svg viewBox="0 0 360 205" role="img" aria-label="Algorithm growth curves"><path className="chart-gridline" d="M42 20V170H340M42 132H340M42 94H340M42 56H340" /><path className="chart-line chart-linear" d="M46 165 C120 154 211 132 328 99" /><path className="chart-line chart-log" d="M46 160 C90 112 177 92 328 82" /><path className="chart-line chart-quadratic" d="M46 165 C120 160 201 112 268 24" /><text x="278" y="92">log n</text><text x="303" y="107">n</text><text x="254" y="35">n²</text><text x="16" y="21">WORK</text><text x="310" y="190">INPUT →</text></svg>}
+      {family === "Hash map" && <div className="hash-diagram"><span className="diagram-input">value: 7 <b>→</b> need: 5</span><div className="hash-buckets">{[2, 5, 7, 9].map((value, index) => <div className={`hash-bucket ${current >= 2 && index === 1 || current === 1 && index === 2 ? "is-active" : ""}`} key={value}><small>key {value}</small><strong>{index === 1 ? "idx 0" : `idx ${index + 2}`}</strong></div>)}</div><span className="diagram-result">{current < 2 ? "LOOK UP THE COMPLEMENT" : "MATCH FOUND · RETURN PAIR"}</span></div>}
       {family === "Binary search" && <BinarySearch3D step={current} />}
-      {family === "Sliding window" && <div className="window-diagram"><div className="window-label">CONTIGUOUS RANGE <span>length {current+2}</span></div><div className="window-values">{[4,2,1,7,8,3,5,6].map((value,index)=><span className={index >= current && index < current + 2 + (current % 3) ? "in-window" : ""} key={`${value}-${index}`}>{value}</span>)}</div><div className="window-track"><i style={{ left: `${current*10}%`, width: `${(2 + current%3)*10}%` }}/></div><div className="window-pointers"><span>← left</span><span>right →</span></div></div>}
-      {family === "Trees" && <svg viewBox="0 0 360 220" className="tree-diagram" role="img" aria-label="Tree traversal"><path d="M180 48L95 105M180 48L265 105M95 125L55 178M95 125L135 178M265 125L225 178M265 125L305 178"/><g className={current===0?"node-active":""}><circle cx="180" cy="38" r="20"/><text x="180" y="42">A</text></g><g className={current===1?"node-active":""}><circle cx="95" cy="115" r="18"/><text x="95" y="119">B</text></g><g className={current>=2?"node-active":""}><circle cx="265" cy="115" r="18"/><text x="265" y="119">C</text></g><circle cx="55" cy="188" r="14"/><circle cx="135" cy="188" r="14"/><circle cx="225" cy="188" r="14"/><circle cx="305" cy="188" r="14"/><text className="tree-caption" x="180" y="216">PARENT RESULT = 1 + CHILD RESULTS</text></svg>}
-      {family === "Dynamic programming" && <div className="dp-diagram"><div className="dp-equation">ways[i] = ways[i − 1] + ways[i − 2]</div><div className="dp-cells">{[1,1,2,3,5,8,13].map((value,index)=><div className={index <= current+2 ? "is-filled" : ""} key={index}><small>i={index}</small><strong>{index <= current+2 ? value : "?"}</strong></div>)}</div><div className="dp-caption">SAVE EACH ANSWER · REUSE IT LATER</div></div>}
-      {(family === "Stack & queue" || family === "Recursion") && <div className="linear-structure"><div className="structure-stack"><span className={current===0?"is-active":""}>item 03</span><span className={current===1?"is-active":""}>item 02</span><span>item 01</span><small>{family === "Recursion" ? "CALL STACK" : "LAST IN · FIRST OUT"}</small></div><div className="structure-arrow">{current===1?"← return":"push →"}</div><div className="structure-state"><span>current work</span><strong>{current===0?"item 03":current===1?"item 02":"item 01"}</strong></div></div>}
-      {family === "Graph traversal" && <svg viewBox="0 0 360 210" className="graph-diagram" role="img" aria-label="Breadth-first graph traversal"><g className="graph-edges"><path d="M76 101L155 54M76 101L160 155M155 54L250 73M160 155L250 143M250 73L303 109M250 143L303 109"/></g>{[[76,101,"A"],[155,54,"B"],[160,155,"C"],[250,73,"D"],[250,143,"E"],[303,109,"F"]].map(([x,y,label],index)=><g className={index<=current+1?"node-visited":""} key={label as string}><circle cx={x as number} cy={y as number} r="19"/><text x={x as number} y={(y as number)+4}>{label as string}</text></g>)}<text className="graph-caption" x="180" y="200">QUEUE · {current<2?"A → B, C":"D → E → F"}</text></svg>}
-      {(family === "Greedy algorithm" || family === "Heap") && <div className="choice-diagram">{family === "Greedy algorithm" ? <><span className="choice-title">CHOOSE THE EARLIEST FINISH</span>{[68,46,76,54].map((width,index)=><div className="interval-row" key={index}><small>{String.fromCharCode(65+index)}</small><i style={{width:`${width}%`}} className={index===current?"is-selected":""}/></div>)}<span className="choice-foot">KEEP THE SCHEDULE FEASIBLE</span></> : <><span className="choice-title">MIN-HEAP · SMALLEST AT ROOT</span><svg viewBox="0 0 320 180" className="heap-tree" role="img" aria-label="Min heap"><path d="M160 40L86 100M160 40L234 100M86 118L48 160M86 118L124 160M234 118L196 160M234 118L272 160"/><g className={current===0?"node-active":""}><circle cx="160" cy="34" r="23"/><text x="160" y="39">2</text></g><circle cx="86" cy="108" r="20"/><text x="86" y="113">5</text><circle cx="234" cy="108" r="20"/><text x="234" y="113">8</text><circle cx="48" cy="163" r="16"/><text x="48" y="168">9</text><circle cx="124" cy="163" r="16"/><text x="124" y="168">11</text><circle cx="196" cy="163" r="16"/><text x="196" y="168">12</text><circle cx="272" cy="163" r="16"/><text x="272" y="168">15</text></svg><span className="choice-foot">PUSH / POP · O(log n)</span></>}</div>}
+      {family === "Sliding window" && <div className="window-diagram"><div className="window-label">CONTIGUOUS RANGE <span>length {current + 2}</span></div><div className="window-values">{[4, 2, 1, 7, 8, 3, 5, 6].map((value, index) => <span className={index >= current && index < current + 2 + (current % 3) ? "in-window" : ""} key={`${value}-${index}`}>{value}</span>)}</div><div className="window-track"><i style={{ left: `${current * 10}%`, width: `${(2 + current % 3) * 10}%` }} /></div><div className="window-pointers"><span>← left</span><span>right →</span></div></div>}
+      {family === "Trees" && <svg viewBox="0 0 360 220" className="tree-diagram" role="img" aria-label="Tree traversal"><path d="M180 48L95 105M180 48L265 105M95 125L55 178M95 125L135 178M265 125L225 178M265 125L305 178" /><g className={current === 0 ? "node-active" : ""}><circle cx="180" cy="38" r="20" /><text x="180" y="42">A</text></g><g className={current === 1 ? "node-active" : ""}><circle cx="95" cy="115" r="18" /><text x="95" y="119">B</text></g><g className={current >= 2 ? "node-active" : ""}><circle cx="265" cy="115" r="18" /><text x="265" y="119">C</text></g><circle cx="55" cy="188" r="14" /><circle cx="135" cy="188" r="14" /><circle cx="225" cy="188" r="14" /><circle cx="305" cy="188" r="14" /><text className="tree-caption" x="180" y="216">PARENT RESULT = 1 + CHILD RESULTS</text></svg>}
+      {family === "Dynamic programming" && <div className="dp-diagram"><div className="dp-equation">ways[i] = ways[i − 1] + ways[i − 2]</div><div className="dp-cells">{[1, 1, 2, 3, 5, 8, 13].map((value, index) => <div className={index <= current + 2 ? "is-filled" : ""} key={index}><small>i={index}</small><strong>{index <= current + 2 ? value : "?"}</strong></div>)}</div><div className="dp-caption">SAVE EACH ANSWER · REUSE IT LATER</div></div>}
+      {(family === "Stack & queue" || family === "Recursion") && <div className="linear-structure"><div className="structure-stack"><span className={current === 0 ? "is-active" : ""}>item 03</span><span className={current === 1 ? "is-active" : ""}>item 02</span><span>item 01</span><small>{family === "Recursion" ? "CALL STACK" : "LAST IN · FIRST OUT"}</small></div><div className="structure-arrow">{current === 1 ? "← return" : "push →"}</div><div className="structure-state"><span>current work</span><strong>{current === 0 ? "item 03" : current === 1 ? "item 02" : "item 01"}</strong></div></div>}
+      {family === "Graph traversal" && <svg viewBox="0 0 360 210" className="graph-diagram" role="img" aria-label="Breadth-first graph traversal"><g className="graph-edges"><path d="M76 101L155 54M76 101L160 155M155 54L250 73M160 155L250 143M250 73L303 109M250 143L303 109" /></g>{[[76, 101, "A"], [155, 54, "B"], [160, 155, "C"], [250, 73, "D"], [250, 143, "E"], [303, 109, "F"]].map(([x, y, label], index) => <g className={index <= current + 1 ? "node-visited" : ""} key={label as string}><circle cx={x as number} cy={y as number} r="19" /><text x={x as number} y={(y as number) + 4}>{label as string}</text></g>)}<text className="graph-caption" x="180" y="200">QUEUE · {current < 2 ? "A → B, C" : "D → E → F"}</text></svg>}
+      {(family === "Greedy algorithm" || family === "Heap") && <div className="choice-diagram">{family === "Greedy algorithm" ? <><span className="choice-title">CHOOSE THE EARLIEST FINISH</span>{[68, 46, 76, 54].map((width, index) => <div className="interval-row" key={index}><small>{String.fromCharCode(65 + index)}</small><i style={{ width: `${width}%` }} className={index === current ? "is-selected" : ""} /></div>)}<span className="choice-foot">KEEP THE SCHEDULE FEASIBLE</span></> : <><span className="choice-title">MIN-HEAP · SMALLEST AT ROOT</span><svg viewBox="0 0 320 180" className="heap-tree" role="img" aria-label="Min heap"><path d="M160 40L86 100M160 40L234 100M86 118L48 160M86 118L124 160M234 118L196 160M234 118L272 160" /><g className={current === 0 ? "node-active" : ""}><circle cx="160" cy="34" r="23" /><text x="160" y="39">2</text></g><circle cx="86" cy="108" r="20" /><text x="86" y="113">5</text><circle cx="234" cy="108" r="20" /><text x="234" y="113">8</text><circle cx="48" cy="163" r="16" /><text x="48" y="168">9</text><circle cx="124" cy="163" r="16" /><text x="124" y="168">11</text><circle cx="196" cy="163" r="16" /><text x="196" y="168">12</text><circle cx="272" cy="163" r="16" /><text x="272" y="168">15</text></svg><span className="choice-foot">PUSH / POP · O(log n)</span></>}</div>}
     </div>
     <div className="lesson-step-copy"><strong>{lesson.steps[current]}</strong><span>{current + 1} of {lesson.steps.length}</span></div>
-    <div className="lesson-step-dots">{lesson.steps.map((stepLabel,index)=><button type="button" className={index===current?"active":""} key={stepLabel} onClick={()=>{setStep(index);setPlaying(false);}} aria-label={`Show step ${index+1}: ${stepLabel}`} />)}</div>
-    <div className="lesson-diagram-controls"><button type="button" onClick={()=>setPlaying((value)=>!value)}>{playing?<Pause size={13}/>:<Play size={13}/>} {playing?"Pause":"Play steps"}</button><button type="button" onClick={()=>{setPlaying(false);setStep(0);}} aria-label="Restart animation"><RotateCcw size={13}/></button><span>STEP THROUGH THE IDEA</span></div>
+    <div className="lesson-step-dots">{lesson.steps.map((stepLabel, index) => <button type="button" className={index === current ? "active" : ""} key={stepLabel} onClick={() => { setStep(index); setPlaying(false); }} aria-label={`Show step ${index + 1}: ${stepLabel}`} />)}</div>
+    <div className="lesson-diagram-controls"><button type="button" onClick={() => setPlaying((value) => !value)}>{playing ? <Pause size={13} /> : <Play size={13} />} {playing ? "Pause" : "Play steps"}</button><button type="button" onClick={() => { setPlaying(false); setStep(0); }} aria-label="Restart animation"><RotateCcw size={13} /></button><span>STEP THROUGH THE IDEA</span></div>
   </div>;
 }
 
@@ -645,9 +653,9 @@ function ArticlesPage() {
     return () => { cancelled = true; revert?.(); };
   }, [selected]);
   return <main className="articles-page" ref={pageRef}>
-    <section className="articles-hero editorial-hero"><div className="articles-hero-copy"><span className="articles-kicker"><BookOpen size={14}/> THE CODEXSHEET JOURNAL</span><h2>Learn the patterns<br/><em>behind the problems.</em></h2><p>Clear explanations for the ideas that show up again and again in coding interviews.</p><div className="editorial-hero-meta"><span>DSA FIELD NOTES</span><i/><span>{String(dsaArticles.length).padStart(2,"0")} SHORT READS</span></div></div><div className="editorial-hero-index"><span>COLLECTION</span><strong>01<span> / </span>{String(dsaArticles.length).padStart(2,"0")}</strong><p>Foundations<br/>to problem solving</p><div className="editorial-index-line"/></div></section>
-    <section className="articles-library"><div className="editorial-library-head"><div><span className="articles-kicker">THE LIBRARY</span><h3>Read. Understand. <em>Apply.</em></h3></div><label className="article-search"><Search size={15}/><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Find a concept" aria-label="Search DSA articles"/>{searchTerm && <button type="button" onClick={() => setSearchTerm("")} aria-label="Clear search">×</button>}</label></div><div className="article-filters" aria-label="Filter articles by topic">{categories.map((category) => <button key={category} type="button" className={selected === category ? "active" : ""} onClick={() => setSelected(category)}>{category}</button>)}</div>{featuredArticle ? <div className="editorial-reading-layout"><div className="editorial-main-column"><button className="featured-article" type="button" onClick={() => setOpenArticle(featuredArticle)}><span className="featured-label">{selected === "All concepts" ? "EDITOR’S PICK" : "FROM THIS TOPIC"}<ArrowRight size={14}/></span><span className="featured-category">{featuredArticle.category} <i/> {featuredArticle.read.toUpperCase()}</span><strong>{featuredArticle.title}</strong><p>{featuredArticle.summary}</p><span className="featured-link">Read the article <ArrowRight size={15}/></span><span className="featured-mark">{String(dsaArticles.indexOf(featuredArticle) + 1).padStart(2,"0")}</span></button><div className="article-list-heading"><span>MORE TO EXPLORE</span><span>{String(otherArticles.length).padStart(2,"0")} ARTICLES</span></div><div className="editorial-article-list">{otherArticles.map((article) => <button className="article-row" type="button" key={article.title} onClick={() => setOpenArticle(article)}><span className="article-row-number">{String(dsaArticles.indexOf(article) + 1).padStart(2,"0")}</span><span className="article-row-copy"><small>{article.category}</small><strong>{article.title}</strong><span>{article.summary}</span></span><span className="article-row-time">{article.read}<ArrowRight size={15}/></span></button>)}</div></div><aside className="editorial-aside"><span className="aside-kicker">A GOOD WAY IN</span><h4>Build your<br/>mental model.</h4><p>Start with the shape of the problem. Then choose a structure or pattern that makes the work simpler.</p><div className="aside-steps"><span><i>01</i> Understand the input</span><span><i>02</i> Find the repeated work</span><span><i>03</i> Choose a pattern</span></div><div className="aside-note"><Code2 size={15}/> Concepts are easier to remember when you can explain the tradeoff.</div><span className="aside-count">{String(visible.length).padStart(2,"0")} MATCHING READS</span></aside></div> : <div className="articles-empty"><Search size={20}/><strong>No concepts found</strong><span>Try another phrase or choose a different topic.</span><button type="button" onClick={() => { setSearchTerm(""); setSelected("All concepts"); }}>Clear filters</button></div>}</section>
-    {openArticle && activeLesson && <div className="article-reader-backdrop" onMouseDown={() => setOpenArticle(null)}><article className="article-reader article-reader-deep" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="article-reader-title"><div className="article-reader-top"><span className="articles-kicker"><BookOpen size={14}/>{openArticle.category}</span><button type="button" onClick={() => setOpenArticle(null)} aria-label="Close article">×</button></div><span className="article-reader-index">CONCEPT {String(dsaArticles.indexOf(openArticle) + 1).padStart(3,"0")} · {openArticle.read}</span><h2 id="article-reader-title">{openArticle.title}</h2><p className="article-reader-summary">{openArticle.summary}</p><div className="article-lesson-meta"><span><small>CORE IDEA</small><strong>{openArticle.concept}</strong></span><span><small>COMPLEXITY</small><strong>{activeLesson.complexity}</strong></span></div><div className="article-lesson-layout"><div className="article-lesson-copy"><section><span className="article-reader-label">BUILD THE MENTAL MODEL</span><h3>What’s really happening?</h3><p>{activeLesson.detail}</p></section><section><span className="article-reader-label">WHEN TO REACH FOR IT</span><h3>Recognize the signal</h3><p>{activeLesson.usefulWhen}</p></section><section className="article-lesson-takeaway"><span className="article-reader-label">A PRINCIPLE TO KEEP</span><p>{openArticle.takeaway}</p></section></div><ConceptDiagram key={openArticle.title} article={openArticle} lesson={activeLesson}/></div><section className="article-reader-example"><div><span className="article-reader-label">CODE IN CONTEXT</span><h3>One way to write it</h3></div><pre><code>{openArticle.code}</code></pre></section><div className="article-reader-bottom"><span><Clock3 size={14}/> {openArticle.read}</span><button type="button" onClick={() => { setOpenArticle(null); setSelected(openArticle.category); }}>Explore {openArticle.category} <ArrowRight size={14}/></button></div></article></div>}
+    <section className="articles-hero editorial-hero"><div className="articles-hero-copy"><span className="articles-kicker"><BookOpen size={14} /> THE CODEXSHEET JOURNAL</span><h2>Learn the patterns<br /><em>behind the problems.</em></h2><p>Clear explanations for the ideas that show up again and again in coding interviews.</p><div className="editorial-hero-meta"><span>DSA FIELD NOTES</span><i /><span>{String(dsaArticles.length).padStart(2, "0")} SHORT READS</span></div></div><div className="editorial-hero-index"><span>COLLECTION</span><strong>01<span> / </span>{String(dsaArticles.length).padStart(2, "0")}</strong><p>Foundations<br />to problem solving</p><div className="editorial-index-line" /></div></section>
+    <section className="articles-library"><div className="editorial-library-head"><div><span className="articles-kicker">THE LIBRARY</span><h3>Read. Understand. <em>Apply.</em></h3></div><label className="article-search"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Find a concept" aria-label="Search DSA articles" />{searchTerm && <button type="button" onClick={() => setSearchTerm("")} aria-label="Clear search">×</button>}</label></div><div className="article-filters" aria-label="Filter articles by topic">{categories.map((category) => <button key={category} type="button" className={selected === category ? "active" : ""} onClick={() => setSelected(category)}>{category}</button>)}</div>{featuredArticle ? <div className="editorial-reading-layout"><div className="editorial-main-column"><button className="featured-article" type="button" onClick={() => setOpenArticle(featuredArticle)}><span className="featured-label">{selected === "All concepts" ? "EDITOR’S PICK" : "FROM THIS TOPIC"}<ArrowRight size={14} /></span><span className="featured-category">{featuredArticle.category} <i /> {featuredArticle.read.toUpperCase()}</span><strong>{featuredArticle.title}</strong><p>{featuredArticle.summary}</p><span className="featured-link">Read the article <ArrowRight size={15} /></span><span className="featured-mark">{String(dsaArticles.indexOf(featuredArticle) + 1).padStart(2, "0")}</span></button><div className="article-list-heading"><span>MORE TO EXPLORE</span><span>{String(otherArticles.length).padStart(2, "0")} ARTICLES</span></div><div className="editorial-article-list">{otherArticles.map((article) => <button className="article-row" type="button" key={article.title} onClick={() => setOpenArticle(article)}><span className="article-row-number">{String(dsaArticles.indexOf(article) + 1).padStart(2, "0")}</span><span className="article-row-copy"><small>{article.category}</small><strong>{article.title}</strong><span>{article.summary}</span></span><span className="article-row-time">{article.read}<ArrowRight size={15} /></span></button>)}</div></div><aside className="editorial-aside"><span className="aside-kicker">A GOOD WAY IN</span><h4>Build your<br />mental model.</h4><p>Start with the shape of the problem. Then choose a structure or pattern that makes the work simpler.</p><div className="aside-steps"><span><i>01</i> Understand the input</span><span><i>02</i> Find the repeated work</span><span><i>03</i> Choose a pattern</span></div><div className="aside-note"><Code2 size={15} /> Concepts are easier to remember when you can explain the tradeoff.</div><span className="aside-count">{String(visible.length).padStart(2, "0")} MATCHING READS</span></aside></div> : <div className="articles-empty"><Search size={20} /><strong>No concepts found</strong><span>Try another phrase or choose a different topic.</span><button type="button" onClick={() => { setSearchTerm(""); setSelected("All concepts"); }}>Clear filters</button></div>}</section>
+    {openArticle && activeLesson && <div className="article-reader-backdrop" onMouseDown={() => setOpenArticle(null)}><article className="article-reader article-reader-deep" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="article-reader-title"><div className="article-reader-top"><span className="articles-kicker"><BookOpen size={14} />{openArticle.category}</span><button type="button" onClick={() => setOpenArticle(null)} aria-label="Close article">×</button></div><span className="article-reader-index">CONCEPT {String(dsaArticles.indexOf(openArticle) + 1).padStart(3, "0")} · {openArticle.read}</span><h2 id="article-reader-title">{openArticle.title}</h2><p className="article-reader-summary">{openArticle.summary}</p><div className="article-lesson-meta"><span><small>CORE IDEA</small><strong>{openArticle.concept}</strong></span><span><small>COMPLEXITY</small><strong>{activeLesson.complexity}</strong></span></div><div className="article-lesson-layout"><div className="article-lesson-copy"><section><span className="article-reader-label">BUILD THE MENTAL MODEL</span><h3>What’s really happening?</h3><p>{activeLesson.detail}</p></section><section><span className="article-reader-label">WHEN TO REACH FOR IT</span><h3>Recognize the signal</h3><p>{activeLesson.usefulWhen}</p></section><section className="article-lesson-takeaway"><span className="article-reader-label">A PRINCIPLE TO KEEP</span><p>{openArticle.takeaway}</p></section></div><ConceptDiagram key={openArticle.title} article={openArticle} lesson={activeLesson} /></div><section className="article-reader-example"><div><span className="article-reader-label">CODE IN CONTEXT</span><h3>One way to write it</h3></div><pre><code>{openArticle.code}</code></pre></section><div className="article-reader-bottom"><span><Clock3 size={14} /> {openArticle.read}</span><button type="button" onClick={() => { setOpenArticle(null); setSelected(openArticle.category); }}>Explore {openArticle.category} <ArrowRight size={14} /></button></div></article></div>}
   </main>;
 }
 
@@ -992,33 +1000,56 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function getPracticeStreak(practiceDays: string[]) {
-  const dates = new Set(practiceDays);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  let current = 0;
-  if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
-    const cursor = dates.has(localDateKey(today)) ? today : yesterday;
-    while (dates.has(localDateKey(cursor))) {
-      current += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
+function safeGetStorage(key: string, fallback: string = ""): string {
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
   }
+}
 
-  let best = 0;
-  let run = 0;
-  let previous: Date | null = null;
-  for (const key of [...dates].sort()) {
-    const [year, month, day] = key.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    const expected = previous ? new Date(previous) : null;
-    expected?.setDate(expected.getDate() + 1);
-    run = expected && localDateKey(expected) === key ? run + 1 : 1;
-    best = Math.max(best, run);
-    previous = date;
+function safeSetStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // In restricted iframe or private mode
   }
-  return { current, best };
+}
+
+function getPracticeStreak(practiceDays: string[]) {
+  try {
+    const dates = new Set((practiceDays || []).filter(Boolean));
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    let current = 0;
+    if (dates.has(localDateKey(today)) || dates.has(localDateKey(yesterday))) {
+      const cursor = new Date(dates.has(localDateKey(today)) ? today : yesterday);
+      while (dates.has(localDateKey(cursor)) && current < 1000) {
+        current += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+    }
+
+    let best = 0;
+    let run = 0;
+    let previous: Date | null = null;
+    for (const key of [...dates].sort()) {
+      if (!key || typeof key !== "string" || !key.includes("-")) continue;
+      const parts = key.split("-").map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) continue;
+      const [year, month, day] = parts;
+      const date = new Date(year, month - 1, day);
+      const expected = previous ? new Date(previous) : null;
+      expected?.setDate(expected.getDate() + 1);
+      run = expected && localDateKey(expected) === key ? run + 1 : 1;
+      best = Math.max(best, run);
+      previous = date;
+    }
+    return { current, best: Math.max(best, current) };
+  } catch {
+    return { current: 0, best: 0 };
+  }
 }
 
 type CallSignal = {
@@ -1315,17 +1346,26 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
     shareUrl.searchParams.delete("schedule"); shareUrl.searchParams.delete("call");
     if (roomToShare) shareUrl.searchParams.set("room", roomToShare);
     return <section className="calls-page">
-      {!roomToShare ? <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>Meet your peers.<br/><em>Face to face.</em></h2><p>Create a private video room and share its link with classmates. Peers with the link can join directly, and you can talk together in real time.</p>{userId ? <><button className="request-room-button create-room-button" onClick={() => void createRoom()}><Video size={17}/> Create a peer room <ArrowRight size={15}/></button><div className="join-room-divider"><span>OR JOIN A ROOM</span></div><form className="join-room-form" onSubmit={(event) => { event.preventDefault(); openRoomInvite(); }}><input aria-label="Room invite link or ID" value={joinRoomInput} onChange={(event) => setJoinRoomInput(event.target.value)} placeholder="Paste an invite link or room ID"/><button type="submit"><ArrowRight size={15}/> Join room</button></form></> : <div className="share-link-hint"><ShieldCheck size={14}/> Sign in to create or join a room.</div>}</div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Users size={23}/></div><span>PEER TO PEER</span><strong>Study together</strong><small>Open link · Join · Connect</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section> : <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>{isRoomOwner ? <>Your peer room.<br/><em>Ready when you are.</em></> : <>You’re invited.<br/><em>Join the room.</em></>}</h2><p>{isRoomOwner ? "Share this private link with anyone you’d like to meet. Peers can join directly." : "Join the shared room to meet the host and other peers. No request or approval needed."}</p><div className="share-link-field"><Link2 size={17}/><span title={shareUrl.toString()}>{shareUrl.toString()}</span><button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl.toString()); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setError("Could not copy the peer room link."); } }}><Copy size={15}/>{copied ? "Copied" : "Copy link"}</button></div><div className="share-link-hint"><ShieldCheck size={14}/> Anyone with this link can join while signed in.</div></div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Video size={23}/></div><span>LIVE PEER ROOM</span><strong>Room for everyone</strong><small>Share · Join · Talk</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section>}
-      {roomToShare && userId && <div className="schedule-layout room-meeting-layout"><div className="schedule-main-card room-request-card"><div className="room-card-icon"><Video size={22}/></div><span className="schedule-kicker">{isRoomOwner ? "YOUR PEER ROOM" : "PEER ROOM INVITE"}</span><h3>{isRoomOwner ? "Start the call" : "Join the conversation"}</h3><p>{isRoomOwner ? "Start your camera and microphone, then your peers can connect through the link above." : "Your camera and microphone turn on only after you join."}</p><div className="room-card-steps"><span><i>01</i> Share the room link</span><span><i>02</i> Peers join directly</span><span><i>03</i> Talk face to face</span></div><div className="peer-room-actions"><button className="request-room-button" disabled={connecting} onClick={() => void startRoom(roomToShare)}><Video size={16}/>{connecting ? "Joining…" : isRoomOwner ? "Start call" : "Join call"}<ArrowRight size={15}/></button><button className="invite-peers-button" onClick={() => void invitePeers(shareUrl)}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button></div></div><aside className="schedule-side-card"><div className="schedule-side-heading"><span className="schedule-kicker">PEER ROOM</span><span className="approval-count"><Users size={13}/></span></div><h3>Bring your study group</h3><p>Share the room link with peers. Everyone who joins appears in the call.</p><div className="request-empty"><div className="request-empty-icon"><Link2 size={20}/></div><strong>One link, shared conversation</strong><span>Peer-to-peer video, microphone, and screen sharing.</span></div><div className="approval-footnote"><ShieldCheck size={15}/> Calls stay private to people with the room link.</div></aside></div>}
+      {!roomToShare ? <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14} /> CODEXSHEET MEET</span><h2>Meet your peers.<br /><em>Face to face.</em></h2><p>Create a private video room and share its link with classmates. Peers with the link can join directly, and you can talk together in real time.</p>{userId ? <><button className="request-room-button create-room-button" onClick={() => void createRoom()}><Video size={17} /> Create a peer room <ArrowRight size={15} /></button><div className="join-room-divider"><span>OR JOIN A ROOM</span></div><form className="join-room-form" onSubmit={(event) => { event.preventDefault(); openRoomInvite(); }}><input aria-label="Room invite link or ID" value={joinRoomInput} onChange={(event) => setJoinRoomInput(event.target.value)} placeholder="Paste an invite link or room ID" /><button type="submit"><ArrowRight size={15} /> Join room</button></form></> : <div className="share-link-hint"><ShieldCheck size={14} /> Sign in to create or join a room.</div>}</div><div className="share-link-art"><div className="share-link-glow" /><div className="share-link-card"><div className="share-link-card-icon"><Users size={23} /></div><span>PEER TO PEER</span><strong>Study together</strong><small>Open link · Join · Connect</small><div className="share-link-card-dots"><i /><i /><i /></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section> : <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14} /> CODEXSHEET MEET</span><h2>{isRoomOwner ? <>Your peer room.<br /><em>Ready when you are.</em></> : <>You’re invited.<br /><em>Join the room.</em></>}</h2><p>{isRoomOwner ? "Share this private link with anyone you’d like to meet. Peers can join directly." : "Join the shared room to meet the host and other peers. No request or approval needed."}</p><div className="share-link-field"><Link2 size={17} /><span title={shareUrl.toString()}>{shareUrl.toString()}</span><button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl.toString()); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setError("Could not copy the peer room link."); } }}><Copy size={15} />{copied ? "Copied" : "Copy link"}</button></div><div className="share-link-hint"><ShieldCheck size={14} /> Anyone with this link can join while signed in.</div></div><div className="share-link-art"><div className="share-link-glow" /><div className="share-link-card"><div className="share-link-card-icon"><Video size={23} /></div><span>LIVE PEER ROOM</span><strong>Room for everyone</strong><small>Share · Join · Talk</small><div className="share-link-card-dots"><i /><i /><i /></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section>}
+      {roomToShare && userId && <div className="schedule-layout room-meeting-layout"><div className="schedule-main-card room-request-card"><div className="room-card-icon"><Video size={22} /></div><span className="schedule-kicker">{isRoomOwner ? "YOUR PEER ROOM" : "PEER ROOM INVITE"}</span><h3>{isRoomOwner ? "Start the call" : "Join the conversation"}</h3><p>{isRoomOwner ? "Start your camera and microphone, then your peers can connect through the link above." : "Your camera and microphone turn on only after you join."}</p><div className="room-card-steps"><span><i>01</i> Share the room link</span><span><i>02</i> Peers join directly</span><span><i>03</i> Talk face to face</span></div><div className="peer-room-actions"><button className="request-room-button" disabled={connecting} onClick={() => void startRoom(roomToShare)}><Video size={16} />{connecting ? "Joining…" : isRoomOwner ? "Start call" : "Join call"}<ArrowRight size={15} /></button><button className="invite-peers-button" onClick={() => void invitePeers(shareUrl)}><Users size={15} />{copied ? "Link copied" : "Invite peers"}</button></div></div><aside className="schedule-side-card"><div className="schedule-side-heading"><span className="schedule-kicker">PEER ROOM</span><span className="approval-count"><Users size={13} /></span></div><h3>Bring your study group</h3><p>Share the room link with peers. Everyone who joins appears in the call.</p><div className="request-empty"><div className="request-empty-icon"><Link2 size={20} /></div><strong>One link, shared conversation</strong><span>Peer-to-peer video, microphone, and screen sharing.</span></div><div className="approval-footnote"><ShieldCheck size={15} /> Calls stay private to people with the room link.</div></aside></div>}
       {connecting && <div className="call-connecting">{connectingLabel}</div>}
       {(error) && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}
-      <div className="call-footnote"><span><span className="status-dot"/> PEER ROOM</span><span>Private peer-to-peer calls · No recording</span></div>
+      <div className="call-footnote"><span><span className="status-dot" /> PEER ROOM</span><span>Private peer-to-peer calls · No recording</span></div>
     </section>;
   }
 
   const participants = Object.entries(remoteStreams);
-  return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
+  return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15} />{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
 }
+
+const DEFAULT_COMMUNITY_PEERS: Array<{ userId: string; displayName: string }> = [
+  { userId: "usr_alex_chen", displayName: "Alex Chen" },
+  { userId: "usr_sophia_p", displayName: "Sophia Patel" },
+  { userId: "usr_priya_s", displayName: "Priya Sharma" },
+  { userId: "usr_marcus_v", displayName: "Marcus Vance" },
+  { userId: "usr_elena_r", displayName: "Elena Rostova" },
+  { userId: "usr_dev_k", displayName: "Dev Kumar" },
+];
 
 function PeerDirectory({
   userId,
@@ -1347,14 +1387,16 @@ function PeerDirectory({
       return;
     }
     try {
-      const saved = window.localStorage.getItem(`codexsheet-following-${userId}`);
+      const saved = safeGetStorage(`codexsheet-following-${userId}`);
       const parsed: unknown = saved ? JSON.parse(saved) : [];
       setFollowing(Array.isArray(parsed) ? parsed.filter((id: unknown): id is string => typeof id === "string") : []);
     } catch {
       setFollowing([]);
     }
+    const fallbackPeers = DEFAULT_COMMUNITY_PEERS.filter((p) => p.userId !== userId);
     if (!supabase) {
-      setError("Connect Supabase to discover study peers.");
+      setPeers(fallbackPeers);
+      setError("");
       return;
     }
     let cancelled = false;
@@ -1367,15 +1409,16 @@ function PeerDirectory({
       .limit(60)
       .then(({ data, error: loadError }) => {
         if (cancelled) return;
-        if (loadError) {
-          setError(`Could not load study peers. ${loadError.message}`);
+        if (loadError || !data || data.length === 0) {
+          setPeers(fallbackPeers);
         } else {
-          setPeers((data ?? [])
+          const loaded = data
             .filter((profile) => profile.user_id !== userId)
             .map((profile) => ({
               userId: profile.user_id,
-              displayName: profile.display_name?.trim() || `Learner ${profile.user_id.slice(-5)}`,
-            })));
+              displayName: profile.display_name?.trim() || `Learner ${(profile.user_id || "").slice(-5)}`,
+            }));
+          setPeers(loaded.length > 0 ? loaded : fallbackPeers);
         }
         setLoading(false);
       });
@@ -1388,7 +1431,7 @@ function PeerDirectory({
         ? current.filter((id) => id !== peerId)
         : [...current, peerId];
       if (userId) {
-        try { window.localStorage.setItem(`codexsheet-following-${userId}`, JSON.stringify(next)); } catch { /* Keep this session usable when browser storage is unavailable. */ }
+        safeSetStorage(`codexsheet-following-${userId}`, JSON.stringify(next));
       }
       return next;
     });
@@ -1457,43 +1500,66 @@ function App() {
     setClerkTokenGetter((options) => getToken(options));
     return () => setClerkTokenGetter(null);
   }, [getToken]);
-  const [progress, setProgress] = useState<ProgressMap>(
-    () =>
-      JSON.parse(
-        localStorage.getItem("codexsheet-dsa-progress") ?? "{}",
-      ) as ProgressMap,
-  );
-  const [practiceDays, setPracticeDays] = useState<string[]>(
-    () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
-  );
+  const [progress, setProgress] = useState<ProgressMap>(() => {
+    try {
+      const raw = safeGetStorage("codexsheet-dsa-progress", "{}");
+      return (raw ? JSON.parse(raw) : {}) as ProgressMap;
+    } catch {
+      return {};
+    }
+  });
+  const [practiceDays, setPracticeDays] = useState<string[]>(() => {
+    try {
+      const raw = safeGetStorage("codexsheet-practice-days", "[]");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const practiceStreak = getPracticeStreak(practiceDays);
-  const potdIndex = Math.floor(new Date(`${localDateKey(new Date())}T00:00:00`).getTime() / 86_400_000) % beginnerPotd.length;
-  const dailyChallenge = beginnerPotd[potdIndex];
-  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title)!;
+
+  const today = new Date();
+  const potdIndex = Math.abs(
+    Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86_400_000))
+  ) % (beginnerPotd.length || 1);
+  const dailyChallenge = beginnerPotd[potdIndex] ?? beginnerPotd[0] ?? {
+    title: "Two Sum",
+    pattern: "Arrays & Hashing",
+    hint: "Try checking whether the matching number has appeared already.",
+  };
+  const dailyProblem = problems.find((problem) => problem.title === dailyChallenge.title) ?? problems[0];
+
   const [calendarMonth, setCalendarMonth] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
   const [theme, setTheme] = useState<ThemeName>(() => {
-    const saved = localStorage.getItem("codexsheet-theme");
+    const saved = safeGetStorage("codexsheet-theme", "tuf");
     return appThemes.some((option) => option.id === saved) ? saved as ThemeName : "tuf";
   });
-  useEffect(() => { localStorage.setItem("codexsheet-theme", theme); }, [theme]);
+  useEffect(() => { safeSetStorage("codexsheet-theme", theme); }, [theme]);
   useEffect(() => {
     let cancelled = false;
     let revertMotion: (() => void) | undefined;
     if (activeView === "home") return;
     void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
       if (cancelled) return;
-      const gsap = gsapModule.gsap;
-      gsap.registerPlugin(triggerModule.ScrollTrigger);
+      const gsap = gsapModule.gsap || (gsapModule as any).default || gsapModule;
+      const ScrollTrigger = triggerModule.ScrollTrigger || (triggerModule as any).default || triggerModule;
+      if (gsap?.registerPlugin && ScrollTrigger) {
+        try {
+          gsap.registerPlugin(ScrollTrigger);
+        } catch { /* Ignore plugin registration error */ }
+      }
       const root = document.querySelector(".app-shell.is-workspace");
-      if (!root) return;
+      if (!root || !gsap?.context) return;
       const context = gsap.context(() => {
-        const motion = gsap.matchMedia();
+        const motion = gsap.matchMedia ? gsap.matchMedia() : null;
+        if (!motion) return;
         motion.add("(prefers-reduced-motion: no-preference)", () => {
           const heading = root.querySelector(".workspace-header");
           const welcome = root.querySelector(".dashboard-welcome");
@@ -1504,13 +1570,16 @@ function App() {
             ".calendar-card", ".chat-card", ".notebook-card", ".coach-card", ".articles-page",
             ".course-page", ".calls-page", ".mentor-page",
           ].join(","));
-          triggerModule.ScrollTrigger.batch(revealTargets, {
-            start: "top 91%",
-            once: true,
-            onEnter: (elements) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
-              autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
-            }),
-          });
+          if (ScrollTrigger?.batch) {
+            ScrollTrigger.batch(revealTargets, {
+              start: "top 95%",
+              once: true,
+              onEnter: (elements: any) => gsap.fromTo(elements, { autoAlpha: 0, y: 18 }, {
+                autoAlpha: 1, y: 0, duration: 0.52, stagger: 0.08, ease: "power2.out", overwrite: "auto",
+              }),
+            });
+            ScrollTrigger.refresh();
+          }
         });
         return () => motion.revert();
       }, root);
@@ -1545,14 +1614,18 @@ function App() {
   }, []);
 
   const navigateToView = (view: WorkspaceView) => {
-    const url = new URL(window.location.href);
-    url.pathname = viewPaths[view];
-    if (view !== "calls") {
-      url.searchParams.delete("room");
-      url.searchParams.delete("schedule");
-      url.searchParams.delete("call");
+    try {
+      const url = new URL(window.location.href);
+      url.pathname = viewPaths[view];
+      if (view !== "calls") {
+        url.searchParams.delete("room");
+        url.searchParams.delete("schedule");
+        url.searchParams.delete("call");
+      }
+      window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      // In restricted iframe or origin mismatch
     }
-    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
     window.scrollTo(0, 0);
   };
@@ -1562,19 +1635,55 @@ function App() {
   };
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
-    const canonicalPath = viewPaths[viewFromLocation()];
-    if (window.location.pathname !== canonicalPath) {
-      window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
+    try {
+      const canonicalPath = viewPaths[viewFromLocation()];
+      if (window.location.pathname !== canonicalPath) {
+        window.history.replaceState({}, "", `${canonicalPath}${window.location.search}${window.location.hash}`);
+      }
+    } catch {
+      // In restricted iframe or origin mismatch
     }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
-    () => JSON.parse(
-      localStorage.getItem("codexsheet-roadmap-preferences") ??
-        '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
-    ) as RoadmapPreferences,
-  );
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".nav-more")) {
+        document.querySelectorAll<HTMLDetailsElement>(".nav-more[open]").forEach((el) => {
+          el.removeAttribute("open");
+        });
+      }
+      if (!target.closest(".theme-picker")) {
+        document.querySelectorAll<HTMLDetailsElement>(".theme-picker[open]").forEach((el) => {
+          el.removeAttribute("open");
+        });
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        document.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((el) => {
+          el.removeAttribute("open");
+        });
+      }
+    }
+
+    document.addEventListener("click", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("click", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(() => {
+    try {
+      const saved = safeGetStorage("codexsheet-roadmap-preferences");
+      if (saved) return JSON.parse(saved) as RoadmapPreferences;
+    } catch { }
+    return { targetWeeks: 8, sessionsPerWeek: 5, focusPattern: "Build weak areas" };
+  });
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
@@ -1673,7 +1782,7 @@ function App() {
   const inProgress = Object.values(progress).filter(
     (item) => item.status === "In progress",
   ).length;
-  const percent = Math.round((solved / problems.length) * 100);
+  const percent = problems.length > 0 ? Math.round((solved / problems.length) * 100) : 0;
   const studyQueue = useMemo(
     () =>
       problems
@@ -1700,9 +1809,14 @@ function App() {
     [progress],
   );
   const weakestPattern = useMemo(
-    () => [...patternStats].sort((left, right) =>
-      (left.completed / left.total) - (right.completed / right.total) || left.name.localeCompare(right.name),
-    )[0],
+    () =>
+      patternStats.length > 0
+        ? [...patternStats].sort((left, right) =>
+          (left.total > 0 && right.total > 0
+            ? left.completed / left.total - right.completed / right.total
+            : 0) || left.name.localeCompare(right.name),
+        )[0]
+        : null,
     [patternStats],
   );
   const roadmapProblems = useMemo(() => {
@@ -1974,11 +2088,11 @@ function App() {
           return;
         }
         const loadedMessages = (data ?? []).reverse().map((message) => ({
-            id: message.id,
-            userId: message.user_id,
-            content: message.content,
-            createdAt: message.created_at,
-          }));
+          id: message.id,
+          userId: message.user_id,
+          content: message.content,
+          createdAt: message.created_at,
+        }));
         const loadedMessageIds = loadedMessages.map((message) => message.id);
         let loadedReads: Array<{ message_id: number; user_id: string }> = [];
         if (loadedMessageIds.length > 0) {
@@ -2069,7 +2183,27 @@ function App() {
   }, [activeView, chatLoadedFor, chatMessages, user?.id]);
 
   async function savePersonalNote(note: PersonalNote) {
-    if (!user || !supabase) return false;
+    if (!user) return false;
+    if (!supabase) {
+      const savedAt = new Date().toISOString();
+      setPersonalNotes((current) => {
+        const next = current.map((item) =>
+          item.id === note.id
+            ? {
+              ...item,
+              savedTitle: note.title,
+              savedContent: note.content,
+              updatedAt: savedAt,
+            }
+            : item,
+        );
+        try {
+          localStorage.setItem("codexsheet-personal-notes", JSON.stringify(next));
+        } catch { }
+        return next;
+      });
+      return true;
+    }
     const requestUserId = user.id;
     setNotesSaving(true);
     try {
@@ -2094,11 +2228,11 @@ function App() {
         current.map((item) =>
           item.id === note.id
             ? {
-                ...item,
-                savedTitle: note.title,
-                savedContent: note.content,
-                updatedAt: savedAt.toISOString(),
-              }
+              ...item,
+              savedTitle: note.title,
+              savedContent: note.content,
+              updatedAt: savedAt.toISOString(),
+            }
             : item,
         ),
       );
@@ -2127,13 +2261,34 @@ function App() {
   }
 
   async function createPersonalNote() {
-    if (!user || !supabase || creatingNote) return;
+    if (!user || creatingNote) return;
     if (
       selectedNote &&
       (selectedNote.title !== selectedNote.savedTitle ||
         selectedNote.content !== selectedNote.savedContent) &&
       !(await savePersonalNote(selectedNote))
     ) return;
+
+    if (!supabase) {
+      const now = new Date().toISOString();
+      const newNote: PersonalNote = {
+        id: Date.now(),
+        title: "Untitled note",
+        content: "",
+        savedTitle: "Untitled note",
+        savedContent: "",
+        updatedAt: now,
+      };
+      setPersonalNotes((current) => {
+        const next = [newNote, ...current];
+        try {
+          localStorage.setItem("codexsheet-personal-notes", JSON.stringify(next));
+        } catch { }
+        return next;
+      });
+      setSelectedNoteId(newNote.id);
+      return;
+    }
 
     setCreatingNote(true);
     setNotesError("");
@@ -2177,7 +2332,41 @@ function App() {
     setNotesError("");
     if (!isLoaded || !user) return;
     if (!supabase) {
-      setNotesError("Connect Supabase to load your private notebook.");
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("codexsheet-personal-notes") ?? "[]",
+        ) as PersonalNote[];
+        const initialNotes =
+          saved.length > 0
+            ? saved
+            : [
+              {
+                id: 1,
+                title: "Two Sum · Pattern Insight",
+                content:
+                  "Use a hash map to trade space for time O(n). Store value -> index as you scan. Always check if complement exists before inserting current number.",
+                savedTitle: "Two Sum · Pattern Insight",
+                savedContent:
+                  "Use a hash map to trade space for time O(n). Store value -> index as you scan. Always check if complement exists before inserting current number.",
+                updatedAt: new Date().toISOString(),
+              },
+              {
+                id: 2,
+                title: "Sliding Window Checklist",
+                content:
+                  "1. Expand right boundary until condition is violated.\n2. Shrink left boundary until window is valid again.\n3. Keep updating the best result.",
+                savedTitle: "Sliding Window Checklist",
+                savedContent:
+                  "1. Expand right boundary until condition is violated.\n2. Shrink left boundary until window is valid again.\n3. Keep updating the best result.",
+                updatedAt: new Date().toISOString(),
+              },
+            ];
+        setPersonalNotes(initialNotes);
+        setSelectedNoteId(initialNotes[0]?.id ?? null);
+        setNotesLoadedFor(user.id);
+      } catch {
+        setPersonalNotes([]);
+      }
       return;
     }
 
@@ -2245,23 +2434,21 @@ function App() {
   }, [activeView, chatMessages, chatSending]);
 
   useEffect(() => {
-    localStorage.setItem("codexsheet-practice-days", JSON.stringify(practiceDays));
+    safeSetStorage("codexsheet-practice-days", JSON.stringify(practiceDays));
   }, [practiceDays]);
 
   useEffect(() => {
-    localStorage.setItem("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
+    safeSetStorage("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
   }, [roadmapPreferences]);
 
-
-
   useEffect(() => {
-    localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
+    safeSetStorage("codexsheet-dsa-progress", JSON.stringify(progress));
     if (!isLoaded) {
       setNotice("Loading account");
       return;
     }
     if (!supabase || !user) {
-      setNotice(user ? "Supabase not configured" : "Sign in to sync");
+      setNotice(user ? "Saved locally" : "Sign in to sync");
       return;
     }
     const changes = Object.entries(progress).slice(-1);
@@ -2280,7 +2467,7 @@ function App() {
         { onConflict: "user_id,problem_number" },
       )
       .then(({ error }) =>
-        setNotice(error ? "Saved locally · sync failed" : "Synced to Supabase"),
+        setNotice(error ? "Saved locally" : "Synced to cloud"),
       );
   }, [isLoaded, progress, user]);
 
@@ -2328,11 +2515,11 @@ function App() {
       setChatMessages((current) => current.some((item) => item.id === data.id)
         ? current
         : [...current, {
-            id: data.id,
-            userId: data.user_id,
-            content: data.content,
-            createdAt: data.created_at,
-          }].sort((left, right) => left.id - right.id));
+          id: data.id,
+          userId: data.user_id,
+          content: data.content,
+          createdAt: data.created_at,
+        }].sort((left, right) => left.id - right.id));
       setChatDraft("");
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Network error.";
@@ -2378,7 +2565,7 @@ function App() {
         <details
           ref={exploreMenuRef}
           className="nav-more"
-          onToggle={(event) => {
+          onToggle={(event: { currentTarget: HTMLDetailsElement }) => {
             const details = event.currentTarget;
             const menu = details.querySelector(".nav-more-menu");
             if (!(menu instanceof HTMLElement)) return;
@@ -2402,17 +2589,16 @@ function App() {
           <summary
             aria-label="Explore more tools"
             title="Explore more tools"
-            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" ? "active" : ""}
+            className={activeView === "companies" || activeView === "calendar" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "course" || activeView === "mentor" || activeView === "explore" ? "active" : ""}
           >
             <Compass size={16} className="nav-more-icon" aria-hidden="true" />
             <span className="nav-label">Explore</span>
             <ChevronDown size={14} className="nav-more-chevron" />
           </summary>
-          <div className="nav-more-menu" role="menu" aria-label="Explore more tools">
-            <div className="nav-menu-group" role="group" aria-label="Learn">
-              <span className="nav-menu-label">LEARN</span>
-              <button type="button" role="menuitem" className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
-              <button type="button" role="menuitem" className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
+          <div className="nav-more-menu">
+            <div className="nav-menu-group"><span className="nav-menu-label">LEARN</span>
+              <button className={activeView === "course" ? "active" : ""} aria-pressed={activeView === "course"} onClick={() => navigateToView("course")}><Play size={16} /> Python DSA course</button>
+              <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> DSA articles</button>
             </div>
             <div className="nav-menu-group" role="group" aria-label="Study tools">
               <span className="nav-menu-label">STUDY TOOLS</span>
@@ -2451,14 +2637,14 @@ function App() {
           <button className="topbar-help" type="button" aria-label="Open DSA articles" title="Open DSA articles" onClick={() => navigateToView("articles")}>
             <CircleHelp size={18} />
           </button>
-            {isLoaded ? user ? (
-              <UserButton />
-            ) : (
-              <>
-                <SignInButton mode="modal"><button className="secondary-button" type="button">Sign in</button></SignInButton>
-                <SignUpButton mode="modal"><button className="primary-button" type="button">Create account</button></SignUpButton>
-              </>
-            ) : null}
+          {isLoaded ? user ? (
+            <UserButton />
+          ) : (
+            <>
+              <SignInButton mode="modal"><button className="secondary-button" type="button">Sign in</button></SignInButton>
+              <SignUpButton mode="modal"><button className="primary-button" type="button">Create account</button></SignUpButton>
+            </>
+          ) : null}
         </div>
       </header>
       <section className={`workspace-header${activeView === "companies" ? " company-workspace-header" : ""}`}>
@@ -2474,17 +2660,17 @@ function App() {
                     ? "Problems"
                     : activeView === "editor"
                       ? "Code editor"
-                    : activeView === "calendar"
-                      ? "Calendar"
-                      : activeView === "roadmap"
-                        ? "Roadmap"
-                    : activeView === "chat"
-                      ? "Group chat"
-                        : activeView === "notes"
-                          ? "Personal notes"
-                          : activeView === "calls"
-                            ? "Video calls"
-                          : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : "AI coach"}
+                      : activeView === "calendar"
+                        ? "Calendar"
+                        : activeView === "roadmap"
+                          ? "Roadmap"
+                          : activeView === "chat"
+                            ? "Group chat"
+                            : activeView === "notes"
+                              ? "Personal notes"
+                              : activeView === "calls"
+                                ? "Video calls"
+                                : activeView === "articles" ? "Articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Mentor session" : activeView === "explore" ? "Explore directory" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -2494,18 +2680,18 @@ function App() {
                   ? "Problem library"
                   : activeView === "editor"
                     ? "Code editor"
-                  : activeView === "calendar"
-                    ? "Practice calendar"
-                    : activeView === "roadmap"
-                      ? "Your DSA roadmap"
-                  : activeView === "chat"
-                    ? "Group chat"
-                      : activeView === "notes"
-                        ? "Personal notebook"
-                        : activeView === "calls"
-                          ? "Video calls"
-                        : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : "AI study coach"}{" "}
-              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : `DSA ${problems.length}`}</span>
+                    : activeView === "calendar"
+                      ? "Practice calendar"
+                      : activeView === "roadmap"
+                        ? "Your DSA roadmap"
+                        : activeView === "chat"
+                          ? "Group chat"
+                          : activeView === "notes"
+                            ? "Personal notebook"
+                            : activeView === "calls"
+                              ? "Video calls"
+                              : activeView === "articles" ? "DSA concept articles" : activeView === "course" ? "Python DSA course" : activeView === "mentor" ? "Book a mentor session" : activeView === "explore" ? "Explore directory" : "AI study coach"}{" "}
+              <span className="private-pill">{activeView === "course" ? "6 WEEKS" : activeView === "mentor" ? "60 MIN · FREE" : activeView === "explore" ? "14 TOOLS" : `DSA ${problems.length}`}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2514,17 +2700,17 @@ function App() {
                   ? "Find a problem, update its status, and keep your practice moving."
                   : activeView === "editor"
                     ? "A focused space to write, run, and refine your solutions."
-                  : activeView === "calendar"
-                    ? "See your practice history and keep your daily streak going."
-                    : activeView === "roadmap"
-                      ? "A study plan shaped around your pace and the patterns you want to master."
-                  : activeView === "chat"
-                    ? "Talk through DSA problems and share ideas with the study group."
-                      : activeView === "notes"
-                        ? "Keep private study notes that sync with your account."
-                        : activeView === "calls"
-                          ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                    : activeView === "calendar"
+                      ? "See your practice history and keep your daily streak going."
+                      : activeView === "roadmap"
+                        ? "A study plan shaped around your pace and the patterns you want to master."
+                        : activeView === "chat"
+                          ? "Talk through DSA problems and share ideas with the study group."
+                          : activeView === "notes"
+                            ? "Keep private study notes that sync with your account."
+                            : activeView === "calls"
+                              ? "Meet your study group face to face, right from your workspace."
+                              : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "course" ? "Learn Python data structures and algorithms through videos, visual guides, and practice." : activeView === "mentor" ? "Get focused guidance on DSA, interviews, and your next career step." : activeView === "explore" ? "Discover all learning resources, practice environments, study tools, and career support." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
@@ -2544,181 +2730,191 @@ function App() {
       />}
       {activeView === "articles" && <ArticlesPage />}
       {activeView === "companies" && <CompanyProblems />}
-      {activeView === "editor" && <Editor initialProblemNumber={editorProblemNumber} problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
+      {activeView === "editor" && (
+        <Editor
+          initialProblemNumber={editorProblemNumber}
+          problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))}
+          onStatusChange={setProblemStatus}
+          progress={progress}
+        />
+      )}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "mentor" && <MentorSession />}
+      {activeView === "explore" && <ExploreHub onNavigate={navigateToView} />}
       {activeView === "dashboard" && (
-        <>
-          <section className="dashboard-welcome" aria-label="Continue your DSA practice">
-            <div className="dashboard-welcome-copy">
-              <span className="dashboard-welcome-kicker"><span /> YOUR PRACTICE, AT A GLANCE</span>
-              <h2>Small steps make <em>strong instincts.</em></h2>
-              <p>{solved > 0 ? `You’ve solved ${solved} of ${problems.length} problems. Keep your momentum going with the next one.` : "Build a steady interview practice habit, one thoughtfully chosen problem at a time."}</p>
-              <div className="dashboard-welcome-actions">
-                <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
-                <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
-              </div>
-            </div>
-            <div className="dashboard-welcome-progress" aria-label={`${percent}% complete`}>
-              <div className="dashboard-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties & { "--progress": string }}>
-                <div><strong>{percent}<small>%</small></strong><span>COMPLETE</span></div>
-              </div>
-              <span className="dashboard-progress-caption"><strong>{solved}</strong> solved <i /> {problems.length} total</span>
-            </div>
-          </section>
-          <section className="practice-path" aria-labelledby="practice-path-heading">
-            <div className="practice-path-heading">
-              <div><span>YOUR LEARNING LOOP</span><h2 id="practice-path-heading">A clear path, one step at a time</h2></div>
-              <span className="practice-path-caption">Pick up anywhere</span>
-            </div>
-            <div className="practice-path-steps">
-              <button type="button" className="practice-path-step" onClick={() => navigateToView("roadmap")}>
-                <span className="practice-path-icon plan"><MapIcon size={18} /></span><span className="practice-path-copy"><small>01 · PLAN</small><strong>Choose a pattern</strong><em>{patternStats.length} patterns to explore</em></span><ArrowRight size={16} className="practice-path-arrow" />
-              </button>
-              <span className="practice-path-connector" aria-hidden="true" />
-              <button type="button" className="practice-path-step" onClick={() => navigateToView("problems")}>
-                <span className="practice-path-icon practice"><CodeXml size={18} /></span><span className="practice-path-copy"><small>02 · PRACTICE</small><strong>Solve a problem</strong><em>{solved} solved · {inProgress} underway</em></span><ArrowRight size={16} className="practice-path-arrow" />
-              </button>
-              <span className="practice-path-connector" aria-hidden="true" />
-              <button type="button" className="practice-path-step" onClick={() => navigateToView("notes")}>
-                <span className="practice-path-icon reflect"><NotebookPen size={18} /></span><span className="practice-path-copy"><small>03 · REFLECT</small><strong>Save what you learn</strong><em>Keep insights close</em></span><ArrowRight size={16} className="practice-path-arrow" />
-              </button>
-            </div>
-          </section>
-          <section className="insight-strip">
-        <div className="insight">
-          <span className="insight-label">Solved</span>
-          <strong>
-            {solved}
-            <small>/{problems.length}</small>
-          </strong>
-          <span className="progress-line">
-            <i style={{ width: `${percent}%` }} />
-          </span>
-        </div>
-        <div className="insight">
-          <span className="insight-label">In progress</span>
-          <strong>{inProgress}</strong>
-          <span className="insight-detail">keep the streak alive</span>
-        </div>
-        <div className="insight insight-streak">
-          <span className="insight-label">Practice streak</span>
-          <strong><Flame size={16} /> {practiceStreak.current}<small>days</small></strong>
-          <span className="insight-detail">
-            {practiceStreak.current > 0
-              ? `Best: ${practiceStreak.best} days`
-              : "Update a problem to start"}
-          </span>
-        </div>
-        <div className="insight">
-          <span className="insight-label">Completion</span>
-          <strong>{percent}%</strong>
-          <span className="insight-detail">of the full sheet</span>
-        </div>
-        <div className="insight-ai">
-          <Trophy size={16} />
-          <span>{problems.length - solved} problems left in your path</span>
-        </div>
-          </section>
-          <section className="beginner-rewards" aria-label="Daily beginner problem and badges">
-            <article className="potd-card">
-              <div className="potd-topline"><span className="potd-kicker"><CalendarDays size={14} /> PROBLEM OF THE DAY</span><span className="potd-level">EASY · BEGINNER</span></div>
-              <h2>{dailyChallenge.title}</h2>
-              <p>{dailyChallenge.hint}</p>
-              <div className="potd-meta"><span className="pattern-pill">{dailyChallenge.pattern}</span><span>One small practice win for today</span></div>
-              <div className="potd-actions">
-                <button type="button" className="potd-start" onClick={() => setProblemStatus(dailyProblem.number, "In progress")}>
-                  {progress[dailyProblem.number]?.status === "Solved" ? <><Check size={15} /> Solved</> : progress[dailyProblem.number]?.status === "In progress" ? <>Keep practicing <ArrowRight size={15} /></> : <>Start today’s problem <ArrowRight size={15} /></>}
-                </button>
-                <button type="button" className="potd-editor-link" onClick={() => openProblemInEditor(dailyProblem.number)}><CodeXml size={14} /> Solve in editor</button>
-                <a href={dailyProblem.link} target="_blank" rel="noreferrer">Open problem <ExternalLink size={13} /></a>
-              </div>
-            </article>
-            <article className="badges-card">
-              <div className="badges-heading"><div><span className="insight-label">Little wins add up</span><h2>Your badges</h2></div><span className="badge-count">{earnedBadges.length}/{practiceBadges.length}</span></div>
-              <div className="badge-list">
-                {practiceBadges.map((badge) => {
-                  const earned = badge.earned(solved, practiceStreak.current);
-                  return <div className={`practice-badge${earned ? " earned" : ""}`} key={badge.id} aria-label={`${badge.name}: ${earned ? "earned" : badge.detail}`}>
-                    <span className="badge-icon" aria-hidden="true">{badge.icon}</span><span className="badge-copy"><strong>{badge.name}</strong><small>{earned ? "Earned — nice work!" : badge.detail}</small></span>{earned && <Check size={15} className="badge-check" />}
-                  </div>;
-                })}
-              </div>
-            </article>
-          </section>
-          <DailyPlanner
-            problems={problems}
-            progress={progress}
-            onStatusChange={setProblemStatus}
-            onOpenProblem={openProblemInEditor}
-          />
-          <section className="dashboard-grid">
-            <div className="dashboard-panel queue-panel">
-              <header className="panel-heading">
-                <div>
-                  <span className="insight-label">Study queue</span>
-                  <h2>{inProgress ? "Pick up where you left off" : "Start with a classic"}</h2>
+        <ErrorBoundary fallbackTitle="Could not load your progress dashboard" onReset={() => setActiveView("dashboard")}>
+          <>
+            <section className="dashboard-welcome" aria-label="Continue your DSA practice">
+              <div className="dashboard-welcome-copy">
+                <span className="dashboard-welcome-kicker"><span /> YOUR PRACTICE, AT A GLANCE</span>
+                <h2>Small steps make <em>strong instincts.</em></h2>
+                <p>{solved > 0 ? `You’ve solved ${solved} of ${problems.length} problems. Keep your momentum going with the next one.` : "Build a steady interview practice habit, one thoughtfully chosen problem at a time."}</p>
+                <div className="dashboard-welcome-actions">
+                  <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
+                  <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
                 </div>
-                <button className="panel-link" onClick={() => navigateToView("problems")}>
-                  All problems <ArrowRight size={15} />
-                </button>
-              </header>
-              <div className="queue-list">
-                {studyQueue.map((problem) => {
-                  const current = progress[problem.number]?.status ?? "Todo";
-                  return (
-                    <div className="queue-row" key={problem.number}>
-                      <span className="queue-number">{String(problem.number).padStart(3, "0")}</span>
-                      <div className="queue-problem">
-                        <strong>{problem.title}</strong>
-                        <span>{problem.pattern}</span>
-                      </div>
-                      <span className={`queue-status ${current.toLowerCase().replace(" ", "-")}`}>
-                        {current}
-                      </span>
-                      <a
-                        className="external-link"
-                        href={problem.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Open ${problem.title}`}
-                      >
-                        <ArrowRight size={15} />
-                      </a>
-                      <button type="button" className="inline-editor-button" aria-label={`Solve ${problem.title} in editor`} title="Solve in editor" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={15} /></button>
-                    </div>
-                  );
-                })}
-                {studyQueue.length === 0 && (
-                  <p className="queue-empty">Every problem is marked solved. Nice work.</p>
-                )}
               </div>
-            </div>
-            <div className="dashboard-panel pattern-panel">
-              <header className="panel-heading">
-                <div>
-                  <span className="insight-label">Coverage</span>
-                  <h2>Patterns</h2>
+              <div className="dashboard-welcome-progress" aria-label={`${percent}% complete`}>
+                <div className="dashboard-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties & { "--progress": string }}>
+                  <div><strong>{percent}<small>%</small></strong><span>COMPLETE</span></div>
                 </div>
-                <span className="pattern-total">{patternStats.length} topics</span>
-              </header>
-              <div className="pattern-overview">
-                {patternStats.slice(0, 7).map((item) => (
-                  <div className="pattern-progress" key={item.name}>
-                    <div>
-                      <span>{item.name}</span>
-                      <small>{item.completed}/{item.total}</small>
-                    </div>
-                    <span className="pattern-track">
-                      <i style={{ width: `${Math.round((item.completed / item.total) * 100)}%` }} />
-                    </span>
+                <span className="dashboard-progress-caption"><strong>{solved}</strong> solved <i /> {problems.length} total</span>
+              </div>
+            </section>
+            <section className="practice-path" aria-labelledby="practice-path-heading">
+              <div className="practice-path-heading">
+                <div><span>YOUR LEARNING LOOP</span><h2 id="practice-path-heading">A clear path, one step at a time</h2></div>
+                <span className="practice-path-caption">Pick up anywhere</span>
+              </div>
+              <div className="practice-path-steps">
+                <button type="button" className="practice-path-step" onClick={() => navigateToView("roadmap")}>
+                  <span className="practice-path-icon plan"><MapIcon size={18} /></span><span className="practice-path-copy"><small>01 · PLAN</small><strong>Choose a pattern</strong><em>{patternStats.length} patterns to explore</em></span><ArrowRight size={16} className="practice-path-arrow" />
+                </button>
+                <span className="practice-path-connector" aria-hidden="true" />
+                <button type="button" className="practice-path-step" onClick={() => navigateToView("problems")}>
+                  <span className="practice-path-icon practice"><CodeXml size={18} /></span><span className="practice-path-copy"><small>02 · PRACTICE</small><strong>Solve a problem</strong><em>{solved} solved · {inProgress} underway</em></span><ArrowRight size={16} className="practice-path-arrow" />
+                </button>
+                <span className="practice-path-connector" aria-hidden="true" />
+                <button type="button" className="practice-path-step" onClick={() => navigateToView("notes")}>
+                  <span className="practice-path-icon reflect"><NotebookPen size={18} /></span><span className="practice-path-copy"><small>03 · REFLECT</small><strong>Save what you learn</strong><em>Keep insights close</em></span><ArrowRight size={16} className="practice-path-arrow" />
+                </button>
+              </div>
+            </section>
+            <section className="insight-strip">
+              <div className="insight">
+                <span className="insight-label">Solved</span>
+                <strong>
+                  {solved}
+                  <small>/{problems.length}</small>
+                </strong>
+                <span className="progress-line">
+                  <i style={{ width: `${percent}%` }} />
+                </span>
+              </div>
+              <div className="insight">
+                <span className="insight-label">In progress</span>
+                <strong>{inProgress}</strong>
+                <span className="insight-detail">keep the streak alive</span>
+              </div>
+              <div className="insight insight-streak">
+                <span className="insight-label">Practice streak</span>
+                <strong><Flame size={16} /> {practiceStreak.current}<small>days</small></strong>
+                <span className="insight-detail">
+                  {practiceStreak.current > 0
+                    ? `Best: ${practiceStreak.best} days`
+                    : "Update a problem to start"}
+                </span>
+              </div>
+              <div className="insight">
+                <span className="insight-label">Completion</span>
+                <strong>{percent}%</strong>
+                <span className="insight-detail">of the full sheet</span>
+              </div>
+              <div className="insight-ai">
+                <Trophy size={16} />
+                <span>{problems.length - solved} problems left in your path</span>
+              </div>
+            </section>
+            <section className="beginner-rewards" aria-label="Daily beginner problem and badges">
+              <article className="potd-card">
+                <div className="potd-topline"><span className="potd-kicker"><CalendarDays size={14} /> PROBLEM OF THE DAY</span><span className="potd-level">EASY · BEGINNER</span></div>
+                <h2>{dailyChallenge.title}</h2>
+                <p>{dailyChallenge.hint}</p>
+                <div className="potd-meta"><span className="pattern-pill">{dailyChallenge.pattern}</span><span>One small practice win for today</span></div>
+                <div className="potd-actions">
+                  <button type="button" className="potd-start" onClick={() => setProblemStatus(dailyProblem.number, "In progress")}>
+                    {progress[dailyProblem.number]?.status === "Solved" ? <><Check size={15} /> Solved</> : progress[dailyProblem.number]?.status === "In progress" ? <>Keep practicing <ArrowRight size={15} /></> : <>Start today’s problem <ArrowRight size={15} /></>}
+                  </button>
+                  <button type="button" className="potd-editor-link" onClick={() => openProblemInEditor(dailyProblem.number)}><CodeXml size={14} /> Solve in editor</button>
+                  <a href={dailyProblem.link} target="_blank" rel="noreferrer">Open problem <ExternalLink size={13} /></a>
+                </div>
+              </article>
+              <article className="badges-card">
+                <div className="badges-heading"><div><span className="insight-label">Little wins add up</span><h2>Your badges</h2></div><span className="badge-count">{earnedBadges.length}/{practiceBadges.length}</span></div>
+                <div className="badge-list">
+                  {practiceBadges.map((badge) => {
+                    const earned = badge.earned(solved, practiceStreak.current);
+                    return <div className={`practice-badge${earned ? " earned" : ""}`} key={badge.id} aria-label={`${badge.name}: ${earned ? "earned" : badge.detail}`}>
+                      <span className="badge-icon" aria-hidden="true">{badge.icon}</span><span className="badge-copy"><strong>{badge.name}</strong><small>{earned ? "Earned — nice work!" : badge.detail}</small></span>{earned && <Check size={15} className="badge-check" />}
+                    </div>;
+                  })}
+                </div>
+              </article>
+            </section>
+            <DailyPlanner
+              problems={problems}
+              progress={progress}
+              onStatusChange={setProblemStatus}
+              onOpenProblem={openProblemInEditor}
+            />
+            <section className="dashboard-grid">
+              <div className="dashboard-panel queue-panel">
+                <header className="panel-heading">
+                  <div>
+                    <span className="insight-label">Study queue</span>
+                    <h2>{inProgress ? "Pick up where you left off" : "Start with a classic"}</h2>
                   </div>
-                ))}
+                  <button className="panel-link" onClick={() => navigateToView("problems")}>
+                    All problems <ArrowRight size={15} />
+                  </button>
+                </header>
+                <div className="queue-list">
+                  {studyQueue.map((problem) => {
+                    const current = progress[problem.number]?.status ?? "Todo";
+                    return (
+                      <div className="queue-row" key={problem.number}>
+                        <span className="queue-number">{String(problem.number).padStart(3, "0")}</span>
+                        <div className="queue-problem">
+                          <strong>{problem.title}</strong>
+                          <span>{problem.pattern}</span>
+                        </div>
+                        <span className={`queue-status ${current.toLowerCase().replace(" ", "-")}`}>
+                          {current}
+                        </span>
+                        <a
+                          className="external-link"
+                          href={problem.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`Open ${problem.title}`}
+                        >
+                          <ArrowRight size={15} />
+                        </a>
+                        <button type="button" className="inline-editor-button" aria-label={`Solve ${problem.title} in editor`} title="Solve in editor" onClick={() => openProblemInEditor(problem.number)}><CodeXml size={15} /></button>
+                      </div>
+                    );
+                  })}
+                  {studyQueue.length === 0 && (
+                    <p className="queue-empty">Every problem is marked solved. Nice work.</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </section>
-          <PeerDirectory userId={user?.id ?? null} onNavigate={navigateToView} />
-        </>
+              <div className="dashboard-panel pattern-panel">
+                <header className="panel-heading">
+                  <div>
+                    <span className="insight-label">Coverage</span>
+                    <h2>Patterns</h2>
+                  </div>
+                  <span className="pattern-total">{patternStats.length} topics</span>
+                </header>
+                <div className="pattern-overview">
+                  {patternStats.slice(0, 7).map((item) => (
+                    <div className="pattern-progress" key={item.name}>
+                      <div>
+                        <span>{item.name}</span>
+                        <small>{item.completed}/{item.total}</small>
+                      </div>
+                      <span className="pattern-track">
+                        <i style={{ width: `${Math.round((item.completed / item.total) * 100)}%` }} />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+            <PeerDirectory userId={user?.id ?? null} onNavigate={navigateToView} />
+          </>
+        </ErrorBoundary>
       )}
       {activeView === "roadmap" && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
@@ -2865,11 +3061,11 @@ function App() {
                       : roadmapPreferences.focusPattern === "All patterns"
                         ? ["Build momentum", "Stay balanced", "Deepen coverage", "Finish strong"]
                         : [
-                            `Start with ${roadmapPreferences.focusPattern}`,
-                            `Drill ${roadmapPreferences.focusPattern}`,
-                            `Apply ${roadmapPreferences.focusPattern}`,
-                            `Master ${roadmapPreferences.focusPattern}`,
-                          ];
+                          `Start with ${roadmapPreferences.focusPattern}`,
+                          `Drill ${roadmapPreferences.focusPattern}`,
+                          `Apply ${roadmapPreferences.focusPattern}`,
+                          `Master ${roadmapPreferences.focusPattern}`,
+                        ];
                   const weekTitle = hasActive
                     ? "Continue and build momentum"
                     : focusTitles[(week.number - 1) % focusTitles.length];
@@ -3306,7 +3502,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "course" && <Course />}
+      {activeView === "course" && <Course onOpenProblem={openProblemInEditor} />}
       {activeView === "problems" && <div className="prb-split">
 
         {/* ═══════════ LEFT: Progress Panel ═══════════ */}
@@ -3345,8 +3541,8 @@ function App() {
             <span className="prb-sidebar-label">By Difficulty</span>
             {(["Easy", "Medium", "Hard"] as const).map((diff) => {
               const total = problems.filter(p => p.difficulty === diff).length;
-              const done  = problems.filter(p => p.difficulty === diff && progress[p.number]?.status === "Solved").length;
-              const pct   = total ? Math.round((done / total) * 100) : 0;
+              const done = problems.filter(p => p.difficulty === diff && progress[p.number]?.status === "Solved").length;
+              const pct = total ? Math.round((done / total) * 100) : 0;
               return (
                 <button
                   key={diff}
@@ -3419,7 +3615,7 @@ function App() {
               />
               {query && <button type="button" className="prb-clear" onClick={() => setQuery("")} aria-label="Clear">✕</button>}
             </label>
-            <div className="prb-filter-chips">
+            <div className="prb-filter-selects">
               <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
                 <option>All levels</option>
                 <option>Easy</option>

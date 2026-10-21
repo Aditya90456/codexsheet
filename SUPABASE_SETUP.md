@@ -4,38 +4,24 @@
 
 Copy `.env.example` to `.env` and set:
 
+- `VITE_CLERK_PUBLISHABLE_KEY` from Clerk Dashboard > API Keys.
 - `VITE_SUPABASE_URL` from Supabase Dashboard > Project Settings > API.
 - `VITE_SUPABASE_PUBLISHABLE_KEY` from Supabase Dashboard > Project Settings > API.
 
-These are browser-facing keys. Never put a Supabase `service_role` key in a
-`VITE_` variable or client code. Restart the Vite dev server after changing
-`.env`.
+These are browser-facing keys. Never put a Clerk secret key or Supabase
+`service_role` key in a `VITE_` variable or client code. Restart the Vite dev
+server after changing `.env`.
 
 ## Authentication and database schema
 
-The app uses Supabase Auth email/password accounts. In the Supabase Dashboard,
-enable Email under **Authentication > Sign In / Providers**, then set the Site
-URL and allowed redirect URLs under **Authentication > URL Configuration** to
-include the app's production URL and local development URL.
+The app uses Clerk for sign-in and passes Clerk session tokens to Supabase.
+Configure the app's production and local development URLs in the Clerk
+Dashboard, and configure Clerk as a third-party authentication provider in the
+Supabase project so row-level security policies can validate those tokens.
 
-Run [`db/schema.sql`](db/schema.sql) in **SQL Editor** to create the profile
-table, secure it with RLS, backfill existing Supabase Auth users, and install a
-trigger that creates a profile row whenever a user signs up. Email confirmation
-is controlled by **Authentication > Sign In / Providers**; when it is enabled,
-new users must confirm their email before they can sign in.
-
-Confirmation and password-reset email delivery uses the project's SMTP settings.
-Configure a working provider under **Authentication > SMTP Settings** (host,
-port, username, password, and a verified sender address). The Supabase Auth
-logs report delivery failures. For example, `535 5.7.8 Username and Password
-not accepted` means the SMTP provider rejected its credentials; update them
-there and retry signup. Supabase recommends a dedicated transactional email
-provider for production rather than relying on a personal mailbox.
-
-Run [`supabase.sql`](supabase.sql) as well to create the app's other tables,
-policies, and triggers (including private notes, DSA progress, chat, and calls).
-The signup trigger creates a profile row, not a new copy of the database tables
-for each user.
+Run [`db/schema.sql`](db/schema.sql) and [`supabase.sql`](supabase.sql) in the
+Supabase SQL Editor to create the app's tables and row-level security policies.
+The app stores Clerk user IDs as text in its profile and progress data.
 
 ## Peer video rooms
 
