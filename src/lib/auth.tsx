@@ -1,17 +1,25 @@
 import {
   ClerkProvider,
-  SignInButton,
-  SignUpButton,
+  SignIn,
+  SignUp,
   UserButton,
   useAuth as useClerkAuth,
-  useClerk,
   useUser,
 } from "@clerk/clerk-react";
 import type { ReactNode } from "react";
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 
-export { SignInButton, SignUpButton, UserButton, useUser };
+export { UserButton, useUser };
+
+export function AuthPage({ mode }: { mode: "sign-in" | "sign-up" }) {
+  const Component = mode === "sign-in" ? SignIn : SignUp;
+  return (
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f5f6f8" }}>
+      <Component routing="path" path={`/${mode}`} />
+    </main>
+  );
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (!publishableKey) {
@@ -23,16 +31,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  return <ClerkProvider publishableKey={publishableKey}>{children}</ClerkProvider>;
+  return (
+    <ClerkProvider
+      publishableKey={publishableKey}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
+    >
+      {children}
+    </ClerkProvider>
+  );
 }
 
 export function useAuth() {
   const auth = useClerkAuth();
-  const clerk = useClerk();
 
   return {
     ...auth,
-    openSignIn: () => clerk.openSignIn(),
-    openSignUp: () => clerk.openSignUp(),
+    openSignIn: () => { window.location.assign("/sign-in"); },
+    openSignUp: () => { window.location.assign("/sign-up"); },
   };
 }

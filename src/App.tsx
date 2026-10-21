@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
-  SignInButton,
-  SignUpButton,
   UserButton,
   useAuth,
   useUser,
@@ -1507,6 +1505,7 @@ function App() {
     clerkUser?.username?.trim() ||
     clerkUser?.primaryEmailAddress?.emailAddress.split("@")[0]?.trim() ||
     "Codexsheet member";
+
   useEffect(() => {
     setClerkTokenGetter((options) => getToken(options));
     return () => setClerkTokenGetter(null);
@@ -2648,12 +2647,12 @@ function App() {
           <button className="topbar-help" type="button" aria-label="Open DSA articles" title="Open DSA articles" onClick={() => navigateToView("articles")}>
             <CircleHelp size={18} />
           </button>
-          {isLoaded ? user ? (
+          {user ? (
             <UserButton />
-          ) : (
+          ) : isLoaded ? (
             <>
-              <SignInButton mode="modal"><button className="secondary-button" type="button">Sign in</button></SignInButton>
-              <SignUpButton mode="modal"><button className="primary-button" type="button">Create account</button></SignUpButton>
+              <a className="secondary-button" href="/sign-in">Sign in</a>
+              <a className="primary-button" href="/sign-up">Create account</a>
             </>
           ) : null}
         </div>
@@ -3309,7 +3308,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to join the shared study group and chat with other learners.</p>
-              <SignInButton mode="modal"><button className="primary-button" type="button">Sign in</button></SignInButton>
+              <a className="primary-button" href="/sign-in">Sign in</a>
             </div>
           ) : (
             <>
@@ -3410,7 +3409,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to create a private notebook that syncs with your account.</p>
-              <SignInButton mode="modal"><button className="primary-button" type="button">Sign in</button></SignInButton>
+              <a className="primary-button" href="/sign-in">Sign in</a>
             </div>
           ) : (
             <>
