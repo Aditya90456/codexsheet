@@ -177,12 +177,26 @@ export default function Editor({
   }, [problems, problemNumber]);
 
   const detail = useMemo<ProblemDetail>(() => {
-    return getProblemDetail(
+    const problemDetail = getProblemDetail(
       problemNumber,
       currentProblem?.title,
       currentProblem?.pattern,
       currentProblem?.difficulty,
     );
+    if (problemNumber !== 250) return problemDetail;
+    return {
+      ...problemDetail,
+      description:
+        "Given an upper bound n and a hidden number pick between 1 and n, find pick using binary search. Input contains n and pick as two integers; output the hidden number.",
+      constraints: ["1 <= pick <= n <= 2^31 - 1"],
+      examples: [{ input: "10 6", output: "6" }],
+      testCases: [
+        { stdin: "10 6", expected: "6" },
+        { stdin: "1 1", expected: "1" },
+        { stdin: "2 1", expected: "1" },
+        { stdin: "100 99", expected: "99" },
+      ],
+    };
   }, [problemNumber, currentProblem]);
 
   // Set default stdin from first example
