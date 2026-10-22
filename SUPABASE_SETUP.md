@@ -14,9 +14,11 @@ server after changing `.env`.
 
 ## Production deployment
 
-Use a separate Clerk production instance for the live application. Complete its
-production deployment setup in Clerk, including the owned application domain,
-required DNS records, sign-in methods, and any OAuth credentials. Set the exact
+Use a separate Clerk production instance for the live application. Production
+Clerk keys cannot be used on Vercel-provided `*.vercel.app` domains because you
+cannot configure the DNS records Clerk requires there. Add a custom domain that
+you control to Vercel and Clerk, then complete its production deployment setup,
+including required DNS records, sign-in methods, and any OAuth credentials. Set the exact
 production HTTPS origin and permitted redirect destinations in that instance.
 The app uses `/sign-in` and `/sign-up`, then returns to `/` unless Clerk has an
 existing redirect target.
