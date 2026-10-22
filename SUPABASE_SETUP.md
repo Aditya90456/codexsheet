@@ -14,23 +14,34 @@ server after changing `.env`.
 
 ## Production deployment
 
-Use a separate Clerk production instance for the live application. Production
-Clerk keys cannot be used on Vercel-provided `*.vercel.app` domains because you
+### Keep the Vercel-provided URL
+
+If the app stays on `*.vercel.app`, use the Clerk **development** instance and
+its `pk_test_` publishable key in Vercel's Production environment. The app
+allows this key on Vercel-provided domains so sign-in can be tested without
+custom DNS. This is development authentication, not a production-ready setup:
+it uses the development Clerk instance and its users, limits, and OAuth
+configuration. Use a non-production Supabase project with that Clerk instance
+so development accounts do not write to live user data.
+
+### Use production Clerk authentication
+
+For real users, use a separate Clerk production instance. Production Clerk
+keys cannot be used on Vercel-provided `*.vercel.app` domains because you
 cannot configure the DNS records Clerk requires there. Add a custom domain that
 you control to Vercel and Clerk, then complete its production deployment setup,
-including required DNS records, sign-in methods, and any OAuth credentials. Set the exact
-production HTTPS origin and permitted redirect destinations in that instance.
-The app uses `/sign-in` and `/sign-up`, then returns to `/` unless Clerk has an
-existing redirect target.
+including required DNS records, sign-in methods, and any OAuth credentials. Set
+the exact production HTTPS origin and permitted redirect destinations in that
+instance. The app uses `/sign-in` and `/sign-up`, then returns to `/` unless
+Clerk has an existing redirect target.
 
 In Vercel, set `VITE_CLERK_PUBLISHABLE_KEY` to the production instance's
-`pk_live_` publishable key in the **Production** environment. Set the Supabase
-URL and publishable key there as well. Keep `pk_test_` scoped to development
-and preview environments, and never add a Clerk secret key or Supabase
-`service_role` key to a `VITE_` variable. Vite embeds `VITE_` values during the
-build, so redeploy after changing them. The app fails closed with a clear
-configuration error if a production build has no Clerk key or receives a
-non-`pk_live_` key.
+`pk_live_` publishable key in the **Production** environment when using your
+custom domain. Set the Supabase URL and publishable key there as well. Never
+add a Clerk secret key or Supabase `service_role` key to a `VITE_` variable.
+Vite embeds `VITE_` values during the build, so redeploy after changing them.
+The app displays a configuration error if a production key is used with a
+Vercel-provided domain or if a test key is used outside localhost/Vercel.
 
 In the production Supabase project, add the **production** Clerk instance as a
 third-party auth provider. The Clerk domain in `supabase/config.toml` is only
