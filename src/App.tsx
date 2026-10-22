@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
   SignInButton,
   SignUpButton,
@@ -444,7 +444,7 @@ function DsaOverviewLoop() {
     <h3>Data Structures and Algorithms</h3>
     <section className="overview-band overview-structures"><header>● DATA STRUCTURES</header><div className="overview-grid overview-grid-four">
       <div className="overview-cell"><b>Array</b><div className="overview-array">{[7,2,9,4,6,1].map((value,index)=><span className={index === (frame + 1) % 6 ? "is-lit" : ""} key={index}>{value}</span>)}</div><small>0　1　2　3　4　5</small></div>
-      <div className="overview-cell"><b>Linked List</b><div className="overview-linked">{[3,8,1,9,4].map((value,index)=><Fragment key={value}><span className={index === frame ? "is-lit" : ""}>{value}</span>{index < 4 && <i>→</i>}</Fragment>)}</div></div>
+      <div className="overview-cell"><b>Linked List</b><div className="overview-linked">{[3,8,1,9,4].map((value,index)=><span key={value} className={index === frame ? "is-lit" : ""}>{value}{index < 4 && <i>→</i>}</span>)}</div></div>
       <div className="overview-cell"><b>Stack</b><div className="overview-stack"><span className={frame % 2 === 0 ? "is-lit" : ""}>12</span><span>8</span><small>◂ top</small></div></div>
       <div className="overview-cell"><b>Hash map</b><div className="overview-hash">{[12,7,5].map((value,index)=><span key={value}><small>{index} →</small><i className={frame === index ? "is-lit" : ""}>{value}</i></span>)}</div></div>
     </div></section>
