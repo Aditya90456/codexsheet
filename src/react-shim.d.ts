@@ -1,23 +1,14 @@
 declare module "react" {
-  export type ReactNode = any;
+  export type ReactNode = unknown;
   export type CSSProperties = { [property: string]: string | number | undefined };
   export type FormEvent<T = HTMLFormElement> = { preventDefault(): void; target: T };
-  export type MouseEvent<T = Element> = { preventDefault(): void; stopPropagation(): void; target: T; currentTarget: T };
   export function useRef<T>(initialValue: T): { current: T };
   export function useRef<T>(initialValue: T | null): { current: T | null };
   export function useState<S>(initialState: S | (() => S)): [S, (next: S | ((current: S) => S)) => void];
   export function useEffect(effect: () => void | (() => void), dependencies?: readonly unknown[]): void;
   export function useMemo<T>(factory: () => T, dependencies: readonly unknown[]): T;
-  export interface Context<T> {
-    Provider: (props: { value: T; children?: any }) => any;
-    Consumer: any;
-  }
-  export function createContext<T>(defaultValue: T): Context<T>;
-  export function useContext<T>(context: Context<T>): T;
-  export function StrictMode(props: { children?: any }): any;
+  export function StrictMode(props: { children?: ReactNode }): unknown;
 }
-
-declare module "three";
 
 declare module "react-dom/client" {
   export function createRoot(container: Element | DocumentFragment): { render(children: unknown): void };

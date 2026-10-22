@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
@@ -16,7 +16,6 @@
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "three": "^0.186.1",
     "typescript": "latest",
     "vite": "latest"
   },
