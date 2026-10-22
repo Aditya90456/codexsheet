@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
+  SignInButton,
+  SignUpButton,
   UserButton,
   useAuth,
   useUser,
@@ -2651,8 +2653,8 @@ function App() {
             <UserButton />
           ) : isLoaded ? (
             <>
-              <a className="secondary-button" href="/sign-in">Sign in</a>
-              <a className="primary-button" href="/sign-up">Create account</a>
+              <SignInButton mode="modal"><button className="secondary-button" type="button">Sign in</button></SignInButton>
+              <SignUpButton mode="modal"><button className="primary-button" type="button">Create account</button></SignUpButton>
             </>
           ) : null}
         </div>
@@ -3308,7 +3310,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to join the shared study group and chat with other learners.</p>
-              <a className="primary-button" href="/sign-in">Sign in</a>
+              <SignInButton mode="modal"><button className="primary-button" type="button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
@@ -3409,7 +3411,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to create a private notebook that syncs with your account.</p>
-              <a className="primary-button" href="/sign-in">Sign in</a>
+              <SignInButton mode="modal"><button className="primary-button" type="button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
