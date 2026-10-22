@@ -937,17 +937,6 @@ const seeds: Array<[string, string, Problem["difficulty"]]> = [
   // Heaps (2)
   ["IPO", "Heaps", "Hard"],
   ["Maximum Performance of a Team", "Heaps", "Hard"],
-  // Additional problems (10)
-  ["Implement Trie (Prefix Tree)", "Tries", "Medium"],
-  ["Graph Valid Tree", "Graphs", "Medium"],
-  ["Unique Paths II", "2-D DP", "Medium"],
-  ["Merge k Sorted Lists", "Heaps", "Hard"],
-  ["Find K Pairs with Smallest Sums", "Heaps", "Medium"],
-  ["House Robber III", "Trees", "Medium"],
-  ["Lowest Common Ancestor of a Binary Tree", "Trees", "Medium"],
-  ["Minimum Height Trees", "Advanced Graphs", "Medium"],
-  ["Evaluate Division", "Advanced Graphs", "Medium"],
-  ["Accounts Merge", "Graphs", "Medium"],
   // Binary Search (5)
   ["Search a 2D Matrix II", "Binary Search", "Medium"],
   ["Find First and Last Position of Element in Sorted Array", "Binary Search", "Medium"],
@@ -1507,7 +1496,6 @@ function App() {
     clerkUser?.username?.trim() ||
     clerkUser?.primaryEmailAddress?.emailAddress.split("@")[0]?.trim() ||
     "Codexsheet member";
-
   useEffect(() => {
     setClerkTokenGetter((options) => getToken(options));
     return () => setClerkTokenGetter(null);
@@ -1750,7 +1738,7 @@ function App() {
         const current = progress[problem.number]?.status ?? "Todo";
         return (
           (!query ||
-            `${problem.number} ${problem.title} ${problem.pattern}`
+            `${problem.title} ${problem.pattern}`
               .toLowerCase()
               .includes(query.toLowerCase())) &&
           (pattern === "All patterns" || problem.pattern === pattern) &&
@@ -2649,9 +2637,9 @@ function App() {
           <button className="topbar-help" type="button" aria-label="Open DSA articles" title="Open DSA articles" onClick={() => navigateToView("articles")}>
             <CircleHelp size={18} />
           </button>
-          {user ? (
+          {isLoaded ? user ? (
             <UserButton />
-          ) : isLoaded ? (
+          ) : (
             <>
               <SignInButton mode="modal"><button className="secondary-button" type="button">Sign in</button></SignInButton>
               <SignUpButton mode="modal"><button className="primary-button" type="button">Create account</button></SignUpButton>
@@ -3621,7 +3609,7 @@ function App() {
             <label className="prb-search">
               <Search size={14} />
               <input
-                placeholder="Search by #, problem, or pattern…"
+                placeholder="Search problems or patterns…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />

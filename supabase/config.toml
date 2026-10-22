@@ -6,7 +6,3 @@ verify_jwt = false
 
 [functions.run-code]
 verify_jwt = false
-
-[auth.third_party.clerk]
-enabled = true
-domain = "optimum-panda-5.clerk.accounts.dev"
