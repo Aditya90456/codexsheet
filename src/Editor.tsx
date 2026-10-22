@@ -7,6 +7,7 @@ import {
   Code2,
   Copy,
   LoaderCircle,
+  Pencil,
   RotateCcw,
   Save,
   Terminal,
@@ -95,10 +96,36 @@ export default function Editor({ problems, userId }: { problems: EditorProblem[]
   const [draftError, setDraftError] = useState("");
   const [problemDetails, setProblemDetails] = useState<ProblemDetails | null>(null);
   const [problemDetailsState, setProblemDetailsState] = useState<"loading" | "ready" | "error">("loading");
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
+  const [whiteboardStrokes, setWhiteboardStrokes] = useState<string[]>([]);
+  const [loadedWhiteboardKey, setLoadedWhiteboardKey] = useState<string | null>(null);
+  const isDrawing = useRef(false);
   const codeKey = `${problemNumber}:${language}`;
   const activeDraftKey = `${userId ?? "local"}:${codeKey}`;
   const activeDraftKeyRef = useRef(activeDraftKey);
   activeDraftKeyRef.current = activeDraftKey;
+  const whiteboardKey = `codexsheet-editor-whiteboard-v1:${userId ?? "local"}:${problemNumber}`;
+
+  useEffect(() => {
+    setLoadedWhiteboardKey(null);
+    try {
+      const saved = JSON.parse(localStorage.getItem(whiteboardKey) ?? "[]");
+      setWhiteboardStrokes(Array.isArray(saved) ? saved.filter((stroke): stroke is string => typeof stroke === "string") : []);
+    } catch {
+      setWhiteboardStrokes([]);
+    }
+    setLoadedWhiteboardKey(whiteboardKey);
+  }, [whiteboardKey]);
+
+  useEffect(() => {
+    if (loadedWhiteboardKey !== whiteboardKey) return;
+    try { localStorage.setItem(whiteboardKey, JSON.stringify(whiteboardStrokes)); } catch { /* storage may be unavailable */ }
+  }, [loadedWhiteboardKey, whiteboardKey, whiteboardStrokes]);
+
+  function whiteboardPoint(event: { clientX: number; clientY: number; currentTarget: SVGSVGElement }) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return `${Math.round(((event.clientX - bounds.left) / bounds.width) * 1000)} ${Math.round(((event.clientY - bounds.top) / bounds.height) * 420)}`;
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -258,18 +285,6 @@ export default function Editor({ problems, userId }: { problems: EditorProblem[]
       setOutput(["Sign in to run code. Your drafts will still save in this browser."]);
       return;
     }
-    const languageIds: Record<Language, number> = {
-      "C++": 54,
-      Java: 62,
-      Python: 71,
-      JavaScript: 63,
-    };
-    const languageId = languageIds[language];
-    if (!languageId) {
-      setRunError(true);
-      setOutput([`${language} execution is not configured yet.`]);
-      return;
-    }
     if (code.length > 30000 || stdin.length > 10000) {
       setRunError(true);
       setOutput(["Code is limited to 30 KB and input to 10 KB per run."]);
@@ -283,7 +298,7 @@ export default function Editor({ problems, userId }: { problems: EditorProblem[]
     setIsRunning(true);
     try {
       const { data, error } = await supabase.functions.invoke("run-code", {
-        body: { problemNumber, languageId, sourceCode: code, customInput: stdin },
+        body: { problemNumber, language: language === "C++" ? "c++" : language.toLowerCase(), sourceCode: code, customInput: stdin },
       });
       if (error) throw error;
       const result = data as {
@@ -400,6 +415,7 @@ export default function Editor({ problems, userId }: { problems: EditorProblem[]
           <div className="editor-actions">
             <div className="editor-problem-label"><i className="editor-easy-dot" /> #{String(problemNumber).padStart(3, "0")} · {currentProblem?.title} <span>· {currentProblem?.difficulty}</span></div>
             <div className="editor-action-buttons">
+              <button className="editor-tool-button editor-whiteboard-toggle" onClick={() => setWhiteboardOpen((open) => !open)} type="button" aria-expanded={whiteboardOpen}><Pencil size={13} /><span>{whiteboardOpen ? "Hide board" : "Whiteboard"}</span></button>
               <button className="editor-tool-button" onClick={() => void copyCode()} type="button" title="Copy code">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copied" : "Copy"}</span></button>
               <button className="editor-tool-button" onClick={() => { setCode(starterFor(language, currentProblem)); codeDirtyRef.current = true; setCodeDirty(true); setOutput([]); setRunError(false); setRunNotice(false); }} type="button" title="Reset code"><RotateCcw size={13} /><span>Reset</span></button>
               <button className="editor-run" onClick={() => void runCode()} type="button" disabled={isRunning}><span className={isRunning ? "editor-spinner" : ""}>{isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}</span><span>{isRunning ? "Running…" : "Run"}</span><kbd>Ctrl ↵</kbd></button>
@@ -416,7 +432,7 @@ export default function Editor({ problems, userId }: { problems: EditorProblem[]
           <div className="editor-stdin-panel">
             <label htmlFor="editor-stdin">CUSTOM INPUT <span>Optional · sent to stdin</span></label>
             <textarea id="editor-stdin" aria-label="Program input" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Add input for your program (optional)" />
-            <small>Code runs in an isolated Judge0 sandbox.</small>
+            <small>Code runs through the configured execution API.</small>
           </div>
           <section className={`editor-output${outputOpen ? " open" : ""}`}>
             <div className="editor-output-head">
@@ -427,6 +443,12 @@ export default function Editor({ problems, userId }: { problems: EditorProblem[]
           </section>
         </div>
       </section>
+      {whiteboardOpen && <section className="editor-whiteboard" aria-label="Code whiteboard">
+        <div className="editor-whiteboard-head"><div><span>THINKING SPACE</span><strong>Sketch before you code</strong><small>Draw an approach, trace an example, or map the data flow. Your sketch saves in this browser.</small></div><button type="button" onClick={() => setWhiteboardStrokes([])} disabled={whiteboardStrokes.length === 0}><Trash2 size={13} />Clear</button></div>
+        <svg className="editor-whiteboard-canvas" viewBox="0 0 1000 420" role="img" aria-label="Freehand drawing area" onPointerDown={(event: PointerEvent & { currentTarget: SVGSVGElement }) => { isDrawing.current = true; event.currentTarget.setPointerCapture(event.pointerId); const point = whiteboardPoint(event); setWhiteboardStrokes((strokes) => [...strokes, `M ${point}`]); }} onPointerMove={(event: PointerEvent & { currentTarget: SVGSVGElement }) => { if (!isDrawing.current) return; const point = whiteboardPoint(event); setWhiteboardStrokes((strokes) => strokes.map((stroke, index) => index === strokes.length - 1 ? `${stroke} L ${point}` : stroke)); }} onPointerUp={() => { isDrawing.current = false; }} onPointerCancel={() => { isDrawing.current = false; }}>
+          {whiteboardStrokes.map((stroke, index) => <path key={index} d={stroke} />)}
+        </svg>
+      </section>}
       <footer className="editor-footer"><span><span className="editor-footer-spark">✳</span> Start with a small example. Build from there.</span><span>Run your code with <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span></footer>
     </main>
   );

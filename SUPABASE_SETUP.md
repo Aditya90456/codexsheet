@@ -78,24 +78,22 @@ Test-case data remains in Supabase for future judging support; it is not
 exposed to browser users or used by the current runner.
 
 The editor sends JavaScript, Python, Java, and C++ runs to the `run-code` Edge
-Function, which executes submissions through a Judge0-compatible service and
-compares output with the private test cases. Configure `JUDGE0_API_URL` as an
-Edge Function secret with the provider's HTTPS API base URL. For a provider
-that requires RapidAPI authentication, also set `JUDGE0_API_KEY` and
-`JUDGE0_API_HOST`. The function also needs the standard Supabase function
-environment values (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`) to read
-private test cases. Never put runner credentials or the service-role key in a
-`VITE_` variable or browser code.
+Function. The function reads private test cases server-side, executes each case
+through a Piston-compatible API, and compares normalized output. Set
+`CODE_EXECUTION_API_URL` in Supabase Dashboard > Edge Functions > Secrets to the
+HTTPS base URL of your Piston-compatible API (the function appends `/runtimes`
+and `/execute`). Set `CODE_EXECUTION_API_KEY` there when your API requires a
+Bearer token. Install JavaScript, Python, Java, and C++ runtimes on that API.
+The function also needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to read
+private test cases; Supabase supplies these standard values to deployed Edge
+Functions. Never put API credentials or the service-role key in a `VITE_`
+variable or browser code.
 
-If the editor reports that the Edge Function returned a non-2xx status, the
-output panel now shows the response returned by the function. An HTTP 503 with
-“The code runner is not configured on the server” means `JUDGE0_API_URL` is
-missing: Supabase provides `SUPABASE_URL` and the legacy
-`SUPABASE_SERVICE_ROLE_KEY` to deployed Edge Functions by default. Add
-`JUDGE0_API_URL` (and provider-specific credentials, when required) in Supabase
-Dashboard > Edge Functions > Secrets, then retry. The function already
-deployed to the project is named `run-code` and has JWT verification disabled
-because it verifies the Clerk session token in the function itself.
+The public Piston API now requires authorization. Use an authorized endpoint or
+host Piston yourself; the project does not assume public access. An HTTP 503
+that says the code execution API is not configured means
+`CODE_EXECUTION_API_URL` is missing. An HTTP 502 includes an API or runner
+error in the editor output. The Edge Function is named `run-code`.
 
 ## Group chat and personal notebook
 
