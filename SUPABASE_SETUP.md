@@ -77,14 +77,25 @@ Editor. The public table contains descriptions, constraints, and examples.
 Test-case data remains in Supabase for future judging support; it is not
 exposed to browser users or used by the current runner.
 
-The Monaco editor runs JavaScript locally in a sandboxed iframe and dedicated
-worker. The sandbox blocks network APIs and the parent page terminates the
-worker after five seconds.
-Only JavaScript can run; Python, Java, and C++ are available for editing only.
-This local runner prints `console.log()` output and does not compare code
-against the saved test-case data. It is not a substitute for a server-side
-sandbox for untrusted production workloads; users should only run code they
-trust.
+The editor sends JavaScript, Python, Java, and C++ runs to the `run-code` Edge
+Function, which executes submissions through a Judge0-compatible service and
+compares output with the private test cases. Configure `JUDGE0_API_URL` as an
+Edge Function secret with the provider's HTTPS API base URL. For a provider
+that requires RapidAPI authentication, also set `JUDGE0_API_KEY` and
+`JUDGE0_API_HOST`. The function also needs the standard Supabase function
+environment values (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`) to read
+private test cases. Never put runner credentials or the service-role key in a
+`VITE_` variable or browser code.
+
+If the editor reports that the Edge Function returned a non-2xx status, the
+output panel now shows the response returned by the function. An HTTP 503 with
+“The code runner is not configured on the server” means `JUDGE0_API_URL` is
+missing: Supabase provides `SUPABASE_URL` and the legacy
+`SUPABASE_SERVICE_ROLE_KEY` to deployed Edge Functions by default. Add
+`JUDGE0_API_URL` (and provider-specific credentials, when required) in Supabase
+Dashboard > Edge Functions > Secrets, then retry. The function already
+deployed to the project is named `run-code` and has JWT verification disabled
+because it verifies the Clerk session token in the function itself.
 
 ## Group chat and personal notebook
 

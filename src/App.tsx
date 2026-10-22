@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent } from "react";
 import {
   SignInButton,
   SignUpButton,
@@ -33,8 +33,6 @@ import {
   Target,
   Trophy,
   UsersRound,
-  Wifi,
-  WifiOff,
   Video,
   VideoOff,
   Mic,
@@ -51,6 +49,15 @@ import {
   Pause,
   RotateCcw,
   CodeXml,
+  Palette,
+  BriefcaseBusiness,
+  MapPin,
+  Bookmark,
+  Building2,
+  SlidersHorizontal,
+  Layers3,
+  MousePointer2,
+  Trash2,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -86,7 +93,8 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "chat" | "notes" | "coach" | "calls" | "articles";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "coach" | "calls" | "articles" | "jobs";
+type WorkspaceTheme = "light" | "midnight" | "forest";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -96,11 +104,14 @@ const viewPaths: Record<WorkspaceView, string> = {
   editor: "/editor",
   calendar: "/calendar",
   roadmap: "/roadmap",
+  lld: "/roadmap/lld",
+  whiteboard: "/whiteboard/lld",
   chat: "/chat",
   notes: "/notes",
   coach: "/coach",
   calls: "/calls",
   articles: "/articles",
+  jobs: "/jobs",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -420,6 +431,166 @@ function ConceptDiagram({ article, lesson }: { article: (typeof dsaArticles)[num
     <div className="lesson-step-dots">{lesson.steps.map((stepLabel,index)=><button type="button" className={index===current?"active":""} key={stepLabel} onClick={()=>{setStep(index);setPlaying(false);}} aria-label={`Show step ${index+1}: ${stepLabel}`} />)}</div>
     <div className="lesson-diagram-controls"><button type="button" onClick={()=>setPlaying((value)=>!value)}>{playing?<Pause size={13}/>:<Play size={13}/>} {playing?"Pause":"Play steps"}</button><button type="button" onClick={()=>{setPlaying(false);setStep(0);}} aria-label="Restart animation"><RotateCcw size={13}/></button><span>STEP THROUGH THE IDEA</span></div>
   </div>;
+}
+
+const jobListings = [
+  { id: 1, title: "Frontend Engineer, New Grad", company: "Stripe", location: "Bengaluru, India", mode: "Hybrid", type: "Full-time", level: "Entry level", salary: "₹18L – ₹28L", posted: "2 days ago", tags: ["React", "TypeScript", "Design systems"], color: "#635bff" },
+  { id: 2, title: "Software Engineer I", company: "Razorpay", location: "Bengaluru, India", mode: "On-site", type: "Full-time", level: "Entry level", salary: "₹14L – ₹22L", posted: "1 day ago", tags: ["Java", "Distributed systems", "APIs"], color: "#168a68" },
+  { id: 3, title: "Associate Software Engineer", company: "Atlassian", location: "Remote · India", mode: "Remote", type: "Full-time", level: "Entry level", salary: "₹16L – ₹25L", posted: "3 days ago", tags: ["JavaScript", "Problem solving", "Cloud"], color: "#1868db" },
+  { id: 4, title: "Product Engineer Intern", company: "Postman", location: "Bengaluru, India", mode: "Hybrid", type: "Internship", level: "Internship", salary: "₹50K – ₹80K / mo", posted: "5 days ago", tags: ["Node.js", "React", "Open source"], color: "#ff6c37" },
+  { id: 5, title: "Software Development Engineer", company: "PhonePe", location: "Pune, India", mode: "Hybrid", type: "Full-time", level: "Entry level", salary: "₹15L – ₹24L", posted: "1 week ago", tags: ["Kotlin", "Backend", "Algorithms"], color: "#5f259f" },
+];
+
+function JobsPage() {
+  const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("");
+  const [workMode, setWorkMode] = useState("Any work mode");
+  const [jobType, setJobType] = useState("Any job type");
+  const [saved, setSaved] = useState<number[]>([]);
+  const visibleJobs = jobListings.filter((job) => {
+    const text = `${job.title} ${job.company} ${job.tags.join(" ")}`.toLowerCase();
+    return text.includes(query.trim().toLowerCase()) && job.location.toLowerCase().includes(location.trim().toLowerCase()) && (workMode === "Any work mode" || job.mode === workMode) && (jobType === "Any job type" || job.type === jobType);
+  });
+  return <main className="jobs-page">
+    <section className="jobs-hero">
+      <div className="jobs-hero-copy"><span className="jobs-kicker"><BriefcaseBusiness size={14}/> THE NEXT CHAPTER</span><h2>Find work that<br/><em>moves you forward.</em></h2><p>Explore early career roles from teams building products people love. Your next opportunity starts with one good search.</p><div className="jobs-hero-meta"><span><i/> CURATED FOR DEVELOPERS</span><span>OPPORTUNITY BOARD · 2026</span></div></div>
+      <div className="jobs-hero-art" aria-hidden="true"><div className="jobs-orbit jobs-orbit-one"/><div className="jobs-orbit jobs-orbit-two"/><div className="jobs-art-card"><span className="jobs-art-icon"><BriefcaseBusiness size={20}/></span><span>YOUR NEXT MOVE</span><strong>Good things<br/>are in progress.</strong><div><i/><i/><i/></div></div><span className="jobs-art-star">✳</span><span className="jobs-art-plus">＋</span></div>
+    </section>
+    <section className="jobs-board">
+      <div className="jobs-board-heading"><div><span className="jobs-kicker">OPPORTUNITY BOARD</span><h3>Make your next move.</h3><p>Roles worth a closer look, gathered in one place.</p></div><span className="jobs-live-count"><i/>{jobListings.length} OPEN ROLES</span></div>
+      <div className="jobs-search-panel"><label className="jobs-search-field"><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Role, company, or skill" aria-label="Search roles, companies, or skills"/></label><label className="jobs-search-field"><MapPin size={17}/><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or remote" aria-label="Filter by location"/></label><label className="jobs-select-field"><SlidersHorizontal size={16}/><select value={workMode} onChange={(event) => setWorkMode(event.target.value)} aria-label="Filter by work mode"><option>Any work mode</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select></label><label className="jobs-select-field"><select value={jobType} onChange={(event) => setJobType(event.target.value)} aria-label="Filter by job type"><option>Any job type</option><option>Full-time</option><option>Internship</option></select><ChevronDown size={15}/></label><button className="jobs-search-button" type="button" onClick={() => {}}>Search <ArrowRight size={15}/></button></div>
+      <div className="jobs-list-head"><span>{visibleJobs.length} {visibleJobs.length === 1 ? "ROLE" : "ROLES"} TO EXPLORE</span><span>SORTED BY RELEVANCE <ChevronDown size={13}/></span></div>
+      {visibleJobs.length ? <div className="jobs-list">{visibleJobs.map((job, index) => <article className="job-card" key={job.id}><span className="job-index">{String(index + 1).padStart(2,"0")}</span><div className="job-company-mark" style={{ "--company-color": job.color } as CSSProperties}><Building2 size={20}/></div><div className="job-main"><div className="job-title-row"><h4>{job.title}</h4><span className="job-level">{job.level}</span></div><div className="job-company-line"><strong>{job.company}</strong><i/> <span><MapPin size={13}/>{job.location}</span><i/> <span>{job.mode}</span></div><div className="job-tags">{job.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="job-side"><span className="job-salary">{job.salary}</span><span className="job-posted">Posted {job.posted}</span><div className="job-actions"><button type="button" className={`job-save ${saved.includes(job.id) ? "saved" : ""}`} onClick={() => setSaved((current) => current.includes(job.id) ? current.filter((id) => id !== job.id) : [...current, job.id])} aria-label={saved.includes(job.id) ? `Unsave ${job.title}` : `Save ${job.title}`}><Bookmark size={15}/></button><a href={`https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} careers`)}`} target="_blank" rel="noreferrer">View role <ArrowRight size={14}/></a></div></div></article>)}</div> : <div className="jobs-empty"><Search size={20}/><strong>No roles match those filters</strong><span>Try a broader search or clear your filters.</span><button type="button" onClick={() => {setQuery("");setLocation("");setWorkMode("Any work mode");setJobType("Any job type");}}>Clear filters</button></div>}
+      <div className="jobs-note"><span>✳</span><p><strong>Good work takes many forms.</strong> Keep building your skills while you look — every practice session moves you closer.</p><span>CODEXSHEET · CAREER NOTES</span></div>
+    </section>
+  </main>;
+}
+
+const seniorLldPhases = [
+  { id: 1, weeks: "WEEK 01–02", title: "Scope the problem", short: "Requirements", summary: "Turn an ambiguous prompt into a bounded design with explicit users, workflows, and constraints.", article: "Senior interviews rarely reward the fastest class diagram. They reward the engineer who first discovers what must be true for the product to work. Clarify actors, the main success path, expected traffic, latency needs, and failure behavior before choosing abstractions. Record assumptions so the interviewer can correct them early.", topics: ["Ask clarifying questions and quantify scale", "Separate functional and quality requirements", "Define APIs, events, and system boundaries"], deliverable: "A one-page problem brief with assumptions, core use cases, and API contracts.", case: "Design a parking garage", seniorSignal: "State which requirements change your design and which details you are intentionally deferring." },
+  { id: 2, weeks: "WEEK 03–04", title: "Model the domain", short: "Object modeling", summary: "Build a coherent domain model before reaching for patterns. Make ownership and invariants visible.", article: "A useful object model mirrors the rules of the domain, not the tables in a database. Give each object a clear responsibility, keep related state behind the object that owns its invariant, and use interfaces where behavior truly varies. Prefer a small model that can explain the critical workflow over a large catalog of patterns.", topics: ["Identify entities, value objects, and aggregates", "Assign responsibilities with SOLID and composition", "Use patterns only when they clarify a real change point"], deliverable: "A class and sequence diagram that shows the primary flow and its invariants.", case: "Design an inventory service", seniorSignal: "Explain why each object owns its data and name the invariant that would be at risk if ownership moved." },
+  { id: 3, weeks: "WEEK 05–06", title: "Make state safe", short: "Concurrency", summary: "Design for simultaneous requests, retries, and partial failure without corrupting business state.", article: "Concurrency becomes a product problem when two valid requests compete for the same state. Identify the write boundary, decide how conflicts are detected, and make retries safe. Choose the smallest mechanism that preserves the invariant: a database constraint, optimistic version, atomic update, or a lock with a clear scope and timeout.", topics: ["Choose locks, optimistic versions, or atomic operations", "Make writes idempotent and define conflict behavior", "Protect invariants across threads and transactions"], deliverable: "A concurrency plan with race conditions, consistency rules, and recovery paths.", case: "Design a ticket booking system", seniorSignal: "Walk through two requests arriving at the same instant and show exactly where one is rejected or retried." },
+  { id: 4, weeks: "WEEK 07–08", title: "Persist and evolve", short: "Data & evolution", summary: "Choose storage around access patterns, then make migrations and interfaces safe to evolve.", article: "Storage choices should follow the reads, writes, and consistency guarantees the domain needs. Design the important queries first, then add indexes and retention rules. Senior engineers also plan for change: APIs need compatibility, schemas need safe migrations, and caches need a clear invalidation or freshness policy.", topics: ["Map aggregates to relational or document storage", "Add indexes, cache boundaries, and pagination", "Version APIs and plan backward-compatible migrations"], deliverable: "A data model with indexes, retention rules, and a safe migration sequence.", case: "Design a notification platform", seniorSignal: "Describe how the design changes as data volume grows without requiring a risky all-at-once rewrite." },
+  { id: 5, weeks: "WEEK 09–10", title: "Design for failure", short: "Reliability", summary: "Move beyond the happy path: bound work, isolate failure, and make system behavior observable.", article: "Reliable systems make failure visible and limit how far it spreads. Bound every network call, retry only when the operation is safe, and use queues when asynchronous work improves isolation. Pair each mechanism with an operational signal so the team can tell whether the system is healthy and how users are affected.", topics: ["Use timeouts, retries with jitter, and circuit breakers", "Add queues and backpressure where they fit", "Define logs, metrics, traces, and operational alerts"], deliverable: "A failure-mode table with mitigations, SLOs, and operational signals.", case: "Design a rate limiter", seniorSignal: "For each failure mode, explain the user impact, containment boundary, and signal that would page the team." },
+  { id: 6, weeks: "WEEK 11–12", title: "Lead the design", short: "Senior interview", summary: "Communicate the simplest design that meets the constraints, then explain how it grows and what you would change.", article: "At senior level, the interview is a collaboration exercise. Keep a visible structure, invite feedback, explain the cost of your choices, and adapt when constraints change. Separate the core domain design from infrastructure concerns, then show how the design can evolve without pretending every future requirement belongs in version one.", topics: ["Drive a 45-minute design conversation", "Compare trade-offs with cost and failure impact", "Separate the LLD core from infrastructure and HLD concerns"], deliverable: "A timed design walkthrough, reviewed for clarity, trade-offs, and extensibility.", case: "Design a ride dispatch service", seniorSignal: "Show judgment: make a defensible choice, name its downside, and say what evidence would make you revisit it." },
+];
+const lldProgressKey = "codexsheet-senior-lld-progress-v1";
+
+function LldRoadmapPage({ onOpenWhiteboard }: { onOpenWhiteboard: () => void }) {
+  const [activePhase, setActivePhase] = useState(1);
+  const [completedPhases, setCompletedPhases] = useState<number[]>(() => {
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(lldProgressKey) ?? "[]");
+      return Array.isArray(saved) ? saved.filter((id): id is number => Number.isInteger(id) && id >= 1 && id <= seniorLldPhases.length) : [];
+    } catch { return []; }
+  });
+  const phase = seniorLldPhases.find((item) => item.id === activePhase) ?? seniorLldPhases[0];
+  useEffect(() => {
+    try { localStorage.setItem(lldProgressKey, JSON.stringify(completedPhases)); } catch { /* storage may be unavailable */ }
+  }, [completedPhases]);
+  const markComplete = () => {
+    const isDone = completedPhases.includes(phase.id);
+    setCompletedPhases((current) => isDone ? current.filter((id) => id !== phase.id) : [...current, phase.id].sort((a, b) => a - b));
+    if (!isDone && phase.id < seniorLldPhases.length) setActivePhase(phase.id + 1);
+  };
+  return <main className="lld-page">
+    <section className="lld-hero"><div className="lld-hero-copy"><span className="lld-eyebrow"><span/> STAFF-LEVEL DESIGN PRACTICE</span><h2>Think in systems.<br/><em>Design with intent.</em></h2><p>A practical 12-week Low-Level Design roadmap for Senior SDE interviews: from requirements and domain models to concurrency, reliability, and technical leadership.</p><div className="lld-hero-tags"><span><Check size={13}/> 6 progressive phases</span><span><Check size={13}/> 12 real design drills</span><span><Check size={13}/> Saved on this device</span><button type="button" onClick={onOpenWhiteboard}><Layers3 size={14}/> Open LLD whiteboard <ArrowRight size={13}/></button></div></div><div className="lld-hero-visual" aria-hidden="true"><div className="lld-visual-orbit orbit-a"/><div className="lld-visual-orbit orbit-b"/><div className="lld-visual-core"><Code2 size={24}/><span>DESIGN</span></div><i className="lld-node node-a"/><i className="lld-node node-b"/><i className="lld-node node-c"/><i className="lld-node node-d"/><span className="lld-orbit-label">MODEL · TEST · EVOLVE</span></div></section>
+    <section className="lld-roadmap-section"><header className="lld-section-head"><div><span className="lld-section-kicker">YOUR 12-WEEK PATH</span><h3>From fundamentals to <em>staff-level trade-offs.</em></h3><p>Choose a phase to see the concepts, practice, and outcome to focus on.</p></div><div className="lld-completion"><strong>{completedPhases.length}<small> / {seniorLldPhases.length}</small></strong><span>PHASES COMPLETE</span><i><b style={{width:`${Math.round(completedPhases.length/seniorLldPhases.length*100)}%`}}/></i></div></header>
+      <div className="lld-blog-layout">
+        <aside className="lld-chapter-index"><span className="lld-index-kicker">THE LEARNING PATH</span><strong>Senior SDE · LLD</strong><div>{seniorLldPhases.map((item)=><button type="button" key={item.id} className={activePhase===item.id?"active":""} aria-current={activePhase===item.id?"step":undefined} onClick={()=>setActivePhase(item.id)}><span className="lld-index-number">{completedPhases.includes(item.id)?<Check size={12}/>:String(item.id).padStart(2,"0")}</span><span><b>{item.title}</b><small>{item.weeks}</small></span><ChevronRight size={13}/></button>)}</div><section><span>YOUR PROGRESS</span><strong>{completedPhases.length} of {seniorLldPhases.length} chapters</strong><i><b style={{width:`${Math.round(completedPhases.length/seniorLldPhases.length*100)}%`}}/></i></section></aside>
+        <article className="lld-blog-article"><div className="lld-article-breadcrumb"><span>System design</span><ChevronRight size={12}/><span>Low-Level Design</span><ChevronRight size={12}/><strong>Chapter {String(phase.id).padStart(2,"0")}</strong></div><div className="lld-article-meta"><span>{phase.weeks}</span><span>·</span><span>{phase.short}</span><span className={completedPhases.includes(phase.id)?"complete":""}>{completedPhases.includes(phase.id)?<><Check size={12}/> COMPLETED</>:"IN PROGRESS"}</span></div><h2>{phase.title}</h2><p className="lld-article-lead">{phase.summary}</p><div className="lld-article-copy"><p>{phase.article}</p><div className="lld-reading-tip"><BookOpen size={16}/><p><strong>Keep this in mind:</strong> a good design starts with the problem’s constraints and keeps each important decision easy to explain.</p></div><h3 id="lld-concepts">What you’ll learn</h3><p>Work through these ideas in order. Capture the decisions and open questions as you sketch the design.</p><ol className="lld-topic-list">{phase.topics.map((topic,index)=><li id={`lld-topic-${index+1}`} key={topic}><span>{String(index+1).padStart(2,"0")}</span><div><h4>{topic}</h4><p>{index===0?"Start with the domain signal and make the constraints explicit before choosing a solution.":index===1?"Compare the options against the requirements, failure cases, and expected changes.":"Write down the boundary and the trade-off so another engineer can review the decision."}</p></div></li>)}</ol><section className="lld-exercise-card"><span className="lld-exercise-kicker"><Layers3 size={14}/> PUT IT INTO PRACTICE</span><h3>{phase.case}</h3><p>Sketch the primary workflow, show which component owns each state change, and call out one failure path before adding more detail.</p><div><span>YOUR DELIVERABLE</span><strong>{phase.deliverable}</strong></div><button type="button" onClick={onOpenWhiteboard}>Open the design whiteboard <ArrowRight size={14}/></button></section><section className="lld-senior-callout"><ShieldCheck size={17}/><p><span>SENIOR SDE CHECKPOINT</span><strong>{phase.seniorSignal}</strong></p></section></div><footer className="lld-article-footer"><button type="button" disabled={phase.id===1} onClick={()=>setActivePhase(phase.id-1)}><ChevronLeft size={14}/> Previous chapter</button><button className="lld-article-complete" type="button" onClick={markComplete}>{completedPhases.includes(phase.id)?"Reopen chapter":"Mark chapter complete"}<Check size={14}/></button><button type="button" disabled={phase.id===seniorLldPhases.length} onClick={()=>setActivePhase(phase.id+1)}>Next chapter <ArrowRight size={14}/></button></footer></article>
+        <aside className="lld-article-rail"><section><span className="lld-rail-kicker">IN THIS CHAPTER</span><a href="#lld-concepts">What you’ll learn</a>{phase.topics.map((topic,index)=><a key={topic} href={`#lld-topic-${index+1}`}>{String(index+1).padStart(2,"0")} · {topic}</a>)}</section><section className="lld-rail-outcome"><span className="lld-rail-kicker">CHAPTER OUTCOME</span><p>{phase.deliverable}</p></section><button type="button" onClick={onOpenWhiteboard}><Layers3 size={14}/> Open whiteboard</button></aside>
+      </div>
+      <div className="lld-bottom-note"><span><ShieldCheck size={17}/></span><p><strong>Senior-level signal:</strong> explain what you deliberately left out, what would break first, and how you would change the design as constraints shift.</p></div>
+    </section>
+  </main>;
+}
+
+type LldBoardNode = { id: string; kind: string; title: string; note: string; x: number; y: number };
+type LldBoardEdge = { id: string; from: string; to: string };
+type LldBoardState = { title: string; nodes: LldBoardNode[]; edges: LldBoardEdge[] };
+const lldBoardKey = "codexsheet-lld-whiteboard-v1";
+const lldBoardKinds = ["Client", "API Gateway", "Service", "Database", "Cache", "Queue", "External API"];
+const starterLldBoard: LldBoardState = {
+  title: "Ticket booking · Core design",
+  nodes: [
+    { id: "client", kind: "Client", title: "Web / Mobile Client", note: "Browse events, reserve seats, and view booking status.", x: 48, y: 245 },
+    { id: "gateway", kind: "API Gateway", title: "Booking API", note: "Authenticate requests, validate payloads, and apply rate limits.", x: 270, y: 245 },
+    { id: "booking", kind: "Service", title: "Booking Service", note: "Owns reservation state, idempotency, and booking workflow.", x: 515, y: 145 },
+    { id: "inventory", kind: "Service", title: "Inventory Service", note: "Owns seat availability and atomic seat holds.", x: 515, y: 360 },
+    { id: "booking-db", kind: "Database", title: "Bookings DB", note: "Transactional writes with a unique idempotency key.", x: 795, y: 145 },
+    { id: "seat-db", kind: "Database", title: "Seat Inventory DB", note: "Unique seat constraints prevent double booking.", x: 795, y: 360 },
+    { id: "events", kind: "Queue", title: "Booking Events", note: "Publish confirmed bookings through an outbox pattern.", x: 795, y: 500 },
+  ],
+  edges: [
+    { id: "e1", from: "client", to: "gateway" }, { id: "e2", from: "gateway", to: "booking" },
+    { id: "e3", from: "gateway", to: "inventory" }, { id: "e4", from: "booking", to: "booking-db" },
+    { id: "e5", from: "inventory", to: "seat-db" }, { id: "e6", from: "booking", to: "events" },
+  ],
+};
+
+function readLldBoard(): LldBoardState {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(lldBoardKey) ?? "null");
+    if (value && typeof value === "object" && "title" in value && "nodes" in value && "edges" in value && typeof value.title === "string" && Array.isArray(value.nodes) && Array.isArray(value.edges)) return value as LldBoardState;
+  } catch { /* use the starter design when storage is unavailable */ }
+  return starterLldBoard;
+}
+
+function LldWhiteboardPage() {
+  const [board, setBoard] = useState<LldBoardState>(readLldBoard);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [connectMode, setConnectMode] = useState(false);
+  const [connectSource, setConnectSource] = useState<string | null>(null);
+  const dragRef = useRef<{ id: string; pointerX: number; pointerY: number; x: number; y: number } | null>(null);
+  const selectedNode = board.nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const selectedEdge = board.edges.find((edge) => edge.id === selectedEdgeId) ?? null;
+  useEffect(() => { try { localStorage.setItem(lldBoardKey, JSON.stringify(board)); } catch { /* storage may be unavailable */ } }, [board]);
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      setBoard((current) => ({ ...current, nodes: current.nodes.map((node) => node.id === drag.id ? { ...node, x: Math.max(8, Math.min(820, drag.x + event.clientX - drag.pointerX)), y: Math.max(8, Math.min(510, drag.y + event.clientY - drag.pointerY)) } : node) }));
+    };
+    const stop = () => { dragRef.current = null; };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", stop); window.removeEventListener("pointercancel", stop); };
+  }, []);
+  const addNode = (kind: string) => {
+    const index = board.nodes.length;
+    const id = `node-${Date.now()}-${index}`;
+    const titles: Record<string, string> = { Client: "New client", "API Gateway": "New API gateway", Service: "New service", Database: "New database", Cache: "New cache", Queue: "New queue", "External API": "External integration" };
+    const positions = [{ x: 55, y: 40 }, { x: 300, y: 40 }, { x: 550, y: 40 }, { x: 55, y: 165 }, { x: 300, y: 165 }, { x: 550, y: 165 }, { x: 55, y: 390 }, { x: 300, y: 390 }, { x: 550, y: 390 }];
+    const position = positions[index % positions.length];
+    setBoard((current) => ({ ...current, nodes: [...current.nodes, { id, kind, title: titles[kind] ?? `New ${kind}`, note: "Describe responsibility, state ownership, or a key design decision.", ...position }] }));
+    setSelectedNodeId(id); setSelectedEdgeId(null); setConnectMode(false); setConnectSource(null);
+  };
+  const chooseNode = (id: string) => {
+    if (!connectMode) { setSelectedNodeId(id); setSelectedEdgeId(null); return; }
+    if (!connectSource) { setConnectSource(id); setSelectedNodeId(id); setSelectedEdgeId(null); return; }
+    if (connectSource !== id && !board.edges.some((edge) => edge.from === connectSource && edge.to === id)) {
+      setBoard((current) => ({ ...current, edges: [...current.edges, { id: `edge-${Date.now()}`, from: connectSource, to: id }] }));
+    }
+    setConnectSource(null);
+  };
+  const deleteNode = (id: string) => { setBoard((current) => ({ ...current, nodes: current.nodes.filter((node) => node.id !== id), edges: current.edges.filter((edge) => edge.from !== id && edge.to !== id) })); setSelectedNodeId(null); };
+  const startDrag = (event: ReactPointerEvent<HTMLSpanElement>, node: LldBoardNode) => { if (connectMode) return; event.preventDefault(); event.stopPropagation(); dragRef.current = { id: node.id, pointerX: event.clientX, pointerY: event.clientY, x: node.x, y: node.y }; };
+  return <main className="lld-whiteboard-page">
+    <header className="lld-board-header"><div><span className="lld-eyebrow"><span/> SENIOR SDE · DESIGN WORKSPACE</span><h2>LLD <em>whiteboard.</em></h2><p>Shape the system, make ownership clear, and pressure-test the design.</p></div><label className="lld-board-title"><span>BOARD NAME</span><input value={board.title} onChange={(event) => setBoard((current) => ({ ...current, title: event.target.value }))} aria-label="Whiteboard name"/><span><Check size={12}/> Saved locally</span></label></header>
+    <div className="lld-board-toolbar"><div className="lld-board-palette"><span>ADD TO BOARD</span>{lldBoardKinds.map((kind) => <button type="button" key={kind} onClick={() => addNode(kind)}><Plus size={12}/>{kind}</button>)}</div><div className="lld-board-tools"><button type="button" className={connectMode?"active":""} onClick={() => { setConnectMode((value) => !value); setConnectSource(null); setSelectedEdgeId(null); }}><GitBranch size={14}/>{connectMode?"Connecting…":"Connect"}</button><button type="button" onClick={() => { setBoard(starterLldBoard); setSelectedNodeId(null); setSelectedEdgeId(null); setConnectMode(false); setConnectSource(null); }}><RotateCcw size={14}/>Reset example</button></div></div>
+    {connectMode&&<div className="lld-connect-hint"><GitBranch size={14}/>{connectSource?"Choose the destination component to create a connection.":"Choose a source component, then choose a destination."}<button type="button" onClick={()=>{setConnectMode(false);setConnectSource(null);}}>Cancel</button></div>}
+    <section className="lld-whiteboard-layout"><div className="lld-canvas-scroll"><div className={`lld-canvas${connectMode?" connect-mode":""}`} onClick={(event)=>{if(event.target===event.currentTarget){setSelectedNodeId(null);setSelectedEdgeId(null);}}} aria-label="LLD architecture whiteboard">
+      <svg className="lld-edges" viewBox="0 0 1000 610" role="img" aria-label="Connections between architecture components"><defs><marker id="lld-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z"/></marker></defs>{board.edges.map((edge)=>{const from=board.nodes.find((node)=>node.id===edge.from);const to=board.nodes.find((node)=>node.id===edge.to);if(!from||!to)return null;const x1=from.x+83,y1=from.y+41,x2=to.x+83,y2=to.y+41,curve=Math.max(35,Math.abs(x2-x1)*.42);return <path key={edge.id} d={`M ${x1} ${y1} C ${x1+curve} ${y1}, ${x2-curve} ${y2}, ${x2} ${y2}`} className={selectedEdgeId===edge.id?"selected":""} markerEnd="url(#lld-arrow)" onClick={(event)=>{event.stopPropagation();setSelectedEdgeId(edge.id);setSelectedNodeId(null);}}/>;})}</svg>
+      {board.nodes.map((node)=><article key={node.id} className={`lld-board-node kind-${node.kind.toLowerCase().replace(/[^a-z]+/g,"-")}${selectedNodeId===node.id?" selected":""}${connectSource===node.id?" connect-source":""}`} style={{left:node.x,top:node.y}} onClick={(event)=>{event.stopPropagation();chooseNode(node.id);}}><header><span onPointerDown={(event)=>startDrag(event,node)}><i/><i/><i/></span><small>{node.kind}</small><button type="button" aria-label={`Remove ${node.title}`} onClick={(event)=>{event.stopPropagation();deleteNode(node.id);}}>×</button></header><strong>{node.title}</strong><p>{node.note || "Add a short note about this component."}</p></article>)}
+      {board.nodes.length===0&&<div className="lld-canvas-empty"><Layers3 size={26}/><strong>Your board is ready</strong><span>Add a component from the toolbar to start designing.</span></div>}
+      <span className="lld-canvas-caption">DRAG COMPONENTS · {connectMode?"CLICK TWO COMPONENTS TO CONNECT":"SELECT A COMPONENT TO EDIT"}</span>
+    </div></div>
+    <aside className="lld-board-inspector"><span className="lld-detail-label">DESIGN INSPECTOR</span>{selectedNode?<><div className="lld-inspector-type">{selectedNode.kind}</div><label>Component name<input value={selectedNode.title} onChange={(event)=>setBoard((current)=>({...current,nodes:current.nodes.map((node)=>node.id===selectedNode.id?{...node,title:event.target.value}:node)}))}/></label><label>Responsibility / decisions<textarea rows={6} value={selectedNode.note} onChange={(event)=>setBoard((current)=>({...current,nodes:current.nodes.map((node)=>node.id===selectedNode.id?{...node,note:event.target.value}:node)}))} placeholder="What does it own? What can fail?"/></label><div className="lld-inspector-tip"><ShieldCheck size={15}/><span>Senior lens: name the invariant this component protects.</span></div><button className="lld-inspector-delete" type="button" onClick={()=>deleteNode(selectedNode.id)}><Trash2 size={14}/>Remove component</button></>:selectedEdge?<><strong className="lld-inspector-heading">Component connection</strong><p className="lld-inspector-description">{board.nodes.find((node)=>node.id===selectedEdge.from)?.title} sends work to {board.nodes.find((node)=>node.id===selectedEdge.to)?.title}.</p><div className="lld-inspector-tip"><GitBranch size={15}/><span>Make the contract explicit: sync call, event, or shared data?</span></div><button className="lld-inspector-delete" type="button" onClick={()=>{setBoard((current)=>({...current,edges:current.edges.filter((edge)=>edge.id!==selectedEdge.id)}));setSelectedEdgeId(null);}}><Trash2 size={14}/>Remove connection</button></>:<div className="lld-inspector-empty"><MousePointer2 size={19}/><strong>Select a component</strong><span>Edit its responsibility, or use Connect to draw a relationship.</span></div>}</aside></section>
+    <footer className="lld-whiteboard-foot"><span><ShieldCheck size={15}/> Private to this browser · autosaves as you work</span><span>{board.nodes.length} components <i/> {board.edges.length} connections</span></footer>
+  </main>;
 }
 
 function ArticlesPage() {
@@ -930,6 +1101,9 @@ function App() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  const [workspaceTheme, setWorkspaceTheme] = useState<WorkspaceTheme>(
+    () => (localStorage.getItem("codexsheet-theme") as WorkspaceTheme | null) ?? "light",
+  );
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
@@ -950,16 +1124,20 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = workspaceTheme;
+    localStorage.setItem("codexsheet-theme", workspaceTheme);
+  }, [workspaceTheme]);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
         '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
     ) as RoadmapPreferences,
   );
+  const [patternOfDay, setPatternOfDay] = useState(patterns[0] ?? "");
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
-  const [notice, setNotice] = useState("Saved locally");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatReadsByMessage, setChatReadsByMessage] = useState<Record<number, string[]>>({});
   const [chatUnreadIds, setChatUnreadIds] = useState<number[]>([]);
@@ -1622,20 +1800,11 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem("codexsheet-dsa-progress", JSON.stringify(progress));
-    if (!isLoaded) {
-      setNotice("Loading account");
-      return;
-    }
-    if (!supabase || !user) {
-      setNotice(user ? "Supabase not configured" : "Sign in to sync");
-      return;
-    }
+    if (!isLoaded || !supabase || !user) return;
     const changes = Object.entries(progress).slice(-1);
     if (changes.length === 0) return;
     const [number, value] = changes[0];
-    void supabase
-      .from("dsa_progress")
-      .upsert(
+    void supabase.from("dsa_progress").upsert(
         {
           user_id: user.id,
           problem_number: Number(number),
@@ -1644,9 +1813,6 @@ function App() {
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,problem_number" },
-      )
-      .then(({ error }) =>
-        setNotice(error ? "Saved locally · sync failed" : "Synced to Supabase"),
       );
   }, [isLoaded, progress, user]);
 
@@ -1741,23 +1907,35 @@ function App() {
             <CodeXml size={16} /> Editor
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
               <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
+              <button className={activeView === "lld" ? "active" : ""} aria-pressed={activeView === "lld"} onClick={() => navigateToView("lld")}><Layers3 size={16} /> Senior SDE · LLD</button>
+              <button className={activeView === "whiteboard" ? "active" : ""} aria-pressed={activeView === "whiteboard"} onClick={() => navigateToView("whiteboard")}><MousePointer2 size={16} /> LLD whiteboard</button>
               <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
               <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
               <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
+              <button className={activeView === "jobs" ? "active" : ""} aria-pressed={activeView === "jobs"} onClick={() => navigateToView("jobs")}><BriefcaseBusiness size={16} /> Job search</button>
             </div>
           </details>
         </nav>
         <div className="top-actions">
-          <span className="save-state">
-            {supabase && user ? <Wifi size={14} /> : <WifiOff size={14} />}{" "}
-            {notice}
-          </span>
+          <label className="theme-picker">
+            <Palette size={15} aria-hidden="true" />
+            <span className="sr-only">Color theme</span>
+            <select
+              aria-label="Color theme"
+              value={workspaceTheme}
+              onChange={(event) => setWorkspaceTheme(event.target.value as WorkspaceTheme)}
+            >
+              <option value="light">Light</option>
+              <option value="midnight">Midnight</option>
+              <option value="forest">Forest</option>
+            </select>
+          </label>
           <CircleHelp size={18} className="muted-icon" />
             {isLoaded ? user ? (
               <UserButton />
@@ -1790,13 +1968,17 @@ function App() {
                       ? "Calendar"
                       : activeView === "roadmap"
                         ? "Roadmap"
+                      : activeView === "lld"
+                        ? "Senior SDE LLD"
+                      : activeView === "whiteboard"
+                        ? "LLD whiteboard"
                     : activeView === "chat"
                       ? "Group chat"
                         : activeView === "notes"
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                          : activeView === "articles" ? "Articles" : "AI coach"}
+                  : activeView === "articles" ? "Articles" : activeView === "jobs" ? "Job search" : "AI coach"}
               </span>
             </div>
             <h1>
@@ -1810,14 +1992,18 @@ function App() {
                     ? "Practice calendar"
                     : activeView === "roadmap"
                       ? "Your DSA roadmap"
+                      : activeView === "lld"
+                        ? "Senior SDE · Low-Level Design"
+                      : activeView === "whiteboard"
+                        ? "LLD design whiteboard"
                   : activeView === "chat"
                     ? "Group chat"
                       : activeView === "notes"
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                        : activeView === "articles" ? "DSA concept articles" : "AI study coach"}{" "}
-              <span className="private-pill">DSA 250</span>
+                : activeView === "articles" ? "DSA concept articles" : activeView === "jobs" ? "Find your next opportunity" : "AI study coach"}{" "}
+              <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -1830,13 +2016,17 @@ function App() {
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
                       ? "A study plan shaped around your pace and the patterns you want to master."
+                      : activeView === "lld"
+                        ? "A visual, phase-by-phase LLD plan for senior engineering interviews."
+                      : activeView === "whiteboard"
+                        ? "Map components, ownership, and relationships in your design."
                   : activeView === "chat"
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "jobs" ? "Explore early career roles and find a team where you can grow." : "Practice explaining solutions with your ElevenLabs voice coach."}
             </p>
           </div>
           <div className="title-actions">
@@ -1855,8 +2045,11 @@ function App() {
         onNavigate={navigateToView}
       />}
       {activeView === "articles" && <ArticlesPage />}
+      {activeView === "jobs" && <JobsPage />}
+      {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
+      {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
-      {activeView === "editor" && <Editor problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} />}
+      {activeView === "editor" && <Editor problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
@@ -1976,6 +2169,14 @@ function App() {
               </div>
             </div>
           </section>
+          <section className="dashboard-lc-bottom">
+            <article className="dashboard-panel dashboard-activity-panel">
+              <header className="panel-heading"><div><span className="insight-label">Activity</span><h2>Your practice calendar</h2></div><span className="dashboard-activity-total">{practiceDays.length} active days</span></header>
+              <div className="dashboard-heatmap-wrap"><div className="dashboard-heatmap-weekdays"><span>Mon</span><span>Wed</span><span>Fri</span></div><div className="dashboard-heatmap" role="grid" aria-label="Practice activity in the last 12 weeks">{Array.from({ length: 84 }, (_, index) => { const date = new Date(); date.setHours(0,0,0,0); date.setDate(date.getDate() - (83 - index)); const dateKey = localDateKey(date); const didPractice = practiceDaySet.has(dateKey); return <span role="gridcell" key={dateKey} className={didPractice ? "active" : ""} title={`${date.toLocaleDateString(undefined,{month:"short",day:"numeric"})}${didPractice?" · Practice session":" · No practice logged"}`} aria-label={`${date.toLocaleDateString()}${didPractice?", practice session":""}`}/>; })}</div></div>
+              <footer className="dashboard-heatmap-footer"><span>{practiceStreak.current > 0 ? <><Flame size={13}/> {practiceStreak.current}-day streak · best {practiceStreak.best} days</> : "Log a solved problem to start your streak"}</span><span>LESS <i/><i/><i className="active"/> MORE</span></footer>
+            </article>
+            <article className="dashboard-panel dashboard-lld-card"><span className="dashboard-lld-kicker"><Layers3 size={14}/> NEXT CAREER TRACK</span><h2>Design for the<br/><em>senior engineer.</em></h2><p>A visual 12-week LLD roadmap: domain modeling, concurrency, resilience, and senior-level trade-offs.</p><div className="dashboard-lld-steps"><span>01 · MODEL</span><i/><span>02 · SCALE</span><i/><span>03 · LEAD</span></div><button type="button" onClick={() => navigateToView("lld")}>Open LLD roadmap <ArrowRight size={15}/></button></article>
+          </section>
         </>
       )}
       {activeView === "roadmap" && (
@@ -2033,6 +2234,56 @@ function App() {
               </select>
             </label>
           </div>
+          <section className="roadmap-pattern-day" aria-label="Choose a pattern of the day">
+            <div className="roadmap-pattern-day-heading">
+              <div>
+                <span className="roadmap-eyebrow">YOUR DAILY PRACTICE</span>
+                <h3>Choose a pattern of the day</h3>
+                <p>Pick one pattern to focus on, then work through its problems at your pace.</p>
+              </div>
+              <span className="roadmap-pattern-day-count">
+                {problems.filter((problem) => problem.pattern === patternOfDay).length} problems
+              </span>
+            </div>
+            <div className="roadmap-pattern-choices" role="group" aria-label="Available patterns">
+              {patternStats.map((item) => (
+                <button
+                  className={`roadmap-pattern-choice${patternOfDay === item.name ? " active" : ""}`}
+                  key={item.name}
+                  type="button"
+                  aria-pressed={patternOfDay === item.name}
+                  onClick={() => setPatternOfDay(item.name)}
+                >
+                  <span>{item.name}</span>
+                  <small>{item.completed}/{item.total}</small>
+                </button>
+              ))}
+            </div>
+            <div className="roadmap-pattern-problems" aria-live="polite">
+              {problems.filter((problem) => problem.pattern === patternOfDay).map((problem) => {
+                const current = progress[problem.number]?.status ?? "Todo";
+                return (
+                  <div className="roadmap-pattern-problem" key={problem.number}>
+                    <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
+                    <a href={problem.link} target="_blank" rel="noreferrer">
+                      <strong>{problem.title}</strong>
+                      <span>{problem.difficulty}</span>
+                    </a>
+                    <select
+                      className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
+                      aria-label={`Status for ${problem.title}`}
+                      value={current}
+                      onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
+                    >
+                      <option>Todo</option>
+                      <option>In progress</option>
+                      <option>Solved</option>
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
           <div className="roadmap-insight" aria-live="polite">
             <div className="roadmap-insight-mark"><Target size={17} /></div>
             <div className="roadmap-insight-copy">
@@ -2512,131 +2763,36 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "problems" && <section className="sheet-card">
-        <div className="problems-heading">
-          <div>
-            <h2>All problems</h2>
-            <span>{visibleProblems.length} matching problems</span>
+      {activeView === "problems" && <section className="problem-library-page">
+        <div className="problem-library-hero">
+          <div className="problem-library-intro">
+            <span className="problem-library-eyebrow"><span/> YOUR PRACTICE, WITH PURPOSE</span>
+            <h2>Build the instincts<br/>to <em>solve anything.</em></h2>
+            <p>250 hand-picked interview problems, organized around the patterns great engineers use every day.</p>
+            <div className="problem-hero-actions"><button type="button" onClick={() => { setStatus("All status"); setPattern("All patterns"); setDifficulty("All levels"); document.querySelector(".problem-library-controls input")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Explore the library <ArrowRight size={15}/></button><span><Check size={14}/> Progress saves as you go</span></div>
           </div>
-          <span className="problems-count">250 total</span>
+          <div className="problem-hero-progress"><div className="problem-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties}><div><strong>{percent}%</strong><span>COMPLETE</span></div></div><span className="problem-progress-caption"><strong>{solved} <small>/ 250</small></strong> problems solved</span><div className="problem-progress-track"><i style={{ width: `${percent}%` }}/></div><span className="problem-progress-foot">Every problem makes you sharper.</span><span className="problem-progress-spark">✳</span></div>
         </div>
-        <div className="sheet-controls">
-          <div className="search-box">
-            <Search size={16} />
-            <input
-              placeholder="Search problems or patterns"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+        <div className="problem-library-stats">
+          <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-solved"><Check size={16}/></span><span className="problem-stat-label">SOLVED</span><strong>{solved}<small> / 250</small></strong><span className="problem-stat-note">One rep at a time</span></div>
+          <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-progress"><Clock3 size={16}/></span><span className="problem-stat-label">IN PROGRESS</span><strong>{inProgress}<small> active</small></strong><span className="problem-stat-note">Keep your momentum</span></div>
+          <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-pattern"><Target size={16}/></span><span className="problem-stat-label">CORE PATTERNS</span><strong>{patterns.length}<small> to explore</small></strong><span className="problem-stat-note">Learn how problems connect</span></div>
+        </div>
+        <div className="problem-library-section-heading"><div><span>THE PRACTICE LIBRARY</span><h3>Find your next <em>challenge.</em></h3></div><span className="problem-sync-state"><Check size={13}/>{user ? "Progress synced" : "Progress saved locally"}</span></div>
+        <div className="problem-library-panel">
+          <div className="problem-library-controls">
+            <label className="problem-search"><Search size={17}/><input placeholder="Search problems or patterns" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search problems or patterns"/>{query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search">×</button>}</label>
+            <label className="problem-filter-select"><span>PATTERN</span><select value={pattern} onChange={(event) => setPattern(event.target.value)}><option>All patterns</option>{patterns.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14}/></label>
+            <label className="problem-filter-select"><span>DIFFICULTY</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select><ChevronDown size={14}/></label>
+            <label className="problem-filter-select"><span>STATUS</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>All status</option><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={14}/></label>
           </div>
-          <select
-            value={pattern}
-            onChange={(event) => setPattern(event.target.value)}
-          >
-            <option>All patterns</option>
-            {patterns.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            value={difficulty}
-            onChange={(event) => setDifficulty(event.target.value)}
-          >
-            <option>All levels</option>
-            <option>Easy</option>
-            <option>Medium</option>
-            <option>Hard</option>
-          </select>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option>All status</option>
-            <option>Todo</option>
-            <option>In progress</option>
-            <option>Solved</option>
-          </select>
-        </div>
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Problem</th>
-                <th>Pattern</th>
-                <th>Level</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleProblems.map((problem) => {
-                const current = progress[problem.number]?.status ?? "Todo";
-                return (
-                  <tr key={problem.number}>
-                    <td className="number-cell">
-                      {String(problem.number).padStart(3, "0")}
-                    </td>
-                    <td className="problem-cell">
-                      <span
-                        className={`status-dot ${current.toLowerCase().replace(" ", "-")}`}
-                      />
-                      <strong>{problem.title}</strong>
-                    </td>
-                    <td>
-                      <span className="pattern-pill">{problem.pattern}</span>
-                    </td>
-                    <td>
-                      <span
-                        className={`difficulty ${problem.difficulty.toLowerCase()}`}
-                      >
-                        {problem.difficulty}
-                      </span>
-                    </td>
-                    <td>
-                      <select
-                        className={`status-select ${current.toLowerCase().replace(" ", "-")}`}
-                        value={current}
-                        onChange={(event) =>
-                          setProblemStatus(
-                            problem.number,
-                            event.target.value as Status,
-                          )
-                        }
-                      >
-                        <option>Todo</option>
-                        <option>In progress</option>
-                        <option>Solved</option>
-                      </select>
-                    </td>
-                    <td>
-                      <div className="problem-actions">
-                        <a
-                          className="external-link"
-                          href={problem.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label={`Open ${problem.title}`}
-                        >
-                          <ExternalLink size={15} />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="sheet-footer">
-          <span>
-            <Target size={14} /> Showing {visibleProblems.length} of 250
-            problems
-          </span>
-          <span className="footer-hint">
-            <Check size={14} />{" "}
-            {user ? "Synced progress" : "Sign in to sync progress"}
-          </span>
+          <div className="problem-list-toolbar"><span><strong>{visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
+          <div className="problem-list">{visibleProblems.length ? visibleProblems.map((problem) => {
+            const current = progress[problem.number]?.status ?? "Todo";
+            const statusClass = current.toLowerCase().replace(" ", "-");
+            return <article className="problem-list-row" key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer">{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label></article>;
+          }) : <div className="problem-library-empty"><Search size={21}/><strong>No problems found</strong><span>Try another search or adjust your filters.</span><button type="button" onClick={() => {setQuery("");setPattern("All patterns");setDifficulty("All levels");setStatus("All status");}}>Clear filters</button></div>}</div>
+          <div className="problem-library-footer"><span><Target size={14}/> Showing {visibleProblems.length} matching problems</span><span><Check size={14}/>{user ? "Synced to your account" : "Sign in to sync across devices"}</span></div>
         </div>
       </section>}
 

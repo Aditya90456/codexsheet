@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -16,6 +16,9 @@ import { supabase } from "./lib/supabase";
 
 type Language = "C++" | "Python" | "Java" | "JavaScript";
 type EditorProblem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard" };
+type ProblemExample = { input?: string; output?: string };
+type ProblemDetails = { description: string; constraints: string[]; examples: ProblemExample[] };
+type DraftStatus = "local" | "loading" | "ready" | "saving" | "saved" | "error";
 
 const starters: Record<Language, string> = {
   "C++": `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    cout << "Ready to solve" << endl;\n    return 0;\n}`,
@@ -38,21 +41,48 @@ function starterFor(language: Language, problem: EditorProblem | undefined) {
 
 const storageKey = "codexsheet-editor-v1";
 
-function readSavedCode(): Record<string, string> {
+function readSavedCode(key = storageKey): Record<string, string> {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "{}");
+    const value: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
     return value && typeof value === "object" ? value as Record<string, string> : {};
   } catch {
     return {};
   }
 }
 
-export default function Editor({ problems }: { problems: EditorProblem[] }) {
+async function getRunErrorMessage(error: unknown) {
+  if (error instanceof Error && error.name === "AbortError") {
+    return "Execution took too long. Try a shorter-running solution.";
+  }
+  if (error instanceof Error && error.message === "Failed to fetch") {
+    return "Could not reach the code runner. Check your connection or try again later.";
+  }
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const body: unknown = await context.clone().json();
+        if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
+          return body.error;
+        }
+      } catch {
+        // Fall through to the SDK message when the response is not JSON.
+      }
+      return `Code runner request failed (${context.status}). ${error instanceof Error ? error.message : "Try again later."}`;
+    }
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
+export default function Editor({ problems, userId }: { problems: EditorProblem[]; userId: string | null }) {
+  const draftStorageKey = userId ? `${storageKey}:${userId}` : storageKey;
   const [language, setLanguage] = useState<Language>("JavaScript");
   const [problemNumber, setProblemNumber] = useState(1);
-  const [savedCode, setSavedCode] = useState(readSavedCode);
+  const [savedCode, setSavedCode] = useState(() => readSavedCode(draftStorageKey));
   const initialKey = `${problems[0]?.number ?? 1}:JavaScript`;
   const [code, setCode] = useState(() => savedCode[initialKey] ?? starters.JavaScript);
+  const [codeDirty, setCodeDirty] = useState(false);
+  const codeDirtyRef = useRef(false);
   const [output, setOutput] = useState<string[]>([]);
   const [runError, setRunError] = useState(false);
   const [runNotice, setRunNotice] = useState(false);
@@ -60,30 +90,157 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
   const [stdin, setStdin] = useState("");
   const [outputOpen, setOutputOpen] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<DraftStatus>("local");
+  const [draftError, setDraftError] = useState("");
+  const [problemDetails, setProblemDetails] = useState<ProblemDetails | null>(null);
+  const [problemDetailsState, setProblemDetailsState] = useState<"loading" | "ready" | "error">("loading");
   const codeKey = `${problemNumber}:${language}`;
+  const activeDraftKey = `${userId ?? "local"}:${codeKey}`;
+  const activeDraftKeyRef = useRef(activeDraftKey);
+  activeDraftKeyRef.current = activeDraftKey;
 
   useEffect(() => {
-    const next = { ...savedCode, [codeKey]: code };
     const timer = window.setTimeout(() => {
-      setSavedCode(next);
-      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* storage may be unavailable */ }
-    }, 400);
+      setSavedCode((current) => {
+        const updated = { ...current, [codeKey]: code };
+        try { localStorage.setItem(draftStorageKey, JSON.stringify(updated)); } catch { /* storage may be unavailable */ }
+        return updated;
+      });
+      if (userId && supabase && codeDirty && hydratedDraftKey === activeDraftKey) {
+        setDraftStatus("saving");
+        void supabase.from("dsa_code_drafts").upsert({
+          user_id: userId,
+          problem_number: problemNumber,
+          language,
+          source_code: code,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id,problem_number,language" }).then(({ error }) => {
+          if (activeDraftKeyRef.current !== activeDraftKey) return;
+          if (error) {
+            setDraftError(error.message);
+            setDraftStatus("error");
+          } else {
+            setDraftError("");
+            setDraftStatus("saved");
+          }
+        });
+      }
+    }, 650);
     return () => window.clearTimeout(timer);
-  }, [code, codeKey]);
+  }, [activeDraftKey, code, codeDirty, codeKey, draftStorageKey, hydratedDraftKey, language, problemNumber, userId]);
+
+  useEffect(() => {
+    const localDrafts = readSavedCode(draftStorageKey);
+    setSavedCode(localDrafts);
+    codeDirtyRef.current = false;
+    setCodeDirty(false);
+    setCode(localDrafts[codeKey] ?? starterFor(language, problems.find((problem) => problem.number === problemNumber)));
+  }, [userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHydratedDraftKey(null);
+    setDraftError("");
+    const localDraft = readSavedCode(draftStorageKey)[codeKey]
+      ?? starterFor(language, problems.find((problem) => problem.number === problemNumber));
+    codeDirtyRef.current = false;
+    setCodeDirty(false);
+    setCode(localDraft);
+    if (!userId || !supabase) {
+      setDraftStatus("local");
+      setHydratedDraftKey(activeDraftKey);
+      return () => { cancelled = true; };
+    }
+    setDraftStatus("loading");
+    void supabase.from("dsa_code_drafts").select("source_code")
+      .eq("user_id", userId)
+      .eq("problem_number", problemNumber)
+      .eq("language", language)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setDraftError(error.message);
+          setDraftStatus("error");
+        } else if (typeof data?.source_code === "string" && !codeDirtyRef.current) {
+          setCode(data.source_code);
+          setDraftStatus("saved");
+        } else if (typeof data?.source_code === "string") {
+          setDraftStatus("ready");
+        } else {
+          setDraftStatus("ready");
+        }
+        setHydratedDraftKey(activeDraftKey);
+      }, (error: unknown) => {
+        if (cancelled) return;
+        setDraftError(error instanceof Error ? error.message : "Could not load your cloud draft.");
+        setDraftStatus("error");
+        setHydratedDraftKey(activeDraftKey);
+      });
+    return () => { cancelled = true; };
+  }, [activeDraftKey, codeKey, draftStorageKey, language, problemNumber, userId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setProblemDetailsState("loading");
+    if (!supabase) {
+      setProblemDetails(null);
+      setProblemDetailsState("error");
+      return () => { cancelled = true; };
+    }
+    void supabase.from("dsa_problem_content").select("description,constraints,examples")
+      .eq("problem_number", problemNumber)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) {
+          setProblemDetails(null);
+          setProblemDetailsState("error");
+        } else {
+          setProblemDetails(data as ProblemDetails);
+          setProblemDetailsState("ready");
+        }
+      }, () => {
+        if (cancelled) return;
+        setProblemDetails(null);
+        setProblemDetailsState("error");
+      });
+    return () => { cancelled = true; };
+  }, [problemNumber]);
 
   const lines = useMemo(() => code.split("\n").length, [code]);
   const fileExtension = language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js";
   const currentProblem = problems.find((problem) => problem.number === problemNumber) ?? problems[0];
 
-  function changeLanguage(next: Language) {
+  function persistCurrentDraft() {
+    const next = { ...readSavedCode(draftStorageKey), [codeKey]: code };
+    try { localStorage.setItem(draftStorageKey, JSON.stringify(next)); } catch { /* storage may be unavailable */ }
     setSavedCode((current) => ({ ...current, [codeKey]: code }));
+    if (userId && supabase && codeDirtyRef.current) {
+      void supabase.from("dsa_code_drafts").upsert({
+        user_id: userId,
+        problem_number: problemNumber,
+        language,
+        source_code: code,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,problem_number,language" });
+    }
+  }
+
+  function changeLanguage(next: Language) {
+    persistCurrentDraft();
+    codeDirtyRef.current = false;
+    setCodeDirty(false);
     setLanguage(next);
     setCode(savedCode[`${problemNumber}:${next}`] ?? starterFor(next, currentProblem));
     setOutput([]);
   }
 
   function changeProblem(nextNumber: number) {
-    setSavedCode((current) => ({ ...current, [codeKey]: code }));
+    persistCurrentDraft();
+    codeDirtyRef.current = false;
+    setCodeDirty(false);
     setProblemNumber(nextNumber);
     const nextProblem = problems.find((problem) => problem.number === nextNumber);
     setCode(savedCode[`${nextNumber}:${language}`] ?? starterFor(language, nextProblem));
@@ -96,6 +253,11 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
     setOutputOpen(true);
     setRunError(false);
     setRunNotice(false);
+    if (!userId) {
+      setRunError(true);
+      setOutput(["Sign in to run code. Your drafts will still save in this browser."]);
+      return;
+    }
     const languageIds: Record<Language, number> = {
       "C++": 54,
       Java: 62,
@@ -142,12 +304,7 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
       setOutput([result.summary, ...caseOutput].filter((line): line is string => Boolean(line)));
     } catch (error) {
       setRunError(true);
-      const message = error instanceof Error && error.name === "AbortError"
-        ? "Execution took too long. Try a shorter-running solution."
-        : error instanceof Error && error.message === "Failed to fetch"
-          ? "Could not reach the code runner. Check your connection or try again later."
-          : error instanceof Error ? error.message : String(error);
-      setOutput([message]);
+      setOutput([await getRunErrorMessage(error)]);
     } finally {
       setIsRunning(false);
     }
@@ -184,6 +341,40 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
         </div>
       </header>
 
+      <section className="editor-problem-brief" aria-label="Problem description" aria-live="polite">
+        <div className="editor-brief-heading">
+          <div>
+            <span className="editor-kicker">PROBLEM BRIEF · #{String(problemNumber).padStart(3, "0")}</span>
+            <h3>{currentProblem?.title ?? "Choose a problem"}</h3>
+          </div>
+          <span className="editor-brief-pattern">{currentProblem?.pattern}</span>
+        </div>
+        {problemDetailsState === "loading" ? (
+          <p className="editor-brief-message">Loading problem details…</p>
+        ) : problemDetails ? (
+          <>
+            <p className="editor-brief-description">{problemDetails.description}</p>
+            <div className="editor-brief-columns">
+              {problemDetails.constraints.length > 0 && <div className="editor-brief-block">
+                <strong>Constraints</strong>
+                <ul>{problemDetails.constraints.map((constraint, index) => <li key={`${constraint}-${index}`}>{constraint}</li>)}</ul>
+              </div>}
+              {problemDetails.examples.length > 0 && <div className="editor-brief-block">
+                <strong>Example{problemDetails.examples.length > 1 ? "s" : ""}</strong>
+                <div className="editor-examples">
+                  {problemDetails.examples.slice(0, 2).map((example, index) => <div className="editor-example" key={index}>
+                    <span>Input</span><pre>{example.input || "—"}</pre>
+                    <span>Output</span><pre>{example.output || "—"}</pre>
+                  </div>)}
+                </div>
+              </div>}
+            </div>
+          </>
+        ) : (
+          <p className="editor-brief-message">Problem details are unavailable. You can still write and run your solution.</p>
+        )}
+      </section>
+
       <section className="editor-workspace" aria-label="Code editor">
         <aside className="editor-rail">
           <span className="editor-rail-heading">WORKSPACE</span>
@@ -196,27 +387,27 @@ export default function Editor({ problems }: { problems: EditorProblem[] }) {
           ))}
           <div className="editor-rail-bottom">
             <div className="editor-rail-note-icon"><Save size={15} /></div>
-            <strong>Your work is saved</strong>
-            <span>Code stays in this browser while you practice.</span>
+            <strong>{draftStatus === "loading" ? "Loading your draft…" : draftStatus === "saving" ? "Saving your draft…" : draftStatus === "saved" ? "Saved to Supabase" : draftStatus === "error" ? "Local draft saved" : "Saved in this browser"}</strong>
+            <span>{draftStatus === "error" ? draftError || "Cloud sync is unavailable right now." : userId ? "Drafts sync to your account." : "Sign in to sync drafts across devices."}</span>
           </div>
         </aside>
 
         <div className="editor-main">
           <div className="editor-tabs">
             <div className="editor-tab"><span className="editor-tab-badge">{language === "JavaScript" ? "JS" : language === "Python" ? "PY" : language === "C++" ? "C+" : "JV"}</span>solution.{fileExtension}<i /></div>
-            <span className="editor-saved-tag"><Check size={13} /> Autosave on</span>
+            <span className={`editor-saved-tag${draftStatus === "error" ? " is-error" : ""}`}><Check size={13} /> {draftStatus === "saved" ? "Saved to cloud" : draftStatus === "saving" || draftStatus === "loading" ? "Syncing…" : draftStatus === "error" ? "Offline draft" : "Autosave on"}</span>
           </div>
           <div className="editor-actions">
             <div className="editor-problem-label"><i className="editor-easy-dot" /> #{String(problemNumber).padStart(3, "0")} · {currentProblem?.title} <span>· {currentProblem?.difficulty}</span></div>
             <div className="editor-action-buttons">
               <button className="editor-tool-button" onClick={() => void copyCode()} type="button" title="Copy code">{copied ? <Check size={13} /> : <Copy size={13} />}<span>{copied ? "Copied" : "Copy"}</span></button>
-              <button className="editor-tool-button" onClick={() => { setCode(starterFor(language, currentProblem)); setOutput([]); setRunError(false); setRunNotice(false); }} type="button" title="Reset code"><RotateCcw size={13} /><span>Reset</span></button>
+              <button className="editor-tool-button" onClick={() => { setCode(starterFor(language, currentProblem)); codeDirtyRef.current = true; setCodeDirty(true); setOutput([]); setRunError(false); setRunNotice(false); }} type="button" title="Reset code"><RotateCcw size={13} /><span>Reset</span></button>
               <button className="editor-run" onClick={() => void runCode()} type="button" disabled={isRunning}><span className={isRunning ? "editor-spinner" : ""}>{isRunning ? <LoaderCircle size={14} /> : <CirclePlay size={14} />}</span><span>{isRunning ? "Running…" : "Run"}</span><kbd>Ctrl ↵</kbd></button>
             </div>
           </div>
           <div className="editor-code-area">
             <div className="editor-gutter" aria-hidden="true">{Array.from({ length: lines }, (_, index) => <span key={index}>{index + 1}</span>)}</div>
-            <textarea className="editor-textarea" aria-label={`${language} code`} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} onKeyDown={(event: { ctrlKey: boolean; metaKey: boolean; key: string; preventDefault(): void; currentTarget: { selectionStart: number; selectionEnd: number } }) => {
+            <textarea className="editor-textarea" aria-label={`${language} code`} autoCapitalize="off" autoComplete="off" autoCorrect="off" spellCheck={false} value={code} onChange={(event) => { setCode(event.target.value); codeDirtyRef.current = true; setCodeDirty(true); }} onBlur={persistCurrentDraft} onKeyDown={(event: { ctrlKey: boolean; metaKey: boolean; key: string; preventDefault(): void; currentTarget: { selectionStart: number; selectionEnd: number } }) => {
               if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); runCode(); }
               if (event.key === "Tab") { event.preventDefault(); const start = event.currentTarget.selectionStart; const end = event.currentTarget.selectionEnd; const next = `${code.slice(0, start)}  ${code.slice(end)}`; setCode(next); requestAnimationFrame(() => { event.currentTarget.selectionStart = event.currentTarget.selectionEnd = start + 2; }); }
             }} />
