@@ -1966,6 +1966,14 @@ function App() {
     }
   }
 
+  if (!isLoaded) {
+    return <main className="auth-gate"><div className="auth-gate-card auth-gate-loading"><span className="auth-gate-mark"><Code2 size={22} /></span><span>CODEXSHEET · DSA WORKSPACE</span><h1>Preparing your workspace…</h1></div></main>;
+  }
+
+  if (!isSignedIn) {
+    return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><span className="auth-gate-mark"><Code2 size={22} /></span><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div></main>;
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -2031,10 +2039,10 @@ function App() {
               <UserButton />
             ) : (
               <>
-                <SignInButton mode="modal">
+                <SignInButton mode="modal" forceRedirectUrl={window.location.href}>
                   <button className="secondary-button">Sign in</button>
                 </SignInButton>
-                <SignUpButton mode="modal">
+                <SignUpButton mode="modal" forceRedirectUrl={window.location.href}>
                   <button className="primary-button">Create account</button>
                 </SignUpButton>
               </>
@@ -2598,7 +2606,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to join the shared study group and chat with other learners.</p>
-              <SignInButton mode="modal"><button className="primary-button">Sign in</button></SignInButton>
+              <SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="primary-button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
@@ -2750,7 +2758,7 @@ function App() {
           {!user ? (
             <div className="feature-sign-in">
               <p>Sign in to create a private notebook that syncs with your account.</p>
-              <SignInButton mode="modal"><button className="primary-button">Sign in</button></SignInButton>
+              <SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="primary-button">Sign in</button></SignInButton>
             </div>
           ) : (
             <>
