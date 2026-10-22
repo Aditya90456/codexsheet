@@ -11,9 +11,9 @@ import { ArrowRight, Code2, ShieldCheck } from "lucide-react";
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.trim();
 const authConfigurationError = !publishableKey
-  ? "Set VITE_CLERK_PUBLISHABLE_KEY in the deployment environment and rebuild the app."
+  ? "Set VITE_CLERK_PUBLISHABLE_KEY in the deployment environment and rebuild the app. Use the publishable key only; never put a Clerk secret key in a VITE_ variable."
   : import.meta.env.PROD && !publishableKey.startsWith("pk_live_")
-    ? "This production build is using a development Clerk key. Set VITE_CLERK_PUBLISHABLE_KEY to the pk_live_ key from your Clerk production instance, then redeploy."
+    ? "This production build must use the pk_live_ publishable key from your Clerk production instance. Set it in the hosting provider's Production environment and redeploy. Do not use a Clerk secret key here."
     : null;
 
 export { UserButton, useUser };

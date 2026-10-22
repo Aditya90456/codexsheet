@@ -14,19 +14,34 @@ server after changing `.env`.
 
 ## Production deployment
 
-Create and activate a Clerk production instance for the owned application
-domain. In the hosting provider, set `VITE_CLERK_PUBLISHABLE_KEY` to that
-instance's `pk_live_` key for the **Production** environment. Keep the
-development `pk_test_` key scoped to local development and preview deployments.
-Vite embeds `VITE_` values during the build, so redeploy after changing a
-hosting environment variable. The app displays a configuration error instead
-of rendering a broken auth page if a production build receives a `pk_test_` key.
+Use a separate Clerk production instance for the live application. Complete its
+production deployment setup in Clerk, including the owned application domain,
+required DNS records, sign-in methods, and any OAuth credentials. Set the exact
+production HTTPS origin and permitted redirect destinations in that instance.
+The app uses `/sign-in` and `/sign-up`, then returns to `/` unless Clerk has an
+existing redirect target.
 
-Configure the production app URL, allowed redirect URLs, and any social sign-in
-credentials in the Clerk production instance. Add that production Clerk
-instance as a third-party auth provider in the production Supabase project.
-The development Clerk domain in `supabase/config.toml` is only for the local
-Supabase CLI stack and does not configure the hosted project.
+In Vercel, set `VITE_CLERK_PUBLISHABLE_KEY` to the production instance's
+`pk_live_` publishable key in the **Production** environment. Set the Supabase
+URL and publishable key there as well. Keep `pk_test_` scoped to development
+and preview environments, and never add a Clerk secret key or Supabase
+`service_role` key to a `VITE_` variable. Vite embeds `VITE_` values during the
+build, so redeploy after changing them. The app fails closed with a clear
+configuration error if a production build has no Clerk key or receives a
+non-`pk_live_` key.
+
+In the production Supabase project, add the **production** Clerk instance as a
+third-party auth provider. The Clerk domain in `supabase/config.toml` is only
+for the local Supabase CLI stack and does not configure the hosted project.
+Apply the production schema and policies, and confirm row-level security is
+enabled on user data tables before opening sign-up to users.
+
+Before launch, verify direct loads of `/sign-in` and `/sign-up`, email
+verification and configured OAuth callbacks on the production domain, sign-in,
+sign-out, and a fresh-account flow. Then use two accounts to confirm progress,
+notes, and profile data remain isolated. Clerk's production instance requires
+its own domain and production OAuth credentials; development credentials do
+not become production-ready by changing the publishable key alone.
 
 ## Authentication and database schema
 
