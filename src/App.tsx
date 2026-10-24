@@ -62,7 +62,7 @@ import {
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
-import Editor from "./Editor";
+import DsaIde from "./DsaIde";
 import CompanyProblems from "./CompanyProblems";
 
 type Status = "Todo" | "In progress" | "Solved";
@@ -94,7 +94,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "editor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "coach" | "calls" | "articles" | "jobs";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs";
 type WorkspaceTheme = "light" | "midnight" | "forest";
 
 const viewPaths: Record<WorkspaceView, string> = {
@@ -102,14 +102,13 @@ const viewPaths: Record<WorkspaceView, string> = {
   dashboard: "/dashboard",
   problems: "/problems",
   companies: "/companies",
-  editor: "/editor",
+  "dsa-ide": "/ide/dsa",
   calendar: "/calendar",
   roadmap: "/roadmap",
   lld: "/roadmap/lld",
   whiteboard: "/whiteboard/lld",
   chat: "/chat",
   notes: "/notes",
-  coach: "/coach",
   calls: "/calls",
   articles: "/articles",
   jobs: "/jobs",
@@ -726,10 +725,6 @@ function ArticlesPage() {
   </main>;
 }
 
-const elevenLabsAgentId = "agent_6801m0q9g55pe3vr0eb8y4sgkby7";
-const elevenLabsVoiceId = "C2S5J6WvmHnrQWjUu6Rg";
-const elevenLabsAgentUrl = `https://elevenlabs.io/app/talk-to?agent_id=${elevenLabsAgentId}&branch_id=agtbrch_4401m0q9g6nbf1885mt8fmg66dm7`;
-const elevenLabsVoicePreviewUrl = "https://elevenlabs.io/app/voice-lab/share/7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6/C2S5J6WvmHnrQWjUu6Rg";
 
 const seeds: Array<[string, string, Problem["difficulty"]]> = [
   ["Two Sum", "Arrays & Hashing", "Easy"],
@@ -2001,11 +1996,11 @@ function App() {
           <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}>
             <UsersRound size={16} /> Companies
           </button>
-          <button className={activeView === "editor" ? "active" : ""} aria-pressed={activeView === "editor"} onClick={() => navigateToView("editor")}>
-            <CodeXml size={16} /> Editor
+          <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}>
+            <CodeXml size={16} /> DSA IDE
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "coach" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
               <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
@@ -2013,7 +2008,6 @@ function App() {
               <button className={activeView === "whiteboard" ? "active" : ""} aria-pressed={activeView === "whiteboard"} onClick={() => navigateToView("whiteboard")}><MousePointer2 size={16} /> LLD whiteboard</button>
               <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
               <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-              <button className={activeView === "coach" ? "active" : ""} aria-pressed={activeView === "coach"} onClick={() => navigateToView("coach")}><AudioLines size={16} /> AI coach</button>
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
               <button className={activeView === "jobs" ? "active" : ""} aria-pressed={activeView === "jobs"} onClick={() => navigateToView("jobs")}><BriefcaseBusiness size={16} /> Job search</button>
@@ -2060,8 +2054,8 @@ function App() {
                   ? "Dashboard"
                   : activeView === "problems"
                     ? "Problems"
-                    : activeView === "editor"
-                      ? "Code editor"
+                    : activeView === "dsa-ide"
+                      ? "DSA IDE"
                     : activeView === "calendar"
                       ? "Calendar"
                       : activeView === "roadmap"
@@ -2076,7 +2070,7 @@ function App() {
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
-                  : activeView === "articles" ? "Articles" : activeView === "jobs" ? "Job search" : "AI coach"}
+                  : activeView === "articles" ? "Articles" : "Job search"}
               </span>
             </div>
             <h1>
@@ -2084,8 +2078,8 @@ function App() {
                 ? "Your progress"
                 : activeView === "problems"
                   ? "Problem library"
-                  : activeView === "editor"
-                    ? "Code editor"
+                  : activeView === "dsa-ide"
+                    ? "DSA IDE"
                   : activeView === "calendar"
                     ? "Practice calendar"
                     : activeView === "roadmap"
@@ -2100,7 +2094,7 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                : activeView === "articles" ? "DSA concept articles" : activeView === "jobs" ? "Find your next opportunity" : "AI study coach"}{" "}
+                : activeView === "articles" ? "DSA concept articles" : "Find your next opportunity"}{" "}
               <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
             </h1>
             <p>
@@ -2108,8 +2102,8 @@ function App() {
                 ? "A clear view of your practice and what to tackle next."
                 : activeView === "problems"
                   ? "Find a problem, update its status, and keep your practice moving."
-                  : activeView === "editor"
-                    ? "A focused space to write, run, and refine your solutions."
+                : activeView === "dsa-ide"
+                    ? "Plan on the whiteboard, edit your solution, and trace each loop step."
                   : activeView === "calendar"
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
@@ -2124,7 +2118,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "jobs" ? "Explore early career roles and find a team where you can grow." : "Practice explaining solutions with your ElevenLabs voice coach."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : "Explore early career roles and find a team where you can grow."}
             </p>
           </div>
           <div className="title-actions">
@@ -2147,7 +2141,7 @@ function App() {
       {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
       {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
-      {activeView === "editor" && <Editor problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
+      {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
@@ -2679,60 +2673,6 @@ function App() {
             </>
           )}
         </section>
-      )}
-      {activeView === "coach" && (
-        <>
-        <section className="coach-card" aria-label="ElevenLabs AI study coach">
-          <header className="coach-heading">
-            <div className="coach-icon"><AudioLines size={18} /></div>
-            <div>
-              <h2>DSA voice coach</h2>
-              <p>Practice problem-solving out loud with your ElevenLabs agent</p>
-            </div>
-            <a
-              className="secondary-button coach-open-link"
-              href={elevenLabsAgentUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <ExternalLink size={15} /> Open agent page
-            </a>
-            <a
-              className="secondary-button coach-open-link"
-              href={elevenLabsVoicePreviewUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <AudioLines size={15} /> Preview voice
-            </a>
-          </header>
-          <div className="coach-layout">
-            <aside className="coach-brief">
-              <span className="coach-kicker">VOICE PRACTICE</span>
-              <h2>Make your reasoning audible.</h2>
-              <p>Talk through an approach, test your assumptions, and ask for a hint when you get stuck.</p>
-              <div className="coach-prompts" aria-label="Suggested topics">
-                <span>Explain a solution step by step</span>
-                <span>Ask for a hint, not the answer</span>
-                <span>Compare time and space complexity</span>
-              </div>
-              <p className="coach-mic-note">Your browser may ask for microphone access when you start a voice session. Preview the selected voice, or enable voice overrides in ElevenLabs to use it here.</p>
-            </aside>
-            <div className="coach-widget">
-              <elevenlabs-convai
-                agent-id={elevenLabsAgentId}
-                override-voice-id={elevenLabsVoiceId}
-                variant="expanded"
-                dismissible="true"
-                action-text="Talk with your DSA coach"
-                start-call-text="Start coaching session"
-                end-call-text="End session"
-                expand-text="Open voice coach"
-              />
-            </div>
-          </div>
-        </section>
-        </>
       )}
       {activeView === "notes" && (
         <section className="notebook-card" aria-label="Personal notebook">

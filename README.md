@@ -110,14 +110,6 @@ Problems are organized around common DSA patterns.
 
 Build your skills gradually instead of jumping directly into hard problems.
 
-### 🤖 AI Mentor
-
-Get help understanding problems, approaches, and concepts with the CodexSheet AI Mentor.
-
-### 🎙️ Voice AI Mentor
-
-Practice discussing DSA problems and approaches using voice.
-
 ### 👥 Community
 
 Learn, discuss, and share your preparation journey with other developers.

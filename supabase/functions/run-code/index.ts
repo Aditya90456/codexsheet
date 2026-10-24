@@ -54,7 +54,7 @@ Deno.serve(async (request: Request) => {
   const problemNumber = Number(input.problemNumber);
   const language = input.language as Language;
   if (!Number.isInteger(problemNumber) || problemNumber < 1 || problemNumber > 250) return respond({ error: "Choose a valid problem." }, 400);
-  if (!["javascript", "python", "java", "c++"].includes(language)) return respond({ error: "This language is not supported." }, 400);
+  if (!["javascript", "python", "java", "c++"].includes(language)) return respond({ error: "Choose a supported programming language: C++, Python, Java, or JavaScript." }, 400);
   if (typeof input.sourceCode !== "string" || !input.sourceCode.trim() || input.sourceCode.length > 30000) return respond({ error: "Code must contain between 1 and 30 KB." }, 400);
   if (input.customInput !== undefined && (typeof input.customInput !== "string" || input.customInput.length > 10000)) return respond({ error: "Input is limited to 10 KB." }, 400);
 

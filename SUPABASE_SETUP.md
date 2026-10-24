@@ -73,27 +73,10 @@ a corresponding description and one test case for each of the 250 problem
 numbers in the current app. The app currently repeats its 50
 base problem patterns across those 250 entries. Add or edit rows in
 `public.dsa_problem_content` and `public.dsa_problem_test_cases` using the SQL
-Editor. The public table contains descriptions, constraints, and examples.
-Test-case data remains in Supabase for future judging support; it is not
-exposed to browser users or used by the current runner.
-
-The editor sends JavaScript, Python, Java, and C++ runs to the `run-code` Edge
-Function. The function reads private test cases server-side, executes each case
-through a Piston-compatible API, and compares normalized output. Set
-`CODE_EXECUTION_API_URL` in Supabase Dashboard > Edge Functions > Secrets to the
-HTTPS base URL of your Piston-compatible API (the function appends `/runtimes`
-and `/execute`). Set `CODE_EXECUTION_API_KEY` there when your API requires a
-Bearer token. Install JavaScript, Python, Java, and C++ runtimes on that API.
-The function also needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to read
-private test cases; Supabase supplies these standard values to deployed Edge
-Functions. Never put API credentials or the service-role key in a `VITE_`
-variable or browser code.
-
-The public Piston API now requires authorization. Use an authorized endpoint or
-host Piston yourself; the project does not assume public access. An HTTP 503
-that says the code execution API is not configured means
-`CODE_EXECUTION_API_URL` is missing. An HTTP 502 includes an API or runner
-error in the editor output. The Edge Function is named `run-code`.
+Editor. The public table contains descriptions, constraints, and examples. The DSA IDE
+does not fetch this content or use Supabase for code execution. Its loop trace
+runs locally in the browser, and drafts and whiteboard sketches are saved in
+browser `localStorage`.
 
 ## Group chat and personal notebook
 
@@ -108,7 +91,7 @@ Users can opt into browser notifications from the chat header; browser
 permission must be granted for notifications to appear. Group chat messages and
 readers are visible to all signed-in users, so do not post sensitive information.
 
-The app no longer uses Gemini. Existing private messages in the legacy
-`study_chat_messages` table are not deleted by the SQL script. The old
-Gemini Edge Functions are no longer part of this app; the Gemini API secret
-is left in Supabase and can be removed separately if nothing else uses it.
+The AI Mentor and legacy Gemini functions are no longer part of this app.
+Existing private messages in the legacy `study_chat_messages` table are not
+deleted by the SQL script. Remove any unused OpenAI or Gemini secrets from
+Supabase if no other project functions rely on them.
