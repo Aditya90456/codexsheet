@@ -3,9 +3,9 @@ import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import "./styles.css";
+import "./redesign.css";
 
-// The private assistant runs as a standalone local-only page and does not
-// require the app's account provider or a hosted AI service.
+// Keep the local assistant isolated from the signed-in workspace.
 if (window.location.pathname === "/assistant") {
   const { default: PersonalAssistant } = await import("./PersonalAssistant");
   createRoot(document.getElementById("root")!).render(<PersonalAssistant />);

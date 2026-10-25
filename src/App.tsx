@@ -59,12 +59,13 @@ import {
   Layers3,
   MousePointer2,
   Trash2,
-  Sparkles,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import DsaIde from "./DsaIde";
+import DsaVisualLessons from "./DsaVisualLessons";
 import CompanyProblems from "./CompanyProblems";
+import PatternTest from "./PatternTest";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -95,7 +96,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs";
 type WorkspaceTheme = "light" | "midnight" | "forest";
 
 const viewPaths: Record<WorkspaceView, string> = {
@@ -104,6 +105,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   problems: "/problems",
   companies: "/companies",
   "dsa-ide": "/ide/dsa",
+  "dsa-course": "/learn/dsa",
   calendar: "/calendar",
   roadmap: "/roadmap",
   lld: "/roadmap/lld",
@@ -788,6 +790,7 @@ const patterns = [
   "Two Pointers",
   "Sliding Window",
   "Stack",
+  "Monotonic Stack",
   "Binary Search",
   "Linked List",
   "Trees",
@@ -1176,10 +1179,6 @@ function App() {
         localStorage.getItem("codexsheet-dsa-progress") ?? "{}",
       ) as ProgressMap,
   );
-  const [problemHelpNumber, setProblemHelpNumber] = useState<number | null>(null);
-  const [problemHelpAnswer, setProblemHelpAnswer] = useState("");
-  const [problemHelpBusy, setProblemHelpBusy] = useState(false);
-  const [problemHelpError, setProblemHelpError] = useState("");
   const [practiceDays, setPracticeDays] = useState<string[]>(
     () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
   );
@@ -1190,10 +1189,9 @@ function App() {
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
-  const [workspaceTheme, setWorkspaceTheme] = useState<WorkspaceTheme>(
-    () => (localStorage.getItem("codexsheet-theme") as WorkspaceTheme | null) ?? "light",
-  );
+  const [workspaceTheme, setWorkspaceTheme] = useState<WorkspaceTheme>("midnight");
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
@@ -1918,41 +1916,6 @@ function App() {
     }
   }
 
-  async function askGeminiAboutProblem(problem: Problem) {
-    if (problemHelpBusy) return;
-    setProblemHelpNumber(problem.number);
-    setProblemHelpAnswer("");
-    setProblemHelpError("");
-    setProblemHelpBusy(true);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("Sign in again to use Gemini problem help.");
-      const response = await fetch("/api/problem-help", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ problem, status: progress[problem.number]?.status ?? "Todo" }),
-      });
-      const responseText = await response.text();
-      if (!responseText.trim()) {
-        throw new Error(response.ok
-          ? "The Gemini endpoint returned an empty response. Check the Vercel function deployment and logs."
-          : `The Gemini endpoint returned HTTP ${response.status} without details. Check that the API function is deployed.`);
-      }
-      let data: { answer?: string; error?: string };
-      try {
-        data = JSON.parse(responseText) as { answer?: string; error?: string };
-      } catch {
-        throw new Error(`The Gemini endpoint returned an unexpected response (HTTP ${response.status}). Deploy the Vercel API function, then try again.`);
-      }
-      if (!response.ok) throw new Error(data.error || "Gemini could not answer. Try again.");
-      setProblemHelpAnswer(data.answer ?? "Gemini returned an empty answer. Try again.");
-    } catch (cause) {
-      setProblemHelpError(cause instanceof Error ? cause.message : "Could not connect to Gemini. Try again.");
-    } finally {
-      setProblemHelpBusy(false);
-    }
-  }
-
   async function sendGroupMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = chatDraft.trim();
@@ -2021,25 +1984,20 @@ function App() {
           <button className={activeView === "home" ? "active" : ""} aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
             <House size={16} /> Home
           </button>
-          <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}>
-            <LayoutDashboard size={16} /> Progress
-          </button>
           <button className={activeView === "problems" ? "active" : ""} aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
           </button>
-          <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}>
-            <UsersRound size={16} /> Companies
-          </button>
-          <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}>
-            <CodeXml size={16} /> DSA IDE
-          </button>
-          <button onClick={() => { window.location.href = "/assistant"; }}>
-            <MessageCircle size={16} /> Personal AI
+          <button className={activeView === "dsa-course" ? "active" : ""} aria-pressed={activeView === "dsa-course"} onClick={() => navigateToView("dsa-course")}>
+            <BookOpen size={16} /> DSA Course
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={activeView === "dashboard" || activeView === "companies" || activeView === "dsa-ide" || activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
+              <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}><LayoutDashboard size={16} /> Progress</button>
+              <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Companies</button>
+              <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}><CodeXml size={16} /> DSA IDE</button>
+              <button onClick={() => { window.location.href = "/assistant"; }}><MessageCircle size={16} /> Personal AI</button>
               <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
               <button className={activeView === "lld" ? "active" : ""} aria-pressed={activeView === "lld"} onClick={() => navigateToView("lld")}><Layers3 size={16} /> Senior SDE · LLD</button>
@@ -2094,6 +2052,8 @@ function App() {
                     ? "Problems"
                     : activeView === "dsa-ide"
                       ? "DSA IDE"
+                    : activeView === "dsa-course"
+                      ? "DSA Course"
                     : activeView === "calendar"
                       ? "Calendar"
                       : activeView === "roadmap"
@@ -2118,6 +2078,8 @@ function App() {
                   ? "Problem library"
                   : activeView === "dsa-ide"
                     ? "DSA IDE"
+                  : activeView === "dsa-course"
+                    ? "DSA visual course"
                   : activeView === "calendar"
                     ? "Practice calendar"
                     : activeView === "roadmap"
@@ -2142,6 +2104,8 @@ function App() {
                   ? "Find a problem, update its status, and keep your practice moving."
                 : activeView === "dsa-ide"
                     ? "Plan on the whiteboard, edit your solution, and trace each loop step."
+                  : activeView === "dsa-course"
+                    ? "Learn core DSA patterns through detailed explanations and interactive visual walkthroughs."
                   : activeView === "calendar"
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
@@ -2180,6 +2144,7 @@ function App() {
       {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
+      {activeView === "dsa-course" && <DsaVisualLessons />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>
@@ -2849,26 +2814,17 @@ function App() {
           </div>
           <div className="problem-hero-progress"><div className="problem-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties}><div><strong>{percent}%</strong><span>COMPLETE</span></div></div><span className="problem-progress-caption"><strong>{solved} <small>/ 250</small></strong> problems solved</span><div className="problem-progress-track"><i style={{ width: `${percent}%` }}/></div><span className="problem-progress-foot">Every problem makes you sharper.</span><span className="problem-progress-spark">✳</span></div>
         </div>
-        <section className="problem-ai-coach" aria-label="Gemini problem help">
-          <span className="problem-ai-icon"><Sparkles size={17}/></span>
-          <div className="problem-ai-content">
-            <div className="problem-ai-title"><strong>Understand a problem, step by step</strong><span>GEMINI PROBLEM HELP</span></div>
-            <p>Choose <b>Ask Gemini</b> beside any problem for a plain-language goal, a hint, and a clear approach.</p>
-            {problemHelpNumber !== null && <div className="problem-ai-result" aria-live="polite">
-              <strong>{problems.find((item) => item.number === problemHelpNumber)?.title}</strong>
-              {problemHelpBusy && <span className="problem-ai-pending">Gemini is preparing an explanation…</span>}
-              {problemHelpAnswer && <p>{problemHelpAnswer}</p>}
-              {problemHelpError && <span className="problem-ai-error" role="status">{problemHelpError}</span>}
-            </div>}
-            <small>Powered by Google Gemini. Your selected problem and its status are sent for the explanation.</small>
-          </div>
-        </section>
         <div className="problem-library-stats">
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-solved"><Check size={16}/></span><span className="problem-stat-label">SOLVED</span><strong>{solved}<small> / 250</small></strong><span className="problem-stat-note">One rep at a time</span></div>
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-progress"><Clock3 size={16}/></span><span className="problem-stat-label">IN PROGRESS</span><strong>{inProgress}<small> active</small></strong><span className="problem-stat-note">Keep your momentum</span></div>
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-pattern"><Target size={16}/></span><span className="problem-stat-label">CORE PATTERNS</span><strong>{patterns.length}<small> to explore</small></strong><span className="problem-stat-note">Learn how problems connect</span></div>
         </div>
-        <div className="problem-library-section-heading"><div><span>THE PRACTICE LIBRARY</span><h3>Find your next <em>challenge.</em></h3></div><span className="problem-sync-state"><Check size={13}/>{user ? "Progress synced" : "Progress saved locally"}</span></div>
+        <div className="problem-library-section-heading"><div><span>THE PRACTICE LIBRARY</span><h3>Find your next <em>challenge.</em></h3></div><div className="problem-library-heading-actions"><span className="problem-sync-state"><Check size={13}/>{user ? "Progress synced" : "Progress saved locally"}</span><button type="button" disabled={pattern === "All patterns"} onClick={() => setPatternTestOpen(pattern)} title={pattern === "All patterns" ? "Choose a pattern to start its test" : `Take the ${pattern} test`}>Take 4-question test <ArrowRight size={13}/></button></div></div>
+        <div className="problem-pattern-shortcuts" aria-label="Popular problem patterns">
+          <span>POPULAR PATTERNS</span>
+          {["Two Pointers", "Sliding Window", "Binary Search", "Trees", "Graphs", "1-D DP"].map((topic) => <button key={topic} type="button" className={pattern === topic ? "active" : ""} onClick={() => { setPattern(topic); setStatus("All status"); document.querySelector(".problem-library-controls input")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>{topic}<span>{problems.filter((problem) => problem.pattern === topic).length}</span></button>)}
+        </div>
+        <div className="problem-learning-layout">
         <div className="problem-library-panel">
           <div className="problem-library-controls">
             <label className="problem-search"><Search size={17}/><input placeholder="Search problems or patterns" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search problems or patterns"/>{query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search">×</button>}</label>
@@ -2880,11 +2836,20 @@ function App() {
           <div className="problem-list">{visibleProblems.length ? visibleProblems.map((problem) => {
             const current = progress[problem.number]?.status ?? "Todo";
             const statusClass = current.toLowerCase().replace(" ", "-");
-            return <article className="problem-list-row" key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer">{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label><button className="problem-ai-row-button" type="button" onClick={() => void askGeminiAboutProblem(problem)} disabled={problemHelpBusy} aria-label={`Ask Gemini about ${problem.title}`}><Sparkles size={13}/><span>Ask Gemini</span></button></article>;
+            return <article className="problem-list-row" key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label></article>;
           }) : <div className="problem-library-empty"><Search size={21}/><strong>No problems found</strong><span>Try another search or adjust your filters.</span><button type="button" onClick={() => {setQuery("");setPattern("All patterns");setDifficulty("All levels");setStatus("All status");}}>Clear filters</button></div>}</div>
           <div className="problem-library-footer"><span><Target size={14}/> Showing {visibleProblems.length} matching problems</span><span><Check size={14}/>{user ? "Synced to your account" : "Sign in to sync across devices"}</span></div>
         </div>
+        <aside className="free-dsa-video" aria-label="Free Love Babbar DSA course">
+          <div className="free-dsa-video-heading"><div><span>FREE VIDEO COURSE</span><h3>Learn with <em>Love Babbar.</em></h3></div><span className="free-video-tag">FREE</span></div>
+          <p>Follow the complete CodeHelp DSA placement series alongside your practice.</p>
+          <div className="free-dsa-video-player"><iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=PLDzeHZWIZsTryvtXdMr6rPh4IDexB5NIA" title="Love Babbar CodeHelp free DSA placement course" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
+          <div className="free-dsa-video-footer"><span><Play size={13}/> 149-lesson playlist</span><a href="https://www.youtube.com/playlist?list=PLDzeHZWIZsTryvtXdMr6rPh4IDexB5NIA" target="_blank" rel="noreferrer">Open playlist <ExternalLink size={12}/></a></div>
+          <div className="free-dsa-course-note"><strong>Practice as you learn</strong><span>Watch a lesson, then solve a matching problem in the library.</span></div>
+        </aside>
+        </div>
       </section>}
+      {patternTestOpen && <PatternTest pattern={patternTestOpen} onClose={() => setPatternTestOpen(null)} />}
 
       <footer className="footer-note">
         Use the patterns, then make the problem yours.

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "runner": "python runner/app.py",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
