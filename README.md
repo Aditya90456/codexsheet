@@ -98,6 +98,22 @@ Whether you're starting from scratch or revising before an interview, CodexSheet
 
 ## 🛠️ Features
 
+### 🔒 Local Personal AI
+
+Open `/assistant` for a general-purpose assistant powered by Ollama. It does not use a hosted AI API or require an API key. Chat history and reminders are stored in the current browser; reminders are a saved list and do not trigger notifications.
+
+1. Install [Ollama for Windows](https://ollama.com/download/windows) and start it.
+2. In a terminal, run `ollama run gemma3:1b` to download and start a small local model (about 806 MB). The first run needs an internet connection. This model is a practical starting point for this PC's 3.9 GB of RAM; expect slower replies on its Celeron CPU.
+3. For local development, in another terminal run `npm run dev` from this project folder. The Vite proxy connects the page to Ollama.
+4. To use the deployed site, allow its exact origin in Ollama. On Windows, quit Ollama from the taskbar, run `[Environment]::SetEnvironmentVariable("OLLAMA_ORIGINS", "https://www.codexsheet.in", "User")` in PowerShell (use the exact origin shown in the assistant's Settings), then reopen Ollama. If the browser asks to allow local network access, allow it.
+5. Open the site and choose **Personal AI** in the navigation, or go to `/assistant`.
+
+Use **Settings** on the assistant page to choose another model already installed in Ollama. Ollama requires cross-origin browser access to be explicitly allowed with `OLLAMA_ORIGINS`; allow only the CodexSheet origin you use, not `*`.
+
+### Gemini problem help
+
+The problem library's **Ask Gemini** action uses a Vercel serverless function and Google Gemini. Add `GOOGLE_AI_API_KEY` to the Vercel project environment variables (server-side only; do not use a `VITE_` prefix), then redeploy. Requests require a valid Clerk sign-in and use only the selected problem details and the student's status. Gemini interactions are sent with `store: false`.
+
 ### 📋 Curated DSA Sheet
 
 A structured collection of important coding problems.

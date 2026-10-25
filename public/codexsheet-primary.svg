@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 338 88" fill="none">
+  <rect width="88" height="88" rx="20" fill="#0B292E"/>
+  <rect x="21" y="15" width="46" height="58" rx="7" fill="#FFFFFF"/>
+  <rect x="52" y="15" width="15" height="15" rx="4" fill="#78EBAD"/>
+  <g fill="#78EBAD">
+    <rect x="29" y="36" width="7" height="7" rx="2"/>
+    <rect x="51" y="36" width="7" height="7" rx="2"/>
+    <rect x="40" y="47" width="7" height="7" rx="2"/>
+    <rect x="29" y="58" width="7" height="7" rx="2"/>
+    <rect x="51" y="58" width="7" height="7" rx="2"/>
+  </g>
+  <g fill="#40C78F">
+    <rect x="40" y="36" width="7" height="7" rx="2"/>
+    <rect x="29" y="47" width="7" height="7" rx="2"/>
+    <rect x="51" y="47" width="7" height="7" rx="2"/>
+    <rect x="40" y="58" width="7" height="7" rx="2"/>
+  </g>
+  <text x="111" y="62" font-family="Inter, Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="-1.2" fill="#0B212B">Codex<tspan fill="#148568">Sheet</tspan></text>
+</svg>
