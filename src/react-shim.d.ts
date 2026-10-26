@@ -7,6 +7,8 @@ declare module "react" {
   export function useState<S>(initialState: S | (() => S)): [S, (next: S | ((current: S) => S)) => void];
   export function useEffect(effect: () => void | (() => void), dependencies?: readonly unknown[]): void;
   export function useMemo<T>(factory: () => T, dependencies: readonly unknown[]): T;
+  export function useId(): string;
+  export function useCallback<T extends (...args: any[]) => any>(callback: T, dependencies: readonly unknown[]): T;
   export function StrictMode(props: { children?: ReactNode }): unknown;
 }
 
@@ -29,6 +31,9 @@ declare namespace JSX {
       onSubmit?: (event: import("react").FormEvent<HTMLFormElement>) => void;
       onMouseDown?: (event: { stopPropagation(): void }) => void;
       onKeyDown?: (event: any) => void;
+      onKeyUp?: (event: any) => void;
+      onClick?: (event: any) => void;
+      onSelect?: (event: any) => void;
     };
   }
 }

@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
 import "./styles.css";
 import "./redesign.css";
+import "./deva-runner.css";
 
 // Keep the local assistant isolated from the signed-in workspace.
 if (window.location.pathname === "/assistant") {

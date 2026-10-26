@@ -232,8 +232,8 @@ function HomePage({
             <h1>DSA interview practice <em>with a plan.</em></h1>
             <p>Build problem-solving fluency one pattern at a time. Keep your practice, progress, and study group in one focused workspace.</p>
             <div className="home-actions">
-              <button className="home-primary" type="button" onClick={() => onNavigate("problems")}>Start practicing <ArrowRight size={16} /></button>
-              <button className="home-secondary" type="button" onClick={() => onNavigate("dashboard")}>View my progress</button>
+              <button className="home-primary" type="button" onClick={() => onNavigate("dsa-ide")}>Open Deva editor <ArrowRight size={16} /></button>
+              <button className="home-secondary" type="button" onClick={() => onNavigate("problems")}>Browse problems</button>
             </div>
             <div className="home-proof"><span><Check size={14} /> 250 curated problems</span><span><Check size={14} /> 18 core patterns</span></div>
           </div>
@@ -1991,6 +1991,9 @@ function App() {
             <Rows3 size={16} /> Problems
             <span>{visibleProblems.length}</span>
           </button>
+          <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}>
+            <CodeXml size={16} /> Deva
+          </button>
           <button className={activeView === "dsa-course" ? "active" : ""} aria-pressed={activeView === "dsa-course"} onClick={() => navigateToView("dsa-course")}>
             <BookOpen size={16} /> DSA Course
           </button>
@@ -2002,7 +2005,6 @@ function App() {
             <div className="nav-more-menu">
               <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}><LayoutDashboard size={16} /> Progress</button>
               <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Companies</button>
-              <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}><CodeXml size={16} /> DSA IDE</button>
               <button onClick={() => { window.location.href = "/assistant"; }}><MessageCircle size={16} /> Personal AI</button>
               <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
@@ -2057,7 +2059,7 @@ function App() {
                   : activeView === "problems"
                     ? "Problems"
                     : activeView === "dsa-ide"
-                      ? "DSA IDE"
+                      ? "Deva Editor"
                   : activeView === "dsa-course"
                       ? "DSA Course"
                     : activeView === "tutor"
@@ -2085,7 +2087,7 @@ function App() {
                 : activeView === "problems"
                   ? "Problem library"
                   : activeView === "dsa-ide"
-                    ? "DSA IDE"
+                    ? "Deva Editor"
                   : activeView === "dsa-course"
                     ? "DSA visual course"
                   : activeView === "tutor"

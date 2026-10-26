@@ -1,0 +1,25 @@
+.shiva-preloader{position:fixed;z-index:10000;inset:0;display:grid;grid-template-columns:minmax(250px,1.05fr) minmax(260px,.95fr);align-items:center;gap:clamp(20px,5vw,84px);padding:clamp(24px,7vw,100px);overflow:hidden;color:#f8efe4;background:radial-gradient(ellipse at 26% 42%,#382013 0%,#17100e 38%,#080a11 78%);animation:shiva-enter .35s ease-out both}
+.shiva-preloader::before,.shiva-preloader::after{position:absolute;inset:50% auto auto 27%;width:min(72vw,760px);aspect-ratio:1;border:1px solid #f0923c16;border-radius:50%;content:"";transform:translate(-50%,-50%);pointer-events:none}
+.shiva-preloader::after{width:min(55vw,590px);border-color:#f5ba6c16}
+.shiva-preloader-art{position:relative;z-index:1;width:min(68vw,690px);height:min(76vh,680px);min-height:330px;justify-self:center;filter:drop-shadow(0 20px 65px #f47a2830)}
+.shiva-tandav-canvas{display:block;width:100%;height:100%}
+.shiva-preloader-aura{position:absolute;z-index:-1;inset:14%;border-radius:50%;background:radial-gradient(circle,#ff922326 0%,#e75e1314 42%,transparent 70%);filter:blur(24px);animation:shiva-breathe 2.4s ease-in-out infinite alternate}
+.shiva-preloader-copy{position:relative;z-index:2;max-width:440px;animation:shiva-copy-in .7s .12s ease both}
+.shiva-preloader-copy>span{color:#e2aa72;font:700 10px 'DM Mono',monospace;letter-spacing:.19em}
+.shiva-preloader-copy h1{margin:18px 0 7px;color:#fff4e8;font-size:clamp(38px,6vw,74px);font-weight:560;line-height:1;letter-spacing:-.06em}
+.shiva-preloader-copy h1 em{color:#f39854;font-family:Georgia,serif;font-weight:400}
+.shiva-preloader-copy p{margin:0;color:#c0a894;font-size:14px;line-height:1.6}
+.shiva-preloader-progress{height:2px;margin:27px 0 11px;overflow:hidden;background:#ffffff20}
+.shiva-preloader-progress i{display:block;height:100%;background:linear-gradient(90deg,#d95923,#ffc078);box-shadow:0 0 14px #ff923c;transition:width .35s ease}
+.shiva-preloader-status{animation:shiva-copy-in .32s ease both}
+.shiva-preloader-copy small{color:#927967;font:9px 'DM Mono',monospace;letter-spacing:.08em}
+.shiva-preloader-skip{position:absolute;z-index:3;top:25px;right:26px;display:flex;align-items:center;gap:6px;padding:9px 11px;border:1px solid #ffffff28;border-radius:999px;color:#dfc7b2;background:#130f0de8;font-size:11px;cursor:pointer}
+.shiva-preloader-skip:hover{border-color:#f39854;color:#fff0e1}
+.shiva-preloader-credit{position:absolute;z-index:2;bottom:18px;left:22px;color:#897768;font:8px 'DM Mono',monospace;text-decoration:none}
+.shiva-preloader-credit:hover{color:#efb178}
+@keyframes shiva-progress{0%{transform:translateX(-120%)}100%{transform:translateX(360%)}}
+@keyframes shiva-breathe{to{opacity:.48;transform:scale(1.1)}}
+@keyframes shiva-enter{from{opacity:0}to{opacity:1}}
+@keyframes shiva-copy-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:720px){.shiva-preloader{grid-template-columns:1fr;align-content:center;gap:0;padding:30px 24px 55px;text-align:center}.shiva-preloader-art{width:min(94vw,500px);height:min(56vh,440px);min-height:260px}.shiva-preloader-copy{justify-self:center;margin-top:-8px}.shiva-preloader-copy h1{font-size:clamp(38px,10vw,60px)}.shiva-preloader-copy p{font-size:12px}.shiva-preloader-progress{max-width:300px;margin:20px auto 10px}.shiva-preloader-credit{right:12px;left:12px;text-align:center}.shiva-preloader::before{left:50%;top:37%}.shiva-preloader::after{left:50%;top:37%}}
+@media(prefers-reduced-motion:reduce){.shiva-preloader,.shiva-preloader-copy,.shiva-preloader-aura,.shiva-preloader-progress i{animation:none}}

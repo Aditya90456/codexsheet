@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, Code2, Pause, Play, RotateCcw, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Code2, ExternalLink, LayoutDashboard, LoaderCircle, Pause, Play, RotateCcw, Save, Search, Send, Sparkles, TriangleAlert } from "lucide-react";
 import DsaVisualLessons from "./DsaVisualLessons";
+import ShivaTandavPreloader from "./ShivaTandavPreloader";
+import { devaTestCaseCount, devaTestCases } from "./deva-test-cases";
+import { supabase } from "./lib/supabase";
 
 type Language = "JavaScript" | "Python" | "Java" | "C++";
 type Problem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard"; link?: string };
@@ -8,34 +11,49 @@ type TraceStep = { index: number; value: number; variable: string; arrayName: st
 type FlowStep = { line: number | null; source: string; title: string; detail: string; kind: "call" | "function" | "array" | "loop" | "branch" | "return" | "statement" | "error" };
 type TreeNode = { id: number; value: number; depth: number; x: number; left: number | null; right: number | null };
 type InvokeError = { message: string; context?: Response };
-const runtimes: Record<Language, string> = { JavaScript: "javascript", Python: "python", Java: "java", "C++": "c++" };
+type SubmissionResult = { passed: number; total: number; details: string[]; error?: string };
+const runtimes: Record<Language, string> = { JavaScript: "javascript", Python: "python", Java: "java", "C++": "cpp" };
 const starters: Record<Language, string> = {
-  JavaScript: `function twoSum(nums, target) {\n  const seen = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const need = target - nums[i];\n    if (seen.has(need)) return [seen.get(need), i];\n    seen.set(nums[i], i);\n  }\n  return [];\n}\nconsole.log(twoSum([2, 7, 11, 15], 9));`,
+  JavaScript: `function twoSum(nums, target) {\n  const seen = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const need = target - nums[i];\n    if (seen.has(need)) return [seen.get(need), i];\n    seen.set(nums[i], i);\n  }\n  return [];\n}`,
   Python: `def two_sum(nums, target):\n    seen = {}\n    for i, value in enumerate(nums):\n        need = target - value\n        if need in seen:\n            return [seen[need], i]\n        seen[value] = i\n    return []\nprint(two_sum([2, 7, 11, 15], 9))`,
-  Java: `class Main {\n  public static void main(String[] args) {\n    int[] nums = {2, 7, 11, 15};\n    for (int i = 0; i < nums.length; i++) {\n      System.out.println(nums[i]);\n    }\n  }\n}`,
-  "C++": `#include <iostream>\nusing namespace std;\nint main() {\n  int nums[] = {2, 7, 11, 15};\n  for (int i = 0; i < 4; i++) {\n    cout << nums[i] << endl;\n  }\n  return 0;\n}`,
+  Java: `import java.util.*;\n\nclass Main {\n  static int[] twoSum(int[] nums, int target) {\n    Map<Integer, Integer> seen = new HashMap<>();\n    for (int i = 0; i < nums.length; i++) {\n      int need = target - nums[i];\n      if (seen.containsKey(need)) return new int[] {seen.get(need), i};\n      seen.put(nums[i], i);\n    }\n    return new int[] {};\n  }\n\n  public static void main(String[] args) {\n    System.out.println(Arrays.toString(twoSum(new int[] {2, 7, 11, 15}, 9)));\n  }\n}`,
+  "C++": `#include <iostream>\n#include <unordered_map>\n#include <vector>\nusing namespace std;\n\nvector<int> twoSum(vector<int>& nums, int target) {\n  unordered_map<int, int> seen;\n  for (int i = 0; i < nums.size(); i++) {\n    int need = target - nums[i];\n    if (seen.count(need)) return {seen[need], i};\n    seen[nums[i]] = i;\n  }\n  return {};\n}\n\nint main() {\n  vector<int> nums = {2, 7, 11, 15};\n  for (int index : twoSum(nums, 9)) cout << index << " ";\n  return 0;\n}`,
 };
 
-function codeTokenClass(token: string, language: Language) {
-  if (/^(?:\/\/|#)/.test(token)) return "comment";
-  if (/^(?:"|')/.test(token)) return "string";
-  if (/^\d/.test(token)) return "number";
-  if (/^[+\-*\/%=<>!&|]+$/.test(token)) return "operator";
-  if (/^[{}()[\].,;:]$/.test(token)) return "punctuation";
-  const keywords = language === "Python" ? /^(?:def|return|for|in|if|else|elif|while|class|import|from|as|and|or|not|True|False|None|pass|break|continue|yield|with|lambda)$/ : /^(?:function|return|for|of|in|if|else|while|class|new|const|let|var|true|false|null|undefined|import|from|public|private|static|void|int|long|double|float|using|namespace|include|bool|auto|this|throw|try|catch)$/;
-  if (keywords.test(token)) return "keyword";
-  if (/^[A-Z][A-Z0-9_]*$/.test(token)) return "constant";
-  if (/^[A-Za-z_$][\w$]*$/.test(token)) return "identifier";
-  return "";
-}
-
-function renderHighlightedCode(source: string, language: Language) {
-  const tokenPattern = /(\/\/.*|#.*|`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|[+\-*\/%=<>!&|]+|[{}()[\].,;:]|\s+|.)/g;
-  return source.split("\n").map((line, lineIndex) => <span className="dsa-live-highlight-line" key={lineIndex}>{Array.from(line.matchAll(tokenPattern), (match, index) => {
-    const token = match[0];
-    const tokenClass = codeTokenClass(token, language);
-    return tokenClass ? <span className={`tok-${tokenClass}`} key={index}>{token}</span> : token;
-  })}{lineIndex < source.split("\n").length - 1 ? "\n" : ""}</span>);
+function runJavaScriptInBrowser(source: string, stdin: string): Promise<{ status: string; stdout: string; stderr?: string }> {
+  return new Promise((resolve, reject) => {
+    const workerSource = `
+      const format = value => typeof value === 'string' ? value : (() => { try { return JSON.stringify(value); } catch { return String(value); } })();
+      self.onmessage = async ({ data }) => {
+        const output = [];
+        const write = (...values) => output.push(values.map(format).join(' '));
+        const sandboxConsole = { log: write, info: write, warn: write, error: write, table: value => write(value) };
+        const sandboxProcess = { stdout: { write: value => { output.push(String(value)); return true; } }, env: {} };
+        try {
+          const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+          await new AsyncFunction('console', 'stdin', 'input', 'process', data.source)(sandboxConsole, data.stdin, data.stdin, sandboxProcess);
+          self.postMessage({ status: 'Finished in browser', stdout: output.join('\\n') });
+        } catch (error) {
+          self.postMessage({ status: 'Runtime error', stdout: output.join('\\n'), stderr: error instanceof Error ? error.stack || error.message : String(error) });
+        }
+      };
+    `;
+    const url = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+    const worker = new Worker(url);
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      worker.terminate();
+      URL.revokeObjectURL(url);
+      callback();
+    };
+    const timeout = window.setTimeout(() => finish(() => reject(new Error("JavaScript timed out after 8 seconds. Check for an infinite loop."))), 8000);
+    worker.onmessage = (event: MessageEvent<{ status: string; stdout: string; stderr?: string }>) => finish(() => resolve(event.data));
+    worker.onerror = () => finish(() => reject(new Error("JavaScript could not run in this browser. Check the syntax and try again.")));
+    worker.postMessage({ source, stdin });
+  });
 }
 
 function starterFor(language: Language, problem: Problem | undefined) {
@@ -45,6 +63,81 @@ function starterFor(language: Language, problem: Problem | undefined) {
   if (language === "JavaScript") return `${comment}function solution(data) {\n  // Write your solution here\n  return null;\n}\n`;
   if (language === "Java") return `${comment}class Solution {\n  public Object solve(int[] data) {\n    // Write your solution here\n    return null;\n  }\n}`;
   return `${comment}#include <vector>\nusing namespace std;\n\nclass Solution {\npublic:\n  int solve(vector<int>& data) {\n    // Write your solution here\n    return 0;\n  }\n};`;
+}
+
+function readProblemNumbers(key: string): number[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) ?? "[]");
+    return Array.isArray(value) ? value.filter((item): item is number => Number.isInteger(item)) : [];
+  } catch { return []; }
+}
+
+function parseTestLiteral(source: string): unknown {
+  // Test fixtures are authored with JS/JSON-compatible literals. The cases
+  // include occasional explanatory placeholders, which we leave un-runnable.
+  return Function(`"use strict"; return (${source});`)();
+}
+
+function splitTestArguments(source: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let depth = 0;
+  let quote = "";
+  let escaped = false;
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = "";
+    } else if (character === "\"" || character === "'") quote = character;
+    else if (character === "[" || character === "{" || character === "(") depth++;
+    else if (character === "]" || character === "}" || character === ")") depth--;
+    else if (character === "," && depth === 0) {
+      parts.push(source.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  parts.push(source.slice(start).trim());
+  return parts.filter(Boolean);
+}
+
+function submissionCases(problemNumber: number) {
+  const examples = devaTestCases[problemNumber]?.examples ?? [];
+  const cases: { args: unknown[]; expected: unknown }[] = [];
+  for (const example of examples) {
+    try {
+      const assignments = splitTestArguments(example.input);
+      const values = assignments.map((assignment) => {
+        const separator = assignment.indexOf("=");
+        if (separator < 0) throw new Error("Unsupported input");
+        return assignment.slice(separator + 1).trim();
+      });
+      const args = parseTestLiteral(`[${values.join(",")}]`);
+      const expected = parseTestLiteral(example.output);
+      if (Array.isArray(args)) cases.push({ args, expected });
+    } catch {
+      // Ignore display-only examples such as operation notation and prose outputs.
+    }
+  }
+  return cases.slice(0, 12);
+}
+
+function solutionFunction(source: string): { fn: string; code: string } | null {
+  const namedFunction = source.match(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/)?.[1]
+    ?? source.match(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>)/)?.[1];
+  if (namedFunction) return { fn: namedFunction, code: source };
+
+  // GeeksforGeeks commonly gives JavaScript tasks as a method on Solution.
+  const classBody = source.match(/\bclass\s+Solution\b[^{]*\{([\s\S]*)/i)?.[1];
+  const method = classBody?.match(/(?:^|\n)\s*(?:static\s+)?(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{/m)?.[1];
+  if (method && method !== "constructor") {
+    return {
+      fn: "__devaInvoke",
+      code: `${source}\nfunction __devaInvoke(...args) { return new Solution().${method}(...args); }`,
+    };
+  }
+  return null;
 }
 
 function evaluateNumber(expression: string): number | null {
@@ -230,26 +323,164 @@ function traceCode(source: string) {
 
 export default function DsaCodingWorkspace({ problems, userId }: { problems: Problem[]; userId: string | null }) {
   const [tab, setTab] = useState<"code" | "lessons">("code");
+  const [page, setPage] = useState<"workspace" | "dashboard">("workspace");
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState("");
   const [structure, setStructure] = useState<"array" | "linked-list" | "bst" | "stack" | "queue" | "hash-map" | "graph">("array");
   const [language, setLanguage] = useState<Language>("JavaScript");
   const [problemNumber, setProblemNumber] = useState(1);
   const [code, setCode] = useState(starters.JavaScript);
+  const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(true);
+  const [stdin, setStdin] = useState("");
+  const [runOutput, setRunOutput] = useState<{ status?: string; stdout?: string; stderr?: string; compile_output?: string; time?: string | null; memory?: number | null; error?: string } | null>(null);
+  const [submission, setSubmission] = useState<SubmissionResult | null>(null);
+  const [runningCode, setRunningCode] = useState(false);
+  const [solvedProblems, setSolvedProblems] = useState<number[]>(() => readProblemNumbers(`deva-solved:${userId ?? "local"}`));
+  const [attemptedProblems, setAttemptedProblems] = useState<number[]>(() => readProblemNumbers(`deva-attempted:${userId ?? "local"}`));
+  const [saveMessage, setSaveMessage] = useState("Saved locally");
+  const challenges = useMemo(() => problems.filter((item) => !/ · Pattern \d+$/.test(item.title)), [problems]);
   const trace = useMemo(() => traceCode(code), [code]);
   const sourceFlow = useMemo(() => buildSourceFlow(code), [code]);
   const playbackLength = trace.steps.length || sourceFlow.length;
-  const problem = problems.find((item) => item.number === problemNumber) ?? problems[0];
-  const lineCount = code.split("\n").length;
+  const problem = challenges.find((item) => item.number === problemNumber) ?? challenges[0];
   const editorRef = useRef<HTMLTextAreaElement>(null);
-  const highlightRef = useRef<HTMLPreElement>(null);
-  const gutterRef = useRef<HTMLDivElement>(null);
+
+  async function runCode() {
+    setSubmission(null);
+    setRunningCode(true);
+    setRunOutput(null);
+    try {
+      if (language === "JavaScript") {
+        const solution = solutionFunction(code);
+        const cases = submissionCases(problemNumber);
+        if (solution && cases.length) {
+          const response = await fetch("/api/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: solution.code, fn: solution.fn, cases }),
+            signal: AbortSignal.timeout(30_000),
+          });
+          const result = await response.json() as SubmissionResult;
+          if (!response.ok) throw new Error(result.error ?? "The sample cases could not be run.");
+          setSubmission(result);
+          return;
+        }
+        const result = await runJavaScriptInBrowser(code, stdin);
+        setRunOutput(result);
+        return;
+      }
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: runtimes[language], source_code: code, stdin }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const result = await response.json() as NonNullable<typeof runOutput>;
+      if (!response.ok) throw new Error(result.error ?? "The code could not be run.");
+      setRunOutput(result);
+    } catch (error) {
+      setRunOutput({ error: error instanceof Error ? error.message : "The compiler request failed." });
+    } finally {
+      setRunningCode(false);
+    }
+  }
+
+  function markAttempted() {
+    const next = [...new Set([...attemptedProblems, problemNumber])];
+    setAttemptedProblems(next);
+    try { localStorage.setItem(`deva-attempted:${userId ?? "local"}`, JSON.stringify(next)); } catch { /* local progress is optional */ }
+    if (supabase && userId) void supabase.from("dsa_progress").upsert({ user_id: userId, problem_number: problemNumber, status: solvedProblems.includes(problemNumber) ? "Solved" : "In progress", notes: "", updated_at: new Date().toISOString() }, { onConflict: "user_id,problem_number" });
+  }
+
+  function toggleSolved() {
+    const next = solvedProblems.includes(problemNumber)
+      ? solvedProblems.filter((number) => number !== problemNumber)
+      : [...solvedProblems, problemNumber];
+    setSolvedProblems(next);
+    try { localStorage.setItem(`deva-solved:${userId ?? "local"}`, JSON.stringify(next)); } catch { /* local progress is optional */ }
+    if (supabase && userId) void supabase.from("dsa_progress").upsert({ user_id: userId, problem_number: problemNumber, status: next.includes(problemNumber) ? "Solved" : "Todo", notes: "", updated_at: new Date().toISOString() }, { onConflict: "user_id,problem_number" });
+  }
+
+  async function saveCurrentCode() {
+    try {
+      localStorage.setItem(`codexsheet-live-code:${userId ?? "local"}:${problemNumber}:${language}`, code);
+      if (supabase && userId) {
+        setSaveMessage("Saving…");
+        const { error } = await supabase.from("dsa_code_drafts").upsert({ user_id: userId, problem_number: problemNumber, language, source_code: code, updated_at: new Date().toISOString() }, { onConflict: "user_id,problem_number,language" });
+        if (error) throw error;
+      }
+      setSaveMessage(userId ? "Saved to account" : "Saved locally");
+      window.setTimeout(() => setSaveMessage(userId ? "Synced to account" : "Saved locally"), 1600);
+    } catch { setSaveMessage("Could not save"); }
+  }
+
+  async function submitSolution() {
+    markAttempted();
+    setSubmission(null);
+    if (language !== "JavaScript") {
+      await runCode();
+      return;
+    }
+    const solution = solutionFunction(code);
+    const cases = submissionCases(problemNumber);
+    if (!solution) {
+      setSubmission({ passed: 0, total: 0, details: [], error: "Use a named function or a method inside class Solution so Submit can call it." });
+      return;
+    }
+    if (!cases.length) {
+      setSubmission({ passed: 0, total: 0, details: [], error: "This problem's displayed examples cannot be used as automatic tests yet. Use Run to execute your code." });
+      return;
+    }
+    setRunningCode(true);
+    setRunOutput(null);
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: solution.code, fn: solution.fn, cases }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const result = await response.json() as SubmissionResult;
+      if (!response.ok) throw new Error(result.error ?? "The submission could not be checked.");
+      setSubmission(result);
+      if (result.total > 0 && result.passed === result.total && !result.error && !solvedProblems.includes(problemNumber)) toggleSolved();
+    } catch (error) {
+      setSubmission({ passed: 0, total: cases.length, details: [], error: error instanceof Error ? error.message : "The submission could not be checked." });
+    } finally {
+      setRunningCode(false);
+    }
+  }
 
   useEffect(() => {
     const key = `codexsheet-live-code:${userId ?? "local"}:${problemNumber}:${language}`;
     try { setCode(localStorage.getItem(key) ?? starterFor(language, problem)); } catch { setCode(starterFor(language, problem)); }
+    setCursor({ line: 1, column: 1 });
     setStep(0); setPlaying(true);
+    if (!supabase || !userId) return;
+    let current = true;
+    void supabase.from("dsa_code_drafts").select("source_code").eq("user_id", userId).eq("problem_number", problemNumber).eq("language", language).maybeSingle().then(({ data }) => {
+      if (!current || !data?.source_code) return;
+      setCode(data.source_code);
+      try { localStorage.setItem(key, data.source_code); } catch { /* browser storage is optional */ }
+    });
+    return () => { current = false; };
   }, [language, problemNumber, userId]);
+  useEffect(() => {
+    setSolvedProblems(readProblemNumbers(`deva-solved:${userId ?? "local"}`));
+    setAttemptedProblems(readProblemNumbers(`deva-attempted:${userId ?? "local"}`));
+    if (!supabase || !userId) return;
+    let current = true;
+    void supabase.from("dsa_progress").select("problem_number,status").eq("user_id", userId).then(({ data, error }) => {
+      if (error || !current || !data) return;
+      const solved = data.filter((row) => row.status === "Solved").map((row) => row.problem_number);
+      const attempted = data.filter((row) => row.status === "Solved" || row.status === "In progress").map((row) => row.problem_number);
+      setSolvedProblems((local) => [...new Set([...local, ...solved])]);
+      setAttemptedProblems((local) => [...new Set([...local, ...attempted])]);
+    });
+    return () => { current = false; };
+  }, [userId]);
   useEffect(() => {
     if (!playing || playbackLength < 2) return;
     const timer = window.setInterval(() => setStep((current) => {
@@ -260,11 +491,14 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
   }, [playing, playbackLength]);
 
   function editCode(value: string) {
-    setCode(value); setStep(0); setPlaying(true);
+    setCode(value); setStep(0); setPlaying(true); setRunOutput(null);
     try { localStorage.setItem(`codexsheet-live-code:${userId ?? "local"}:${problemNumber}:${language}`, value); } catch { /* browser storage is optional */ }
   }
-  function handleEditorKeyDown(event: { currentTarget: HTMLTextAreaElement; key: string; preventDefault: () => void }) {
+  function handleEditorKeyDown(event: { currentTarget: HTMLTextAreaElement; key: string; ctrlKey: boolean; metaKey: boolean; preventDefault: () => void }) {
     const editor = event.currentTarget;
+    if (event.ctrlKey || event.metaKey) {
+      if (event.key === "Enter") { event.preventDefault(); void runCode(); return; }
+    }
     const start = editor.selectionStart;
     const end = editor.selectionEnd;
     const insert = (text: string, cursorOffset = text.length) => {
@@ -289,31 +523,57 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
       event.preventDefault(); editor.setSelectionRange(start + 1, start + 1);
     }
   }
-  function syncEditorScroll() {
-    const editor = editorRef.current;
-    if (!editor) return;
-    if (highlightRef.current) { highlightRef.current.scrollTop = editor.scrollTop; highlightRef.current.scrollLeft = editor.scrollLeft; }
-    if (gutterRef.current) gutterRef.current.scrollTop = editor.scrollTop;
+  function syncCursor(editor: HTMLTextAreaElement) {
+    const beforeCursor = editor.value.slice(0, editor.selectionStart);
+    const lines = beforeCursor.split("\n");
+    setCursor({ line: lines.length, column: lines[lines.length - 1].length + 1 });
   }
   const bstNodes = useMemo(() => buildBst(trace.values), [trace.values]);
   const treeHeight = Math.max(1, ...bstNodes.map((node) => node.depth + 1));
+  const currentProblemIndex = Math.max(0, challenges.findIndex((item) => item.number === problem?.number));
+  const twoSum = problem?.title === "Two Sum";
 
   return <main className="dsa-live-page">
-    <header className="dsa-live-header"><div className="dsa-live-title"><span><Code2 size={14}/> CODEXSHEET · DSA VISUAL LAB</span><h1>Write code. <em>Watch it move.</em></h1><p>Edit a solution and follow its array loop live. Run it to see test and code errors.</p></div>
-      <div className="dsa-live-problem"><label htmlFor="dsa-live-problem">PROBLEM · {problems.length} QUESTIONS</label><select id="dsa-live-problem" value={problemNumber} onChange={(event) => setProblemNumber(Number(event.target.value))}>{problems.map((item) => <option key={item.number} value={item.number}>{String(item.number).padStart(3, "0")} · {item.title}</option>)}</select><small>{problem?.pattern} <i/> {problem?.difficulty}</small></div>
+    <ShivaTandavPreloader />
+    <header className="dsa-live-header deva-topbar"><div className="dsa-live-title"><span><Code2 size={14}/> DEVA · DSA CODE LAB</span><h1>Practice, run, <em>understand.</em></h1><p>A focused coding workspace with a live trace and multi-language runner.</p></div>
+      <div className="dsa-live-problem"><label htmlFor="dsa-live-problem">CHOOSE A CHALLENGE · {challenges.length} UNIQUE PROBLEMS</label><div className="deva-problem-picker"><button type="button" aria-label="Previous problem" title="Previous problem" onClick={() => setProblemNumber(challenges[(currentProblemIndex - 1 + challenges.length) % challenges.length]?.number ?? 1)}><ChevronLeft size={16}/></button><select id="dsa-live-problem" value={problemNumber} onChange={(event) => setProblemNumber(Number(event.target.value))}>{challenges.map((item) => <option key={item.number} value={item.number}>{String(item.number).padStart(3, "0")} · {item.title}</option>)}</select><button type="button" aria-label="Next problem" title="Next problem" onClick={() => setProblemNumber(challenges[(currentProblemIndex + 1) % challenges.length]?.number ?? 1)}><ChevronRight size={16}/></button></div><small>{problem?.pattern} <i/> {problem?.difficulty}</small></div>
     </header>
-    <nav className="dsa-live-tabs"><button className={tab === "code" ? "active" : ""} onClick={() => setTab("code")}><Code2 size={14}/> Code &amp; live visualizer</button><button className={tab === "lessons" ? "active" : ""} onClick={() => setTab("lessons")}><Sparkles size={14}/> Guided visual lessons</button></nav>
-    {tab === "lessons" ? <DsaVisualLessons/> : <section className="dsa-live-workspace">
-      <div className="dsa-live-editor"><div className="dsa-live-editor-top"><span className="dsa-live-dots"><i/><i/><i/></span><strong>CODEXSHEET EDITOR</strong><span>LIVE</span></div>
-        <div className="dsa-live-editor-toolbar"><div className="dsa-live-file"><Code2 size={13}/> solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}<i/></div><label>LANGUAGE<select value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label></div>
-        <div className="dsa-live-code-box"><div className="dsa-live-gutter" ref={gutterRef} aria-hidden="true">{Array.from({ length: lineCount }, (_, index) => <span key={index}>{String(index + 1).padStart(2, "0")}</span>)}</div><div className="dsa-live-editor-surface"><pre className="dsa-live-highlight" ref={highlightRef} aria-hidden="true">{renderHighlightedCode(code, language)}</pre><textarea ref={editorRef} aria-label="Type your solution code" spellCheck={false} autoCapitalize="off" autoComplete="off" autoCorrect="off" value={code} onChange={(event) => editCode(event.target.value)} onKeyDown={handleEditorKeyDown} onScroll={syncEditorScroll} /></div></div>
-        <div className="dsa-live-editor-status"><span><i/> {trace.message ? "VISUALIZER NEEDS A LOOP" : "LIVE TRACE READY"}</span><span>Ln {lineCount} · {language}</span></div>
+    <div className="deva-commandbar"><button type="button" className={libraryOpen ? "active" : ""} onClick={() => { setLibraryOpen((open) => !open); setPage("workspace"); }}><BookOpen size={15}/> Problem library</button><button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => { setPage("dashboard"); setLibraryOpen(false); }}><LayoutDashboard size={15}/> Dashboard <span>{solvedProblems.length}/{challenges.length}</span></button><div className="deva-command-spacer"/><span>{attemptedProblems.length} attempted</span></div>
+    {libraryOpen && <section className="deva-library" aria-label="Problem library"><header><div><strong>Problem library</strong><small>{challenges.length} DSA problems</small></div><button type="button" onClick={() => setLibraryOpen(false)} aria-label="Close problem library">×</button></header><label><Search size={14}/><input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Search problems or patterns"/></label><div className="deva-library-list">{challenges.filter((item) => `${item.title} ${item.pattern} ${item.difficulty}`.toLowerCase().includes(librarySearch.toLowerCase())).map((item) => <button type="button" key={item.number} className={item.number === problemNumber ? "active" : ""} onClick={() => { setProblemNumber(item.number); setLibraryOpen(false); setPage("workspace"); }}><span>{solvedProblems.includes(item.number) ? <Check size={13}/> : String(item.number).padStart(2, "0")}</span><span><strong>{item.title}</strong><small>{item.pattern}</small></span><i className={`difficulty ${(item.difficulty ?? "Easy").toLowerCase()}`}>{item.difficulty}</i></button>)}</div></section>}
+    <nav className="dsa-live-tabs"><button className={page === "workspace" && tab === "code" ? "active" : ""} onClick={() => { setPage("workspace"); setTab("code"); }}><Code2 size={14}/> Code editor</button><button className={page === "workspace" && tab === "lessons" ? "active" : ""} onClick={() => { setPage("workspace"); setTab("lessons"); }}><Sparkles size={14}/> Guided visual lessons</button></nav>
+    {page === "dashboard" ? <section className="deva-dashboard"><header><span>YOUR PRACTICE</span><h2>DSA dashboard</h2><p>{userId ? "Progress and saved solutions sync to your account." : "Progress and saved solutions stay in this browser until you sign in."}</p></header><div className="deva-dashboard-stats"><article><small>SOLVED</small><strong>{solvedProblems.length}<i> / {challenges.length}</i></strong><span>Problems marked solved</span></article><article><small>ATTEMPTED</small><strong>{attemptedProblems.length}<i> / {challenges.length}</i></strong><span>Problems you have submitted</span></article><article><small>REMAINING</small><strong>{Math.max(0, challenges.length - solvedProblems.length)}</strong><span>Problems left to practice</span></article></div><div className="deva-dashboard-progress"><div><strong>Completion</strong><span>{challenges.length ? Math.round((solvedProblems.length / challenges.length) * 100) : 0}%</span></div><div><i style={{ width: `${challenges.length ? (solvedProblems.length / challenges.length) * 100 : 0}%` }}/></div></div><div className="deva-dashboard-list"><header><strong>Continue practicing</strong><button type="button" onClick={() => { setPage("workspace"); setLibraryOpen(true); }}>Browse all problems <ArrowRight size={14}/></button></header>{challenges.filter((item) => !solvedProblems.includes(item.number)).slice(0, 8).map((item) => <button type="button" key={item.number} onClick={() => { setProblemNumber(item.number); setPage("workspace"); }}><span>{String(item.number).padStart(3, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small><i className={`difficulty ${(item.difficulty ?? "Easy").toLowerCase()}`}>{item.difficulty}</i><ArrowRight size={14}/></button>)}</div></section> : tab === "lessons" ? <DsaVisualLessons/> : <div className="deva-split-layout">
+      <section className="deva-challenge" aria-labelledby="deva-challenge-title"><div className="deva-challenge-main"><div className="deva-challenge-meta"><span>PROBLEM {String(problem?.number ?? 1).padStart(3, "0")}</span><span className={`difficulty ${(problem?.difficulty ?? "Easy").toLowerCase()}`}>{problem?.difficulty}</span><span>{problem?.pattern}</span></div><h2 id="deva-challenge-title">{problem?.title ?? "Choose a problem"}</h2>{twoSum ? <><p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return the indices of the two numbers that add up to <code>target</code>.</p><p>You may assume each input has exactly one solution, and you may not use the same element twice.</p></> : <><p>Work through this {problem?.pattern?.toLowerCase() ?? "DSA"} challenge. Read the original statement and examples before coding, then use the editor to build and run your solution.</p><div className="deva-challenge-note"><Sparkles size={15}/><span>Think about the input shape, the invariant your approach maintains, and the time and space cost.</span></div></>}
+        <div className="deva-lc-examples"><header><strong>Test cases</strong><span>{devaTestCaseCount} total · 5 for this problem</span></header><p>{devaTestCases[problem?.number ?? 1]?.prompt}</p>{(devaTestCases[problem?.number ?? 1]?.examples ?? []).map((example, index) => <article key={`${problem?.number}-${index}`}><strong>Example {index + 1}</strong><pre><b>Input:</b> {example.input}{"\n"}<b>Output:</b> {example.output}</pre></article>)}</div>
+      </div><div className="deva-challenge-side"><span>YOUR WORKFLOW</span><ol><li>Understand the input and expected output</li><li>Choose a pattern and state its invariant</li><li>Run your code, then inspect the trace</li></ol>{problem?.link && <a href={problem.link} target="_blank" rel="noreferrer">Full problem on LeetCode <ExternalLink size={14}/></a>}</div></section>
+      <div className="deva-workspace-pane"><div className="deva-problem-toolbar"><span><i className={`difficulty ${(problem?.difficulty ?? "Easy").toLowerCase()}`}/>{problem?.difficulty} <b>·</b> {problem?.pattern}</span><button type="button" className={solvedProblems.includes(problemNumber) ? "solved" : ""} onClick={toggleSolved}>{solvedProblems.includes(problemNumber) ? <Check size={14}/> : <Check size={14}/>} {solvedProblems.includes(problemNumber) ? "Solved" : "Mark solved"}</button></div><section className="dsa-live-workspace">
+      <div className="dsa-live-editor">
+        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}</strong><label className="deva-pattern-language"><span>{language === "JavaScript" ? "JS" : language}</span><select aria-label="Programming language" value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div><textarea className="deva-source-editor" ref={editorRef} aria-label="Type your solution code" spellCheck={false} autoCapitalize="off" autoComplete="off" autoCorrect="off" value={code} onChange={(event) => { editCode(event.target.value); syncCursor(event as unknown as HTMLTextAreaElement); }} onKeyDown={handleEditorKeyDown} onKeyUp={(event) => syncCursor(event.currentTarget)} onClick={(event) => syncCursor(event.currentTarget)} onSelect={(event) => syncCursor(event.currentTarget)} /></div>
+        <div className="dsa-live-editor-status"><span><i/> {trace.message ? "TRACE READY · ADD A LOOP" : "READY"}</span><span>Ln {cursor.line}, Col {cursor.column}</span><span>{language}</span><span>UTF-8</span><span>Ctrl/⌘ Enter · Run</span></div>
+        <section className="deva-run-panel" aria-label="Run code">
+          <div className="deva-run-input"><label htmlFor="deva-stdin">STANDARD INPUT</label><textarea id="deva-stdin" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Optional input for your program" rows={2}/></div>
+          <button className="deva-run-button" type="button" onClick={runCode} disabled={runningCode || !code.trim()}>{runningCode ? <LoaderCircle className="deva-spinner" size={14}/> : <Play size={14}/>} {runningCode ? "Running…" : "Run"}<kbd>Ctrl ↵</kbd></button><button className="deva-submit-button" type="button" onClick={submitSolution} disabled={runningCode || !code.trim()}>{runningCode ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} Submit</button>
+          {submission && <div className={`deva-run-output${submission.error || submission.passed < submission.total ? " has-error" : ""}`} aria-live="polite">
+            <div className="deva-run-output-head"><strong>{submission.error ? (submission.total > 0 ? "Runtime Error" : "Submission error") : submission.passed === submission.total ? "Accepted" : "Wrong Answer"}</strong><small>{submission.passed} / {submission.total} tests passed</small></div>
+            {submission.error && <pre>{submission.error}</pre>}
+            {submission.details.map((detail, index) => <pre key={`${index}-${detail}`}>{detail}</pre>)}
+          </div>}
+          {runOutput && <div className={`deva-run-output${runOutput.error || runOutput.stderr || runOutput.compile_output || (runOutput.status && !/accepted|success|finished|complete/i.test(runOutput.status)) ? " has-error" : ""}`} aria-live="polite">
+            <div className="deva-run-output-head"><strong>{runOutput.error ? "Runner error" : runOutput.status ?? "Run complete"}</strong>{runOutput.time && <small>{runOutput.time}s{runOutput.memory ? ` · ${Math.round(runOutput.memory / 1024)} MB` : ""}</small>}</div>
+            {runOutput.error && <pre>{runOutput.error}</pre>}
+            {runOutput.compile_output && <><span>COMPILER</span><pre>{runOutput.compile_output}</pre></>}
+            {runOutput.stdout && <><span>OUTPUT</span><pre>{runOutput.stdout}</pre></>}
+            {runOutput.stderr && <><span>ERROR OUTPUT</span><pre>{runOutput.stderr}</pre></>}
+            {!runOutput.error && !runOutput.compile_output && !runOutput.stdout && !runOutput.stderr && <pre>(no output)</pre>}
+          </div>}
+        </section>
       </div>
       <section className="dsa-live-visual"><header className="dsa-live-visual-head"><div><span>LIVE VISUALIZER <i/></span><h2>{trace.steps.length ? "Algorithm logic" : trace.values.length ? "Data structure view" : sourceFlow.length ? "Code flow preview" : "Waiting for code"}</h2><small>{trace.steps.length ? "Follow your current value, pointer movement, and working memory." : "Choose a structure. The diagram updates directly from your code."}</small></div><div className="dsa-live-visual-buttons"><button title="Restart trace" onClick={() => { setStep(0); setPlaying(true); }}><RotateCcw size={14}/></button><button onClick={() => { if (step >= playbackLength - 1) setStep(0); setPlaying((value) => !value); }} disabled={playbackLength < 2}>{playing ? <Pause size={14}/> : <Play size={14}/>}{playing ? "Pause" : "Play"}</button></div></header>
         {trace.values.length > 0 && <><div className="dsa-live-structure-tabs" role="tablist" aria-label="Data structure visualization">{([ ["array", "Array"], ["linked-list", "Linked list"], ["stack", "Stack"], ["queue", "Queue"], ["hash-map", "Hash map"], ["bst", "BST"], ["graph", "Graph"] ] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={structure === key} className={structure === key ? "active" : ""} key={key} onClick={() => setStructure(key)}>{label}</button>)}</div>{structure === "array" && <div className="dsa-live-array" style={{ "--array-length": trace.values.length } as CSSProperties & { "--array-length": number }}><div className="dsa-live-cursor" style={{ left: `${(((trace.steps[step]?.index ?? 0) + .5) / trace.values.length) * 100}%` }}><span>{trace.steps[step]?.variable ?? "array"}</span><i/></div>{trace.values.map((value, index) => <div className={`dsa-live-cell${index === trace.steps[step]?.index ? " active" : index < (trace.steps[step]?.index ?? -1) ? " visited" : ""}`} key={`${index}-${value}`}><small>{trace.steps[step]?.arrayName ?? "data"}[{index}]</small><strong>{value}</strong></div>)}</div>}{structure === "linked-list" && <div className="dsa-live-list-wrap"><div className="dsa-live-list">{trace.values.map((value, index) => <div className="dsa-live-list-item" key={`${index}-${value}`}><div className={`dsa-live-list-node${index === trace.steps[step]?.index ? " active" : index < (trace.steps[step]?.index ?? -1) ? " visited" : ""}`}><small>{index}</small><strong>{value}</strong></div>{index < trace.values.length - 1 && <div className="dsa-live-list-link"><span/><ArrowRight size={16}/></div>}</div>)}<div className="dsa-live-null">NULL</div></div></div>}{structure === "stack" && <div className="dsa-live-stack-wrap"><span className="dsa-live-structure-label">TOP ↓</span>{[...trace.values].reverse().map((value, offset) => { const index = trace.values.length - offset - 1; return <div className={`dsa-live-stack-cell${index === trace.steps[step]?.index ? " active" : ""}`} key={`${index}-${value}`}>{value}<small>index {index}</small></div>; })}<span className="dsa-live-structure-label">BOTTOM</span></div>}{structure === "queue" && <div className="dsa-live-queue-wrap"><span className="dsa-live-structure-label">FRONT</span><div className="dsa-live-array" style={{ "--array-length": trace.values.length } as CSSProperties & { "--array-length": number }}>{trace.values.map((value, index) => <div className={`dsa-live-cell${index === trace.steps[step]?.index ? " active" : ""}`} key={`${index}-${value}`}><small>{index}</small><strong>{value}</strong></div>)}</div><span className="dsa-live-structure-label">REAR</span></div>}{structure === "hash-map" && <div className="dsa-live-hash-wrap">{trace.values.map((value, index) => <div className={`dsa-live-hash-row${index === trace.steps[step]?.index ? " active" : ""}`} key={`${index}-${value}`}><span>key</span><strong>{value}</strong><i>→</i><span>value</span><strong>{index}</strong></div>)}</div>}{structure === "bst" && <div className="dsa-live-tree-wrap"><svg className="dsa-live-tree" viewBox={`0 0 1000 ${Math.max(170, treeHeight * 92)}`} role="img" aria-label="Binary search tree built from the values in your code">{bstNodes.map((node) => [node.left, node.right].filter((child): child is number => child !== null).map((child) => { const target = bstNodes.find((item) => item.id === child)!; return <line key={`${node.id}-${child}`} x1={node.x} y1={42 + node.depth * 92} x2={target.x} y2={42 + target.depth * 92}/>; }))}{bstNodes.map((node) => <g key={`${node.id}-${node.value}`} className={node.id === trace.steps[step]?.index ? "active" : node.id < (trace.steps[step]?.index ?? -1) ? "visited" : ""}><circle cx={node.x} cy={42 + node.depth * 92} r="25"/><text x={node.x} y={42 + node.depth * 92 + 5}>{node.value}</text><text className="dsa-live-tree-index" x={node.x} y={42 + node.depth * 92 + 43}>#{node.id}</text></g>)}</svg></div>}{structure === "graph" && <div className="dsa-live-graph-wrap"><svg className="dsa-live-graph" viewBox="0 0 500 250" role="img" aria-label="Graph view of the code values">{trace.values.map((_, index) => index < trace.values.length - 1 ? <line key={`e${index}`} x1={70 + index * (360 / Math.max(1, trace.values.length - 1))} y1={125} x2={70 + (index + 1) * (360 / Math.max(1, trace.values.length - 1))} y2={125}/> : null)}{trace.values.map((value, index) => { const angle = (index / trace.values.length) * Math.PI * 2 - Math.PI / 2; const x = 250 + Math.cos(angle) * 90; const y = 125 + Math.sin(angle) * 80; return <g key={`${index}-${value}`} className={index === trace.steps[step]?.index ? "active" : ""}><circle cx={x} cy={y} r="24"/><text x={x} y={y + 5}>{value}</text><text className="dsa-live-tree-index" x={x} y={y + 40}>node {index}</text></g>; })}</svg><small>Edges connect adjacent values. Replace with your graph’s edge list in code to trace custom connections.</small></div>}{trace.steps[step] && <div className="dsa-live-variable-strip"><span>LIVE VARIABLES · STEP {step + 1}</span><div>{trace.steps[step].memory.map((value, index) => <code key={`${value}-${index}`}>{value}</code>)}</div></div>}</>}
         {trace.steps.length ? <><div className="dsa-live-step-info"><span>ITERATION {step + 1} / {trace.steps.length}</span><strong>{trace.steps[step]?.variable}</strong><code>{trace.steps[step]?.arrayName}[{trace.steps[step]?.index}] = {trace.steps[step]?.value}</code></div><div className="dsa-live-logic-card"><span>LOGIC AT THIS STEP</span><strong>{trace.steps[step]?.logic}</strong><div>{trace.steps[step]?.memory.map((value) => <code key={value}>{value}</code>)}</div></div><div className="dsa-live-step-buttons"><button onClick={() => { setPlaying(false); setStep((value) => Math.max(0, value - 1)); }} disabled={step === 0}>Previous</button><button onClick={() => { setPlaying(false); setStep((value) => Math.min(trace.steps.length - 1, value + 1)); }} disabled={step === trace.steps.length - 1}>Next iteration</button></div></> : sourceFlow.length ? <><div className="dsa-live-flow-counter">SOURCE FLOW <span>STEP {step + 1} / {sourceFlow.length}</span></div><div className="dsa-live-source-flow">{sourceFlow.map((item, index) => <button type="button" key={`${item.line}-${item.title}-${index}`} className={`dsa-live-flow-node kind-${item.kind}${step === index ? " active" : index < step ? " complete" : ""}`} onClick={() => { setPlaying(false); setStep(index); }}><span className="dsa-live-flow-index">{item.line ? `L${String(item.line).padStart(2, "0")}` : "↳"}</span><span className="dsa-live-flow-copy"><strong>{item.title}</strong><code>{item.source}</code><small>{item.detail}</small></span><i/></button>)}</div><div className="dsa-live-step-buttons"><button onClick={() => { setPlaying(false); setStep((value) => Math.max(0, value - 1)); }} disabled={step === 0}>Previous</button><button onClick={() => { setPlaying(false); setStep((value) => Math.min(sourceFlow.length - 1, value + 1)); }} disabled={step === sourceFlow.length - 1}>Next code step</button></div></> : <div className="dsa-live-empty"><div><TriangleAlert size={20}/></div><strong>Write code to begin</strong><p>The code flow will appear here as soon as you start typing.</p></div>}
       </section>
-    </section>}
-    <footer className="dsa-live-footnote"><span>Structure diagrams and code flow update as you type.</span><span>{problems.length} questions available</span></footer>
+      </section>
+      </div></div>
+    }
+    <footer className="dsa-live-footnote"><span>Structure diagrams and code flow update as you type.</span><span>{challenges.length} unique problems in this editor</span></footer>
   </main>;
 }
