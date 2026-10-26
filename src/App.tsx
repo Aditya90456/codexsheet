@@ -59,6 +59,7 @@ import {
   Layers3,
   MousePointer2,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -66,6 +67,7 @@ import DsaIde from "./DsaIde";
 import DsaVisualLessons from "./DsaVisualLessons";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
+import DsaTutor from "./DsaTutor";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -96,7 +98,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs";
 type WorkspaceTheme = "light" | "midnight" | "forest";
 
 const viewPaths: Record<WorkspaceView, string> = {
@@ -106,6 +108,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   companies: "/companies",
   "dsa-ide": "/ide/dsa",
   "dsa-course": "/learn/dsa",
+  tutor: "/tutor",
   calendar: "/calendar",
   roadmap: "/roadmap",
   lld: "/roadmap/lld",
@@ -1991,6 +1994,9 @@ function App() {
           <button className={activeView === "dsa-course" ? "active" : ""} aria-pressed={activeView === "dsa-course"} onClick={() => navigateToView("dsa-course")}>
             <BookOpen size={16} /> DSA Course
           </button>
+          <button className={activeView === "tutor" ? "active" : ""} aria-pressed={activeView === "tutor"} onClick={() => navigateToView("tutor")}>
+            <Sparkles size={16} /> Ask Tutor
+          </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
           <summary className={activeView === "dashboard" || activeView === "companies" || activeView === "dsa-ide" || activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
@@ -2052,8 +2058,10 @@ function App() {
                     ? "Problems"
                     : activeView === "dsa-ide"
                       ? "DSA IDE"
-                    : activeView === "dsa-course"
+                  : activeView === "dsa-course"
                       ? "DSA Course"
+                    : activeView === "tutor"
+                      ? "DSA Tutor"
                     : activeView === "calendar"
                       ? "Calendar"
                       : activeView === "roadmap"
@@ -2080,6 +2088,8 @@ function App() {
                     ? "DSA IDE"
                   : activeView === "dsa-course"
                     ? "DSA visual course"
+                  : activeView === "tutor"
+                    ? "Ask a DSA doubt"
                   : activeView === "calendar"
                     ? "Practice calendar"
                     : activeView === "roadmap"
@@ -2104,8 +2114,10 @@ function App() {
                   ? "Find a problem, update its status, and keep your practice moving."
                 : activeView === "dsa-ide"
                     ? "Plan on the whiteboard, edit your solution, and trace each loop step."
-                  : activeView === "dsa-course"
+                : activeView === "dsa-course"
                     ? "Learn core DSA patterns through detailed explanations and interactive visual walkthroughs."
+                  : activeView === "tutor"
+                    ? "Get patient, step-by-step help with data structures, algorithms, and interview problems."
                   : activeView === "calendar"
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
@@ -2145,6 +2157,7 @@ function App() {
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
       {activeView === "dsa-course" && <DsaVisualLessons />}
+      {activeView === "tutor" && <DsaTutor />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
         <>

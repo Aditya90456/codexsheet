@@ -12,8 +12,21 @@ from collections import defaultdict, deque
 
 from flask import Flask, jsonify, request
 
+if not os.environ.get("VERCEL"):
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv()
+    except ImportError:
+        pass
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
+
+
+def is_service_unavailable(error: Exception) -> bool:
+    return getattr(error, "status_code", None) == 503 or getattr(error, "code", None) == 503
+
 
 ALLOWED_ORIGINS = {
     "http://localhost:4173",
@@ -55,6 +68,10 @@ try {
 '''
 
 request_times: dict[str, deque[float]] = defaultdict(deque)
+tutor_request_times: dict[str, deque[float]] = defaultdict(deque)
+TUTOR_SYSTEM_PROMPT = """You are CodexSheet's patient DSA tutor for students preparing for coding interviews.
+Answer only questions about data structures, algorithms, coding interview problem solving, and JavaScript/Python implementations of those topics. If a question is unrelated, kindly steer the student back to DSA.
+Teach the reasoning step by step. Prefer a small hint before a complete solution when the student is solving a problem. When showing code, explain the key lines and state time and space complexity. Ask one focused follow-up question when it will help check understanding. Never claim code was executed unless it was actually executed."""
 
 
 def validate_request(data: object) -> tuple[dict | None, str | None]:
@@ -133,6 +150,100 @@ def execute():
 @app.get("/health")
 def health():
     return jsonify({"status": "ok", "runner": "javascript"})
+
+
+@app.post("/api/tutor")
+def tutor():
+    origin = request.headers.get("Origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        return jsonify({"error": "This tutor only accepts requests from the CodexSheet app."}), 403
+
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return jsonify({"error": "The DSA tutor is not configured yet. Add GEMINI_API_KEY to the Flask environment."}), 503
+
+    now = time.monotonic()
+    client_ip = request.remote_addr or "local"
+    recent = tutor_request_times[client_ip]
+    while recent and now - recent[0] > 60:
+        recent.popleft()
+    if len(recent) >= 12:
+        return jsonify({"error": "You have reached the tutor limit. Wait a minute, then try again."}), 429
+
+    data = request.get_json(silent=True)
+    messages = data.get("messages") if isinstance(data, dict) else None
+    if not isinstance(messages, list) or not 1 <= len(messages) <= 12:
+        return jsonify({"error": "Send between 1 and 12 chat messages."}), 400
+
+    contents = []
+    total_chars = 0
+    for message in messages:
+        if not isinstance(message, dict) or message.get("role") not in {"user", "assistant"}:
+            return jsonify({"error": "Each message needs a user or assistant role and text."}), 400
+        content = message.get("content")
+        if not isinstance(content, str) or not content.strip() or len(content) > 2_000:
+            return jsonify({"error": "Each message must contain 1 to 2,000 characters."}), 400
+        total_chars += len(content)
+        if total_chars > 8_000:
+            return jsonify({"error": "Keep the conversation context under 8,000 characters."}), 400
+        contents.append({"role": "user" if message["role"] == "user" else "model", "parts": [{"text": content.strip()}]})
+
+    if messages[-1].get("role") != "user":
+        return jsonify({"error": "The last chat message must be a student question."}), 400
+
+    recent.append(now)
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(
+                    attempts=2,
+                    initial_delay=1,
+                    max_delay=2,
+                    http_status_codes=[503],
+                ),
+            ),
+        )
+        model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
+        fallback_model = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash").strip()
+        models = [model]
+        if fallback_model and fallback_model != model:
+            models.append(fallback_model)
+
+        response = None
+        for model_name in models:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=TUTOR_SYSTEM_PROMPT,
+                        temperature=0.35,
+                        max_output_tokens=1_000,
+                    ),
+                )
+                break
+            except Exception as exc:
+                if is_service_unavailable(exc) and model_name != models[-1]:
+                    app.logger.warning("Gemini model %s is unavailable; retrying with %s", model_name, models[-1])
+                    continue
+                raise
+
+        if response is None:
+            return jsonify({"error": "Google Gemini is temporarily at capacity. Please try again in a minute."}), 503
+        answer = (response.text or "").strip()
+        if not answer:
+            return jsonify({"error": "Gemini returned an empty reply. Please ask your question another way."}), 502
+        return jsonify({"answer": answer})
+    except Exception as exc:
+        if is_service_unavailable(exc):
+            app.logger.warning("Gemini tutor models are temporarily unavailable: %s", exc)
+            return jsonify({"error": "Google Gemini is temporarily at capacity. Please try again in a minute."}), 503
+        app.logger.exception("Gemini DSA tutor request failed")
+        return jsonify({"error": "The DSA tutor could not respond right now. Please try again shortly."}), 502
 
 
 if __name__ == "__main__":

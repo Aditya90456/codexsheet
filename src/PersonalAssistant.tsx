@@ -30,7 +30,9 @@ export default function PersonalAssistant() {
 
   useEffect(() => { localStorage.setItem(CHAT_KEY, JSON.stringify(messages)); }, [messages]);
   useEffect(() => { localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders)); }, [reminders]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, busy]);
   useEffect(() => {
     let live = true;
     const check = async () => {
