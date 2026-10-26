@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import time
 from collections import defaultdict, deque
+from urllib.parse import urlsplit
 
 from flask import Flask, jsonify, request
 
@@ -26,6 +27,20 @@ app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 
 def is_service_unavailable(error: Exception) -> bool:
     return getattr(error, "status_code", None) == 503 or getattr(error, "code", None) == 503
+
+
+def is_allowed_origin(origin: str) -> bool:
+    if origin.rstrip("/") in ALLOWED_ORIGINS:
+        return True
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    if parsed.path not in {"", "/"} or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        return False
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "") if os.environ.get("VERCEL") else ""
+    expected_scheme = (forwarded_proto.split(",", 1)[0].strip() or request.scheme).lower()
+    return parsed.scheme.lower() == expected_scheme and parsed.netloc.lower() == request.host.lower()
 
 
 ALLOWED_ORIGINS = {
@@ -155,7 +170,7 @@ def health():
 @app.post("/api/tutor")
 def tutor():
     origin = request.headers.get("Origin")
-    if origin and origin not in ALLOWED_ORIGINS:
+    if origin and not is_allowed_origin(origin):
         return jsonify({"error": "This tutor only accepts requests from the CodexSheet app."}), 403
 
     api_key = os.environ.get("GEMINI_API_KEY", "").strip()
