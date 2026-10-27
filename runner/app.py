@@ -294,7 +294,8 @@ def tutor():
                 ),
             ),
         )
-        model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
+        requested_model = data.get("model", "") if isinstance(data, dict) else ""
+        model = requested_model if requested_model in {"gemini-3.6-flash"} else os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
         fallback_model = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash").strip()
         models = [model]
         if fallback_model and fallback_model != model:

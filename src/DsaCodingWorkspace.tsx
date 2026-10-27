@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Code2, ExternalLink, LayoutDashboard, LoaderCircle, Pause, Play, RotateCcw, Save, Search, Send, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Code2, ExternalLink, LayoutDashboard, LoaderCircle, Pause, Play, RotateCcw, Save, Search, Send, Sparkles, TriangleAlert, X } from "lucide-react";
 import DsaVisualLessons from "./DsaVisualLessons";
 import ShivaTandavPreloader from "./ShivaTandavPreloader";
 import { devaTestCaseCount, devaTestCases } from "./deva-test-cases";
@@ -340,6 +340,11 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
   const [solvedProblems, setSolvedProblems] = useState<number[]>(() => readProblemNumbers(`deva-solved:${userId ?? "local"}`));
   const [attemptedProblems, setAttemptedProblems] = useState<number[]>(() => readProblemNumbers(`deva-attempted:${userId ?? "local"}`));
   const [saveMessage, setSaveMessage] = useState("Saved locally");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiReply, setAiReply] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const challenges = useMemo(() => problems.filter((item) => !/ · Pattern \d+$/.test(item.title)), [problems]);
   const trace = useMemo(() => traceCode(code), [code]);
   const sourceFlow = useMemo(() => buildSourceFlow(code), [code]);
@@ -401,6 +406,25 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
     setSolvedProblems(next);
     try { localStorage.setItem(`deva-solved:${userId ?? "local"}`, JSON.stringify(next)); } catch { /* local progress is optional */ }
     if (supabase && userId) void supabase.from("dsa_progress").upsert({ user_id: userId, problem_number: problemNumber, status: next.includes(problemNumber) ? "Solved" : "Todo", notes: "", updated_at: new Date().toISOString() }, { onConflict: "user_id,problem_number" });
+  }
+
+  async function askDevaAi(question: string) {
+    const prompt = question.trim();
+    if (!prompt || aiBusy) return;
+    setAiBusy(true); setAiError(""); setAiReply("");
+    const context = `Problem: ${problem?.title ?? "DSA problem"} (${problem?.pattern ?? ""}, ${problem?.difficulty ?? ""})\nLanguage: ${language}\nStudent request: ${prompt}\n\nCurrent code:\n${code.slice(0, 1_350)}`;
+    try {
+      const response = await fetch("/api/tutor", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "gemini-3.6-flash", messages: [{ role: "user", content: context }] }),
+        signal: AbortSignal.timeout(45_000),
+      });
+      const data = await response.json() as { answer?: string; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Gemini could not respond. Try again.");
+      setAiReply(data.answer ?? "No response returned."); setAiQuestion("");
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : "Could not reach Google Gemini. Try again.");
+    } finally { setAiBusy(false); }
   }
 
   async function saveCurrentCode() {
@@ -547,7 +571,7 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
       </div><div className="deva-challenge-side"><span>YOUR WORKFLOW</span><ol><li>Understand the input and expected output</li><li>Choose a pattern and state its invariant</li><li>Run your code, then inspect the trace</li></ol>{problem?.link && <a href={problem.link} target="_blank" rel="noreferrer">Full problem on LeetCode <ExternalLink size={14}/></a>}</div></section>
       <div className="deva-workspace-pane"><div className="deva-problem-toolbar"><span><i className={`difficulty ${(problem?.difficulty ?? "Easy").toLowerCase()}`}/>{problem?.difficulty} <b>·</b> {problem?.pattern}</span><button type="button" className={solvedProblems.includes(problemNumber) ? "solved" : ""} onClick={toggleSolved}>{solvedProblems.includes(problemNumber) ? <Check size={14}/> : <Check size={14}/>} {solvedProblems.includes(problemNumber) ? "Solved" : "Mark solved"}</button></div><section className="dsa-live-workspace">
       <div className="dsa-live-editor">
-        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}</strong><label className="deva-pattern-language"><span>{language === "JavaScript" ? "JS" : language}</span><select aria-label="Programming language" value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div><textarea className="deva-source-editor" ref={editorRef} aria-label="Type your solution code" spellCheck={false} autoCapitalize="off" autoComplete="off" autoCorrect="off" value={code} onChange={(event) => { editCode(event.target.value); syncCursor(event as unknown as HTMLTextAreaElement); }} onKeyDown={handleEditorKeyDown} onKeyUp={(event) => syncCursor(event.currentTarget)} onClick={(event) => syncCursor(event.currentTarget)} onSelect={(event) => syncCursor(event.currentTarget)} /></div>
+        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}</strong><label className="deva-pattern-language"><span>{language === "JavaScript" ? "JS" : language}</span><select aria-label="Programming language" value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => setAiOpen((open) => !open)}><Sparkles size={12}/> AI help</button><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div>{aiOpen && <section className="deva-ai-panel" aria-label="Gemini editor help"><header><div><strong><Sparkles size={14}/> Ask Gemini 3.6 Flash</strong><small>Get a hint, explain your approach, or debug the current code.</small></div><button type="button" aria-label="Close AI help" onClick={() => setAiOpen(false)}><X size={15}/></button></header>{aiReply && <p className="deva-ai-reply">{aiReply}</p>}{aiError && <p className="deva-ai-error" role="alert">{aiError}</p>}<form onSubmit={(event) => { event.preventDefault(); void askDevaAi(aiQuestion); }}><input value={aiQuestion} onChange={(event) => setAiQuestion(event.target.value)} placeholder="e.g. Give me a hint for this problem" maxLength={300} disabled={aiBusy}/><button type="submit" disabled={aiBusy || !aiQuestion.trim()}>{aiBusy ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} {aiBusy ? "Thinking…" : "Ask"}</button></form></section>}<textarea className="deva-source-editor" ref={editorRef} aria-label="Type your solution code" spellCheck={false} autoCapitalize="off" autoComplete="off" autoCorrect="off" value={code} onChange={(event) => { editCode(event.target.value); syncCursor(event as unknown as HTMLTextAreaElement); }} onKeyDown={handleEditorKeyDown} onKeyUp={(event) => syncCursor(event.currentTarget)} onClick={(event) => syncCursor(event.currentTarget)} onSelect={(event) => syncCursor(event.currentTarget)} /></div>
         <div className="dsa-live-editor-status"><span><i/> {trace.message ? "TRACE READY · ADD A LOOP" : "READY"}</span><span>Ln {cursor.line}, Col {cursor.column}</span><span>{language}</span><span>UTF-8</span><span>Ctrl/⌘ Enter · Run</span></div>
         <section className="deva-run-panel" aria-label="Run code">
           <div className="deva-run-input"><label htmlFor="deva-stdin">STANDARD INPUT</label><textarea id="deva-stdin" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Optional input for your program" rows={2}/></div>
