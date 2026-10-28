@@ -74,7 +74,7 @@ begin
       when 'one-to-one' then '1:1 mentorship'
       when 'ltm-3-months' then 'Long-term mentorship (3 months)'
       when 'ltm-6-months' then 'Long-term mentorship (6 months)'
-      else '250-pattern DSA roadmap (download)' end) || ' - Rs ' || to_char(picked.amount, 'FM999990.00'),
+      else '250-pattern DSA roadmap (full access unlock)' end) || ' - Rs ' || to_char(picked.amount, 'FM999990.00'),
     concat_ws(' | ',
       case when picked.paytm_reference <> '' then 'Paytm reference ' || picked.paytm_reference end,
       case when picked.note <> '' then picked.note end),

@@ -56,10 +56,10 @@ export const mentorshipPlans: MentorshipPlan[] = [
     id: "roadmap",
     tag: "RMAP",
     title: "250-Pattern DSA Roadmap",
-    subtitle: "Digital download, delivered by email",
+    subtitle: "Full access, unlocked in your workspace",
     price: 19,
     cadence: "one-time purchase",
-    includes: ["Every pattern with its problems in order", "Beginner to interview-ready sequence", "Emailed within 24 hours of payment"],
+    includes: ["Every pattern with its problems in order", "Beginner to interview-ready sequence", "Unlocks all 250 problems once Aditya confirms the payment"],
   },
 ];
 

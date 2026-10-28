@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
   SignInButton,
   SignUpButton,
@@ -57,6 +57,7 @@ import {
   Building2,
   SlidersHorizontal,
   Layers3,
+  Lock,
   MousePointer2,
   Trash2,
   Sparkles,
@@ -324,7 +325,7 @@ function HomePage({
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
-          <p>Mentorship calls, long-term plans and the roadmap download — paid straight to Paytm, no third-party store.</p>
+          <p>Mentorship calls, long-term plans and the full-roadmap unlock — paid straight to Paytm, no third-party store.</p>
         </div>
         <div className="home-offer-grid" aria-label="Featured DSA offers">
           <article className="home-offer-card home-offer-mentorship">
@@ -338,7 +339,7 @@ function HomePage({
             <div className="home-offer-top"><span className="home-offer-icon">250</span><span className="home-offer-price">₹19</span></div>
             <span className="home-offer-label">PATTERN-WISE PRACTICE</span>
             <h3>250-pattern DSA roadmap</h3>
-            <p>The complete pattern-wise roadmap as a download, emailed to you once the Paytm payment is confirmed.</p>
+            <p>The first 50 problems are free; confirming your ₹19 Paytm payment unlocks all 250 patterns in the workspace — no files, no email attachments.</p>
             <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship", "roadmap"); }}>Get the roadmap <ArrowRight size={15}/></a>
           </article>
         </div>
@@ -1203,6 +1204,21 @@ function App() {
     setStorePlan(view === "mentorship" ? plan : null);
     setActiveView(view);
   };
+  // The ₹19 roadmap plan unlocks the full 250-problem set in the library and
+  // the board; signed out, the preview is free. Supabase missing => unlocked.
+  const [roadmapLocked, setRoadmapLocked] = useState(true);
+  const [roadmapChecking, setRoadmapChecking] = useState(false);
+  const refreshRoadmapAccess = useCallback(async () => {
+    if (!supabase) { setRoadmapLocked(false); return; }
+    setRoadmapChecking(true);
+    const result = await supabase.rpc("roadmap_unlocked");
+    if (!result.error) setRoadmapLocked(result.data !== true);
+    setRoadmapChecking(false);
+  }, []);
+  useEffect(() => {
+    if (isSignedIn && (activeView === "problems" || activeView === "roadmap")) void refreshRoadmapAccess();
+  }, [isSignedIn, activeView, refreshRoadmapAccess]);
+  const FREE_ROADMAP_COUNT = 50;
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
     const canonicalPath = viewPaths[viewFromLocation()];
@@ -1374,8 +1390,9 @@ function App() {
           if (focusDifference !== 0) return focusDifference;
         }
         return left.number - right.number;
-      });
-  }, [patternStats, progress, roadmapPreferences.focusPattern]);
+      })
+      .slice(0, roadmapLocked ? FREE_ROADMAP_COUNT : problems.length);
+  }, [patternStats, progress, roadmapPreferences.focusPattern, roadmapLocked]);
   const roadmapWeeks = useMemo(() => {
     if (roadmapProblems.length === 0) return [];
     const weekCount = Math.min(roadmapPreferences.targetWeeks, roadmapProblems.length);
@@ -2314,7 +2331,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className="roadmap-buy" onClick={() => navigateToView("mentorship", "roadmap")}>Get the full 250-pattern roadmap · ₹19 <ArrowRight size={15} /></button>
+            <button type="button" className={roadmapLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship", "roadmap")}>{roadmapLocked ? <>Unlock all 250 patterns · ₹19 <ArrowRight size={15}/></> : <>Roadmap unlocked <Check size={15}/></>}</button>
           </header>
           <div className="roadmap-controls">
             <label>
@@ -2808,8 +2825,16 @@ function App() {
             <label className="problem-filter-select"><span>DIFFICULTY</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select><ChevronDown size={14}/></label>
             <label className="problem-filter-select"><span>STATUS</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>All status</option><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={14}/></label>
           </div>
-          <div className="problem-list-toolbar"><span><strong>{visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
-          <div className="problem-list">{visibleProblems.length ? visibleProblems.map((problem) => {
+          <div className="problem-list-toolbar"><span><strong>{roadmapLocked ? Math.min(visibleProblems.length, FREE_ROADMAP_COUNT) : visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
+          {roadmapLocked && (
+            <div className="problem-library-gate">
+              <Lock size={15} />
+              <span>Free preview shows the first {FREE_ROADMAP_COUNT} problems. Pay ₹19 to open all 250 patterns.</span>
+              <button type="button" onClick={() => navigateToView("mentorship", "roadmap")}>Unlock for ₹19</button>
+              <button type="button" className="gate-check" disabled={roadmapChecking} onClick={() => void refreshRoadmapAccess()}>{roadmapChecking ? "Checking…" : "I've paid — check"}</button>
+            </div>
+          )}
+          <div className="problem-list">{(roadmapLocked ? visibleProblems.filter((problem) => problem.number <= FREE_ROADMAP_COUNT) : visibleProblems).length ? (roadmapLocked ? visibleProblems.filter((problem) => problem.number <= FREE_ROADMAP_COUNT) : visibleProblems).map((problem) => {
             const current = progress[problem.number]?.status ?? "Todo";
             const statusClass = current.toLowerCase().replace(" ", "-");
             return <article className="problem-list-row" key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label></article>;

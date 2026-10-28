@@ -85,7 +85,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     const outcome = await recordOrder(order, insert as (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>);
     setSaving(false);
     setSaved(outcome.ok
-      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then sends your session link or roadmap file.` }
+      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then sends your session link. For the roadmap, confirmation unlocks all 250 problems in your workspace.` }
       : { ok: false, message: `Saved on this device (${outcome.reason}). Email the reference ${reference} with your Paytm screenshot so it is not lost.` });
   }
 

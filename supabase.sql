@@ -859,7 +859,7 @@ begin
       when 'one-to-one' then '1:1 mentorship'
       when 'ltm-3-months' then 'Long-term mentorship (3 months)'
       when 'ltm-6-months' then 'Long-term mentorship (6 months)'
-      else '250-pattern DSA roadmap (download)' end) || ' - Rs ' || to_char(picked.amount, 'FM999990.00'),
+      else '250-pattern DSA roadmap (full access unlock)' end) || ' - Rs ' || to_char(picked.amount, 'FM999990.00'),
     concat_ws(' | ',
       case when picked.paytm_reference <> '' then 'Paytm reference ' || picked.paytm_reference end,
       case when picked.note <> '' then picked.note end),
@@ -1162,5 +1162,33 @@ $fn$;
 
 revoke all on function public.mentor_confirm_mentee(text, text, text) from public;
 grant execute on function public.mentor_confirm_mentee(text, text, text) to authenticated, service_role;
+
+-- The ₹19 roadmap plan unlocks the full 250-problem set. mentorship_orders
+-- itself stays unreadable from the browser; this answers the only question
+-- the library needs: has this buyer (Clerk id, or the verified email of an
+-- order paid without signing in) confirmed a roadmap purchase?
+create or replace function public.roadmap_unlocked()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.mentorship_orders placed
+    where placed.plan = 'roadmap'
+      and placed.status in ('confirmed', 'delivered')
+      and (
+        (coalesce(auth.jwt() ->> 'sub', '') <> '' and placed.user_id = coalesce(auth.jwt() ->> 'sub', ''))
+        or (coalesce(auth.jwt() ->> 'email', '') <> ''
+            and placed.buyer_email <> ''
+            and lower(placed.buyer_email) = lower(coalesce(auth.jwt() ->> 'email', '')))
+      )
+  );
+$$;
+
+revoke all on function public.roadmap_unlocked() from public;
+grant execute on function public.roadmap_unlocked() to anon, authenticated;
 
 notify pgrst, 'reload schema';
