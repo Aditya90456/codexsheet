@@ -86,6 +86,40 @@ Confirm each payment in the Paytm app, then set that row's `status` to
 ever fails, the page keeps the claim in browser `localStorage` and tells the
 student to DM the reference code, so no request is lost.
 
+## Notification mail
+
+`supabase/migrations/20261028_mentorship_notify.sql` (applied 2026-10-28, also in
+`supabase.sql`) mails `adityabakshi1011@gmail.com` about new mentorship payments,
+call requests and mentee chat messages. Nothing new is sent from the browser.
+
+* `mentorship_orders`, `call_requests` and `group_chat_messages` each carry a
+  `notified_at` stamp. Existing rows were backfilled to `now()` so the first run
+  did not mail history.
+* `mentorship_pending_notifications(limit)` is `security definer` and grabs the
+  oldest un-stamped rows and stamps them in one statement, under an advisory
+  lock, so an event can only be emailed once. It is granted to `service_role`
+  only, never to `anon`.
+* Group chat only notifies for authors who hold a `confirmed` or `delivered`
+  mentorship order, so the mailbox is not filled with community chatter.
+* `cron.schedule('mentorship-notify', '*/5 * * * *')` posts to the
+  `mentorship-notify` edge function every five minutes through `pg_net`. The
+  function is safe to hit at any time: with nothing queued it sends no mail and
+  returns counts only.
+* `supabase/functions/mentorship-notify/index.ts` builds one digest email per
+  run through Resend and returns claimed rows to the queue with
+  `mentorship_notification_retry` if the send fails, so an outage delays mail
+  instead of losing it.
+
+Environment for the function: `RESEND_API_KEY` (already set on the project),
+optional `EMAIL_FROM` (defaults to `CodexSheet Alerts <onboarding@resend.dev>`,
+which Resend only accepts for the account owner's own address, so verify a
+domain for reliable delivery) and optional `NOTIFY_TO`.
+
+```bash
+npx supabase secrets set EMAIL_FROM="CodexSheet <alerts@yourdomain.com>"
+npx supabase functions deploy mentorship-notify --no-verify-jwt
+```
+
 ## Problem practice and code execution
 
 The SQL script seeds 50 original problem descriptions and examples, then creates
