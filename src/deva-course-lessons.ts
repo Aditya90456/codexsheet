@@ -1,8 +1,7 @@
-import { useEffect, useState, type CSSProperties } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Braces, CirclePlay, Pause, RotateCcw, Sparkles, Target, Lightbulb, TriangleAlert } from "lucide-react";
+/** Concept lessons that drive the Deva course stage, editor and AI panel. */
 
-type LessonStep = { active: number[]; pointers: string[]; memory: string[]; title: string; narration: string; codeLine: number };
-type Lesson = { id: string; title: string; pattern: string; complexity: string; input: number[]; code: { JavaScript: string[]; Python: string[] }; steps: LessonStep[]; goal: string; concept: string; whenToUse: string; pitfalls: string[]; practice: string };
+export type LessonStep = { active: number[]; pointers: string[]; memory: string[]; title: string; narration: string; codeLine: number };
+export type Lesson = { id: string; title: string; pattern: string; complexity: string; input: number[]; code: { JavaScript: string[]; Python: string[] }; steps: LessonStep[]; goal: string; concept: string; whenToUse: string; pitfalls: string[]; practice: string };
 
 const lessons: Lesson[] = [
   {
@@ -72,71 +71,37 @@ const lessons: Lesson[] = [
   },
 ];
 
-function renderCodeLine(line: string, language: "JavaScript" | "Python") {
-  const tokenPattern = /(\/\/.*|#.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b(?:function|return|const|let|var|new|for|while|if|else|in|def|range|True|False|null|None)\b)|(\b\d+\b)|(\b(?:console|Math|Map|len|sum|enumerate|max|min)\b)/g;
-  const parts: Array<{ text: string; kind: string }> = [];
-  let cursor = 0;
-  for (const match of line.matchAll(tokenPattern)) {
-    const index = match.index ?? 0;
-    if (index > cursor) parts.push({ text: line.slice(cursor, index), kind: "" });
-    const kind = match[1] ? "comment" : match[2] ? "string" : match[3] ? "keyword" : match[4] ? "number" : "builtin";
-    parts.push({ text: match[0], kind });
-    cursor = index + match[0].length;
-  }
-  if (cursor < line.length) parts.push({ text: line.slice(cursor), kind: "" });
-  return parts.map((part, index) => <span className={part.kind ? `syntax-${part.kind}` : undefined} key={`${language}-${index}`}>{part.text}</span>);
+/**
+ * Stage kind decides how the three.js scene arranges the values. problemNumber
+ * links a lesson to judged fixtures so Submit runs for real, and operands carry
+ * the extra arguments (target, window size) a pattern needs beyond the array.
+ */
+export type CourseStage = "hash" | "range" | "window" | "pointers" | "stack";
+export type CourseLesson = Lesson & { stage: CourseStage; problemNumber: number | null; operands: number[]; entry: string };
+
+const lessonMeta: Record<string, { stage: CourseStage; problemNumber: number | null; operands: number[]; entry: string }> = {
+  "two-sum": { stage: "hash", problemNumber: 1, operands: [9], entry: "twoSum" },
+  "binary-search": { stage: "range", problemNumber: 18, operands: [9], entry: "search" },
+  "sliding-window": { stage: "window", problemNumber: null, operands: [3], entry: "maxWindowSum" },
+  "two-pointers": { stage: "pointers", problemNumber: null, operands: [10], entry: "pairSum" },
+  stack: { stage: "stack", problemNumber: null, operands: [], entry: "reverse" },
+};
+
+export const courseLessons: CourseLesson[] = lessons.map((lesson) => ({ ...lesson, ...(lessonMeta[lesson.id] ?? { stage: "pointers", problemNumber: null, operands: [], entry: "solve" }) }));
+
+/** Named markers such as "left = 4" or "top -> 10", positioned by array index. */
+export type LessonMarker = { name: string; value: string; index: number | null };
+
+export function lessonMarkers(step: LessonStep): LessonMarker[] {
+  return step.pointers.map((pointer) => {
+    const assignment = /^(\w+)\s*(?:=|->|→)\s*(-?\d+)$/.exec(pointer.trim());
+    if (assignment) return { name: assignment[1] ?? "", value: assignment[2] ?? "", index: Number(assignment[2]) };
+    return { name: pointer, value: "", index: null };
+  });
 }
 
-export default function DsaVisualLessons() {
-  const [lessonId, setLessonId] = useState(lessons[0].id);
-  const [language, setLanguage] = useState<"JavaScript" | "Python">("JavaScript");
-  const [stepIndex, setStepIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const lesson = lessons.find((item) => item.id === lessonId) ?? lessons[0];
-  const step = lesson.steps[stepIndex];
-
-  useEffect(() => { setStepIndex(0); setPlaying(false); }, [lessonId]);
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setInterval(() => setStepIndex((index) => {
-      if (index >= lesson.steps.length - 1) { setPlaying(false); return index; }
-      return index + 1;
-    }), 3600);
-    return () => window.clearInterval(timer);
-  }, [lesson.steps.length, playing]);
-
-  return <section className="dsa-lesson" aria-label="Visual DSA lesson">
-    <header className="dsa-lesson-header">
-      <div className="dsa-lesson-heading"><span><BookOpen size={13}/> DSA COURSE · CONCEPTS, VISUALS, PRACTICE</span><h2>Learn the pattern. <em>See it work.</em></h2><p>Work through each topic with a goal, a step-by-step trace, complexity notes, common pitfalls, and a practice challenge.</p></div>
-      <label className="dsa-lesson-picker"><span>COURSE TOPIC · {lessons.findIndex((item) => item.id === lessonId) + 1} OF {lessons.length}</span><select value={lessonId} onChange={(event) => setLessonId(event.target.value)}>{lessons.map((item, index) => <option key={item.id} value={item.id}>{String(index + 1).padStart(2, "0")} · {item.title}</option>)}</select></label>
-    </header>
-    <div className="dsa-course-outline" aria-label="Course topics">{lessons.map((item, index) => <button type="button" key={item.id} className={item.id === lessonId ? "active" : index < lessons.findIndex((entry) => entry.id === lessonId) ? "complete" : ""} onClick={() => setLessonId(item.id)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small></button>)}</div>
-    <section className="dsa-course-goal"><Target size={16}/><div><span>LESSON GOAL</span><strong>{lesson.goal}</strong></div><span className="dsa-course-complexity">{lesson.complexity}</span></section>
-    <div className="dsa-lesson-meta"><span><BookOpen size={13}/>{lesson.pattern}</span><span>{lesson.complexity}</span><label>CODE<select value={language} onChange={(event) => setLanguage(event.target.value as "JavaScript" | "Python")}><option>JavaScript</option><option>Python</option></select></label></div>
-    <div className="dsa-lesson-grid">
-      <section className="dsa-lesson-visual" aria-live="polite">
-        <div className="dsa-lesson-visual-top"><span>LIVE TRACE <i/> STEP {String(stepIndex + 1).padStart(2, "0")} / {String(lesson.steps.length).padStart(2, "0")}</span><span>INPUT ARRAY</span></div>
-        <div className="dsa-lesson-array" style={{ "--lesson-array-size": lesson.input.length } as CSSProperties & { "--lesson-array-size": number }}>
-          <div className="dsa-lesson-loop-pointer" style={{ left: `${((step.active[0] + 0.5) / lesson.input.length) * 100}%` }}><span>LOOP POINTER</span><strong>{step.pointers[0]}</strong><i/></div>
-          {lesson.input.map((value, index) => <div key={`${lesson.id}-${index}`} className={`dsa-lesson-cell${step.active.includes(index) ? " active" : ""}`}><small>index {index}</small><strong>{value}</strong><span>{step.active.includes(index) ? "in focus" : ""}</span></div>)}
-        </div>
-        <div className="dsa-lesson-state"><div><span>ALGORITHM STATE</span><strong>{step.title}</strong><p>{step.narration}</p></div><div className="dsa-lesson-memory"><span>VARIABLES &amp; MEMORY</span>{step.memory.map((item) => <code key={item}>{item}</code>)}</div></div>
-        <div className="dsa-lesson-progress">{lesson.steps.map((item, index) => <button key={item.title} type="button" aria-label={`Go to step ${index + 1}: ${item.title}`} className={index === stepIndex ? "active" : index < stepIndex ? "complete" : ""} onClick={() => { setPlaying(false); setStepIndex(index); }}/>)}</div>
-        <div className="dsa-lesson-controls"><button type="button" className="dsa-lesson-reset" onClick={() => { setPlaying(false); setStepIndex(0); }} aria-label="Restart lesson"><RotateCcw size={15}/></button><button type="button" onClick={() => { setPlaying((value) => !value); if (stepIndex === lesson.steps.length - 1) setStepIndex(0); }}>{playing ? <Pause size={15}/> : <CirclePlay size={15}/>} {playing ? "Pause" : "Play walkthrough"}</button><button type="button" onClick={() => { setPlaying(false); setStepIndex((index) => Math.min(lesson.steps.length - 1, index + 1)); }} disabled={stepIndex === lesson.steps.length - 1}>Next step <ArrowRight size={14}/></button></div>
-      </section>
-      <section className="dsa-lesson-code" aria-label={`${language} walkthrough code`}>
-        <div className="dsa-editor-titlebar"><span className="dsa-editor-dots"><i/><i/><i/></span><strong><Braces size={12}/> CODEXSHEET DSA LAB</strong><span>EXPLORER</span></div>
-        <div className="dsa-lesson-code-head"><span><i/>{lesson.title.toLowerCase().replace(/ /g, "-")}.{language === "Python" ? "py" : "js"}</span><span>READ ONLY · STEP {stepIndex + 1}</span></div>
-        <pre>{lesson.code[language].map((line, index) => <span className={index === step.codeLine ? "active" : ""} key={`${index}-${line}`}><i>{index === step.codeLine ? "›" : ""}</i><b>{String(index + 1).padStart(2, "0")}</b><code>{renderCodeLine(line || " ", language)}</code></span>)}</pre>
-        <div className="dsa-lesson-code-foot"><span><span/> The highlighted line is running now</span><span>{lesson.complexity}</span></div>
-      </section>
-    </div>
-    <section className="dsa-course-notes" aria-label={`${lesson.title} course notes`}>
-      <article><span><Lightbulb size={14}/> THE IDEA</span><p>{lesson.concept}</p></article>
-      <article><span><BookOpen size={14}/> WHEN TO USE IT</span><p>{lesson.whenToUse}</p></article>
-      <article><span><TriangleAlert size={14}/> COMMON PITFALLS</span><ul>{lesson.pitfalls.map((item) => <li key={item}>{item}</li>)}</ul></article>
-      <article className="dsa-course-practice"><span><Target size={14}/> PRACTICE CHALLENGE</span><p>{lesson.practice}</p></article>
-    </section>
-    <div className="dsa-lesson-footnote"><span><Sparkles size={13}/> Built for learning: every step is visible and reversible.</span><span>{stepIndex + 1} of {lesson.steps.length} <button type="button" onClick={() => setStepIndex((index) => Math.max(0, index - 1))} disabled={stepIndex === 0}><ArrowLeft size={13}/> Previous</button></span></div>
-  </section>;
+/** Editor input when a lesson has no judged fixtures: the lesson array plus its operands. */
+export function lessonDemoStdin(lesson: CourseLesson): string {
+  const lines = [lesson.input.join(" "), ...lesson.operands.map(String)];
+  return `${lines.join("\n")}\n`;
 }

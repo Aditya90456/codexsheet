@@ -3,3 +3,10 @@ dist/
 .env
 .env.*
 !.env.example
+# Local tooling state: contains Supabase connection strings and CLI caches, never commit.
+supabase/.temp/
+
+# Python and TypeScript build artifacts
+__pycache__/
+*.pyc
+tsconfig.tsbuildinfo

@@ -66,6 +66,26 @@ updates; its statements are written to be repeatable.
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
 
+## Mentorship payments
+
+`/mentorship` sells Aditya's own time: 1:1 mentorship ₹19, long-term mentorship
+₹100 for 3 months and ₹499 for 6 months, weekly session plus DMs anytime. Payment
+goes straight to his personal Paytm UPI handle (`8335873311@paytm`) through a UPI
+intent link and QR, so there is no gateway, no API key, and no card data.
+
+`public.mentorship_orders` is created by
+`supabase/migrations/20261028_mentorship_orders.sql` (applied 2026-10-28) and is
+included in `supabase.sql`; rerun either after schema edits. Students insert a
+claim (reference code, plan, amount, name, contact, Paytm reference) whether or
+not they are signed in; the table itself is not readable from the browser.
+`mentorship_order_status(reference)` is the only read path and returns just the
+status, plan, amount and filing time, never the buyer's contact details.
+
+Confirm each payment in the Paytm app, then set that row's `status` to
+`confirmed` in the Supabase dashboard before the first session. If the insert
+ever fails, the page keeps the claim in browser `localStorage` and tells the
+student to DM the reference code, so no request is lost.
+
 ## Problem practice and code execution
 
 The SQL script seeds 50 original problem descriptions and examples, then creates

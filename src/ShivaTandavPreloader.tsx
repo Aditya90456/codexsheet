@@ -4,7 +4,9 @@ import "./shiva-preloader.css";
 
 const threeUrl = "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js";
 const loaderUrl = "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/loaders/GLTFLoader.js";
-const statueUrl = "https://zenodo.org/records/10293437/files/227d1524875042ce90176129ba98de6c.glb?download=1";
+// Zenodo does not send Access-Control-Allow-Origin, so this model is served from
+// public/ instead. Source record: zenodo.org/records/10293437 (CC0).
+const statueUrl = "/shiva-nataraja.glb";
 
 function TandavScene({ onReady, onProgress }: { onReady: () => void; onProgress: (value: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

@@ -83,7 +83,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 /* Consistent cards and panels across workspace pages */
 .dashboard-panel, .sheet-card, .chat-card, .notebook-card, .coach-card, .roadmap-card, .calendar-card,
 .company-card, .company-panel, .articles-card, .article-card, .schedule-main-card, .schedule-side-card,
-.call-lobby, .article-reader, .dsa-lesson, .dsa-live-editor, .dsa-live-visual, .lld-panel,
+.call-lobby, .article-reader, .dsa-live-editor, .dsa-live-visual, .lld-panel,
 .whiteboard-panel, .notes-panel, .jobs-panel {
   border-color: var(--ui-line);
   border-radius: 14px;
@@ -94,23 +94,6 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 .article-filters button.active, .articles-empty button { border-color: var(--ui-primary); background: var(--ui-primary); }
 .article-search:focus-within { border-color: #91a8ef; box-shadow: 0 0 0 3px rgba(69,104,216,.11); }
 .search-box:focus-within { border-color: #91a8ef; box-shadow: 0 0 0 3px rgba(69,104,216,.1); }
-
-/* Course notes use the same light surface as the rest of the workspace */
-.dsa-course-outline { border-color: var(--ui-line); background: #f8faff; }
-.dsa-course-outline button { border-color: var(--ui-line); border-radius: 9px; color: #52627a; background: #fff; }
-.dsa-course-outline button strong { color: #293951; }
-.dsa-course-outline button small { color: #74839b; }
-.dsa-course-outline button.active { border-color: #9eb1ef; background: #eef2ff; }
-.dsa-course-outline button.active strong, .dsa-course-outline button.complete > span { color: var(--ui-primary); }
-.dsa-course-goal { border-color: #dce5f8; color: var(--ui-primary); background: #f5f7ff; }
-.dsa-course-goal > div span, .dsa-course-notes article > span { color: #657695; }
-.dsa-course-goal > div strong { color: #263754; }
-.dsa-course-complexity { color: #59709f; }
-.dsa-course-notes { border-color: var(--ui-line); background: #f8faff; }
-.dsa-course-notes article { border-color: var(--ui-line); border-radius: 10px; background: #fff; }
-.dsa-course-notes article > span { color: #4c65a7; }
-.dsa-course-notes p, .dsa-course-notes li { color: #53637a; line-height: 1.75; }
-.dsa-course-notes .dsa-course-practice { border-color: #cbd8f7; background: #f4f6ff; }
 
 /* Page canvas and content widths */
 .articles-page, .calls-page, .live-call-page, .problems-page, .companies-page, .roadmap-page,
@@ -126,13 +109,6 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 :root[data-theme="midnight"] .title-row { border-color:var(--ui-line); }
 :root[data-theme="midnight"] .breadcrumb, :root[data-theme="midnight"] .title-row p { color:var(--ui-muted); }
 :root[data-theme="midnight"] .private-pill, :root[data-theme="midnight"] .secondary-button { border-color:#40372f; color:#eee8e2; background:#211d19; }
-:root[data-theme="midnight"] .dsa-course-outline, :root[data-theme="midnight"] .dsa-course-notes { border-color:var(--ui-line); background:#151413; }
-:root[data-theme="midnight"] .dsa-course-outline button, :root[data-theme="midnight"] .dsa-course-notes article { border-color:#37312c; color:#e2ddd7; background:#1d1b19; }
-:root[data-theme="midnight"] .dsa-course-outline button strong, :root[data-theme="midnight"] .dsa-course-goal > div strong { color:#fff; }
-:root[data-theme="midnight"] .dsa-course-outline button small, :root[data-theme="midnight"] .dsa-course-notes p, :root[data-theme="midnight"] .dsa-course-notes li { color:#c5beb7; }
-:root[data-theme="midnight"] .dsa-course-outline button.active, :root[data-theme="midnight"] .dsa-course-practice { border-color:#9a4c20; background:#372216; }
-:root[data-theme="midnight"] .dsa-course-goal { border-color:#654126; background:#261a12; }
-:root[data-theme="midnight"] .dsa-course-complexity { color:#ffb780; }
 :root[data-theme="forest"] { --ui-ink:#20372d; --ui-muted:#667c6d; --ui-line:#d5e1d4; --ui-surface:#fbfdf8; --ui-canvas:#edf3eb; --ui-primary:#46784f; --ui-primary-hover:#355f3f; --ui-primary-soft:#e9f2e7; --ui-green:#188b76; --ui-shadow:0 12px 34px rgba(31,58,39,.06); }
 :root[data-theme="forest"] body { color:var(--ui-ink); background:#edf3eb; }
 :root[data-theme="forest"] .topbar { background:linear-gradient(180deg,#1a332b,#142a23); }
@@ -157,8 +133,8 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 :root[data-theme="midnight"] .app-shell :is(table,th,td) { border-color:#37312c; color:#e3ded8; }
 :root[data-theme="midnight"] .app-shell th { background:#24211e; }
 :root[data-theme="midnight"] .app-shell tbody tr:hover { background:#28211b; }
-:root[data-theme="midnight"] .app-shell :is(.queue-row,.roadmap-task,.roadmap-pattern-day,.article-card,.schedule-main-card,.schedule-side-card) { border-color:#37312c; background:#1c1a18; }
-:root[data-theme="midnight"] .app-shell :is(.queue-row,.roadmap-task,.roadmap-pattern-day,.article-card,.schedule-main-card,.schedule-side-card) :is(h2,h3,h4,strong) { color:#fff; }
+:root[data-theme="midnight"] .app-shell :is(.queue-row,.roadmap-pattern-day,.article-card,.schedule-main-card,.schedule-side-card) { border-color:#37312c; background:#1c1a18; }
+:root[data-theme="midnight"] .app-shell :is(.queue-row,.roadmap-pattern-day,.article-card,.schedule-main-card,.schedule-side-card) :is(h2,h3,h4,strong) { color:#fff; }
 :root[data-theme="midnight"] .app-shell :is(.search-box,.sheet-controls,.roadmap-controls,.theme-picker,.article-search,.article-filters button) { border-color:#453b32; color:#eee8e2; background:#201c18; }
 :root[data-theme="midnight"] .app-shell :is(.article-filters button.active,.view-switcher button.active,.nav-more > summary.active) { border-color:#9b4e20; color:#ffb780; background:#372216; }
 :root[data-theme="midnight"] .app-shell :is(.home-services,.articles-library,.schedule-page,.calendar-page,.jobs-page,.notes-page,.chat-page) { color:#f0ece7; background:#11100f; }
@@ -172,8 +148,6 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 :root[data-theme="midnight"] .app-shell .dashboard-welcome :is(h2,strong) { color:#fff; }
 :root[data-theme="midnight"] .app-shell .dashboard-welcome p { color:#d0c3b7; }
 :root[data-theme="midnight"] .app-shell .theme-picker select option { color:#f5f3f0; background:#1c1a18; }
-:root[data-theme="midnight"] .app-shell .dsa-course-practice { border-color:#9b4e20; background:#372216; }
-:root[data-theme="midnight"] .app-shell .dsa-course-notes article > span, :root[data-theme="midnight"] .app-shell .dsa-course-goal > svg { color:#ff9a58; }
 :root[data-theme="midnight"] .app-shell .private-pill { color:#ffb780; }
 :root[data-theme="midnight"] { color-scheme:dark; }
 :root[data-theme="midnight"] .app-shell :is(h1,h2,h3,h4,h5) { color:#f7f4f0; }
@@ -203,13 +177,6 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 :root[data-theme="midnight"] .app-shell .home-progress-stats small { color:#ffb780; }
 :root[data-theme="midnight"] .app-shell .dsa-live-page { color:#f7f4f0; background:#11100f; }
 :root[data-theme="midnight"] .app-shell .dsa-live-footnote { color:#bdb5ad; }
-:root[data-theme="midnight"] .app-shell .dsa-lesson-header { border-color:#37312c; background:#1c1a18; }
-:root[data-theme="midnight"] .app-shell .dsa-lesson-meta { border-color:#37312c; color:#ddd6cf; background:#191715; }
-:root[data-theme="midnight"] .app-shell .dsa-lesson-heading h2 { color:#fff; }
-:root[data-theme="midnight"] .app-shell .dsa-lesson-heading p, :root[data-theme="midnight"] .app-shell .dsa-lesson-picker > span { color:#bdb5ad; }
-:root[data-theme="midnight"] .app-shell .dsa-lesson-picker select { border-color:#40372f; color:#f4f0eb; background:#151413; }
-:root[data-theme="midnight"] .app-shell .dsa-lesson-footnote { border-color:#37312c; color:#bdb5ad; background:#191715; }
-:root[data-theme="midnight"] .app-shell .dsa-course-goal { color:#ff9a58; }
 :root[data-theme="midnight"] .app-shell :is(.nav-more-menu,.article-reader,.la-settings) { border-color:#40372f; color:#f4f0eb; background:#1c1a18; }
 :root[data-theme="midnight"] .app-shell .nav-more-menu button { color:#e6dfd8; background:transparent; }
 :root[data-theme="midnight"] .app-shell .nav-more-menu button:hover { color:#ffb780; background:#302016; }

@@ -128,9 +128,12 @@
 .deva-pattern-language select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
 .deva-pattern-saved{display:flex;align-items:center;gap:5px;margin:0 10px;color:#a99b90;font:9px 'DM Sans',sans-serif}
 .deva-pattern-saved i{width:6px;height:6px;border-radius:50%;background:#75a77c}
-.deva-pattern-editor .deva-source-editor{display:block;width:100%;min-height:430px;resize:vertical;padding:17px 18px;border:0;outline:0;color:#e9e3dc;background:#101010;font:12px/1.8 'DM Mono',Consolas,monospace;tab-size:2;white-space:pre;}
-.deva-pattern-editor .deva-source-editor:focus{box-shadow:inset 0 0 0 1px #6e482f}
-.deva-pattern-editor .deva-source-editor::selection{color:#fff;background:#805336aa}
+.deva-pattern-editor .deva-source-editor{min-height:430px;border:0;background:#101010;}
+.deva-pattern-editor .deva-codemirror .cm-editor{background:#101010;}
+.deva-pattern-editor .deva-codemirror .cm-editor.cm-focused{outline:0;}
+.deva-pattern-editor .deva-codemirror:focus-within{box-shadow:inset 0 0 0 1px #6e482f;}
+.deva-pattern-editor .deva-codemirror .cm-scroller{overflow:auto;}
+.deva-pattern-editor .deva-codemirror .cm-content{min-height:396px;}
 .deva-run-button{border-color:#dd7432;color:#fff;background:#dd7432}
 .deva-run-button:hover:not(:disabled){background:#f0833c}
 .deva-run-button kbd{border-color:#b9622e;color:#fff3e9;background:#bb6334}

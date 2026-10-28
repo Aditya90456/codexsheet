@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Code2, ExternalLink, LayoutDashboard, LoaderCircle, Pause, Play, RotateCcw, Save, Search, Send, Sparkles, TriangleAlert, X } from "lucide-react";
-import DsaVisualLessons from "./DsaVisualLessons";
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
+import { java } from "@codemirror/lang-java";
+import { cpp } from "@codemirror/lang-cpp";
+import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
+import DsaCourseStudio from "./DsaCourseStudio";
 import ShivaTandavPreloader from "./ShivaTandavPreloader";
 import { devaTestCaseCount, devaTestCases } from "./deva-test-cases";
+import { judgeCases, judgedStarter, outputsMatch, parseTestLiteral, splitTestArguments, type JudgeCase } from "./deva-judge";
 import { supabase } from "./lib/supabase";
 
 type Language = "JavaScript" | "Python" | "Java" | "C++";
@@ -11,8 +19,30 @@ type TraceStep = { index: number; value: number; variable: string; arrayName: st
 type FlowStep = { line: number | null; source: string; title: string; detail: string; kind: "call" | "function" | "array" | "loop" | "branch" | "return" | "statement" | "error" };
 type TreeNode = { id: number; value: number; depth: number; x: number; left: number | null; right: number | null };
 type InvokeError = { message: string; context?: Response };
-type SubmissionResult = { passed: number; total: number; details: string[]; error?: string };
+type SubmissionResult = { passed: number; total: number; details: string[]; error?: string; verdict?: string; time?: number; memory?: number };
 const runtimes: Record<Language, string> = { JavaScript: "javascript", Python: "python", Java: "java", "C++": "cpp" };
+const codeMirrorLanguage: Record<Language, () => Extension> = {
+  JavaScript: () => javascript(), Python: () => python(), Java: () => java(), "C++": () => cpp(),
+};
+// oneDark supplies the syntax palette; this layer only restyles the surfaces so
+// the editor keeps the workspace's warm #101010 chrome instead of oneDark's grey.
+const devaEditorTheme = EditorView.theme({
+  "&": { backgroundColor: "#101010", color: "#e9e3dc", fontSize: "12px", height: "100%" },
+  ".cm-scroller": { fontFamily: "'DM Mono', Consolas, monospace", lineHeight: "1.8", overflow: "auto" },
+  ".cm-content": { padding: "17px 0", caretColor: "#f0a36d" },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#f0a36d" },
+  ".cm-gutters": { minWidth: "44px", borderRight: "1px solid #241f1c", backgroundColor: "#101010", color: "#6b5d51" },
+  ".cm-lineNumbers .cm-gutterElement": { padding: "0 11px 0 13px" },
+  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "#ffffff0a", color: "#d8c9bb" },
+  ".cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection": { backgroundColor: "#805336aa" },
+  ".cm-matchingBracket, .cm-nonmatchingBracket": { backgroundColor: "transparent", outline: "none" },
+  ".cm-matchingBracket": { backgroundColor: "#4d3a26" },
+  ".cm-tooltip, .cm-tooltip-autocomplete": { border: "1px solid #493a31", backgroundColor: "#1b1917", color: "#e9e3dc", fontFamily: "'DM Mono', Consolas, monospace", fontSize: "12px" },
+  ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "#95542f", color: "#fff" },
+  ".cm-panels, .cm-panel.cm-search": { backgroundColor: "#1b1917", color: "#d1c2b7", fontSize: "11px" },
+  ".cm-textfield": { border: "1px solid #493a31", backgroundColor: "#101010", color: "#e9e3dc" },
+  ".cm-button": { border: "1px solid #493a31", backgroundColor: "#211e1b", color: "#d1c2b7", backgroundImage: "none" },
+}, { dark: true });
 const starters: Record<Language, string> = {
   JavaScript: `function twoSum(nums, target) {\n  const seen = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const need = target - nums[i];\n    if (seen.has(need)) return [seen.get(need), i];\n    seen.set(nums[i], i);\n  }\n  return [];\n}`,
   Python: `def two_sum(nums, target):\n    seen = {}\n    for i, value in enumerate(nums):\n        need = target - value\n        if need in seen:\n            return [seen[need], i]\n        seen[value] = i\n    return []\nprint(two_sum([2, 7, 11, 15], 9))`,
@@ -57,6 +87,12 @@ function runJavaScriptInBrowser(source: string, stdin: string): Promise<{ status
 }
 
 function starterFor(language: Language, problem: Problem | undefined) {
+  // Compiled languages are judged through stdin/stdout, so their starter has to
+  // read the input; JavaScript is judged by calling the function directly.
+  if (problem && language !== "JavaScript") {
+    const judged = judgedStarter(language, problem.number);
+    if (judged) return judged;
+  }
   if (!problem || problem.number === 1) return starters[language];
   const comment = language === "Python" ? `# ${problem.title}\n` : `// ${problem.title}\n`;
   if (language === "Python") return `${comment}def solution(data):\n    # Write your solution here\n    pass\n`;
@@ -70,36 +106,6 @@ function readProblemNumbers(key: string): number[] {
     const value = JSON.parse(localStorage.getItem(key) ?? "[]");
     return Array.isArray(value) ? value.filter((item): item is number => Number.isInteger(item)) : [];
   } catch { return []; }
-}
-
-function parseTestLiteral(source: string): unknown {
-  // Test fixtures are authored with JS/JSON-compatible literals. The cases
-  // include occasional explanatory placeholders, which we leave un-runnable.
-  return Function(`"use strict"; return (${source});`)();
-}
-
-function splitTestArguments(source: string): string[] {
-  const parts: string[] = [];
-  let start = 0;
-  let depth = 0;
-  let quote = "";
-  let escaped = false;
-  for (let index = 0; index < source.length; index++) {
-    const character = source[index];
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (character === "\\") escaped = true;
-      else if (character === quote) quote = "";
-    } else if (character === "\"" || character === "'") quote = character;
-    else if (character === "[" || character === "{" || character === "(") depth++;
-    else if (character === "]" || character === "}" || character === ")") depth--;
-    else if (character === "," && depth === 0) {
-      parts.push(source.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-  parts.push(source.slice(start).trim());
-  return parts.filter(Boolean);
 }
 
 function submissionCases(problemNumber: number) {
@@ -350,7 +356,13 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
   const sourceFlow = useMemo(() => buildSourceFlow(code), [code]);
   const playbackLength = trace.steps.length || sourceFlow.length;
   const problem = challenges.find((item) => item.number === problemNumber) ?? challenges[0];
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const runCodeRef = useRef<() => Promise<void>>(runCode);
+  runCodeRef.current = runCode;
+  const editorExtensions = useMemo<Extension[]>(() => [
+    codeMirrorLanguage[language](),
+    keymap.of([{ key: "Mod-Enter", run: () => { void runCodeRef.current(); return true; } }]),
+    devaEditorTheme,
+  ], [language]);
 
   async function runCode() {
     setSubmission(null);
@@ -440,11 +452,65 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
     } catch { setSaveMessage("Could not save"); }
   }
 
+  async function submitCompiledLanguage(cases: JudgeCase[]): Promise<SubmissionResult> {
+    const details: string[] = [];
+    let passed = 0;
+    let error: string | undefined;
+    let verdict: string | undefined;
+    let slowest = 0;
+    let peakMemory = 0;
+    for (let index = 0; index < cases.length; index++) {
+      const testCase = cases[index];
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: runtimes[language], source_code: code, stdin: testCase.stdin }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const result = await response.json() as { status?: string; stdout?: string; stderr?: string; compile_output?: string; time?: string | null; memory?: number | null; error?: string };
+      if (!response.ok) { error = result.error ?? "The compiler service could not check this submission."; break; }
+      if (result.compile_output?.trim()) {
+        verdict = "Compile Error";
+        error = result.compile_output.trim().split("\n").slice(0, 8).join("\n");
+        break;
+      }
+      const status = result.status ?? "";
+      if (/time limit|timeout/i.test(status)) { verdict = "Time Limit Exceeded"; error = `Case ${index + 1} ran past the time limit.`; break; }
+      if (/runtime error|signal|internal error/i.test(status)) {
+        verdict = "Runtime Error";
+        error = (result.stderr || result.stdout || status).trim().split("\n").slice(0, 8).join("\n");
+        break;
+      }
+      slowest = Math.max(slowest, Number(result.time) || 0);
+      peakMemory = Math.max(peakMemory, Number(result.memory) || 0);
+      const actual = (result.stdout ?? "").trim();
+      if (outputsMatch(actual, testCase.expected)) { passed += 1; continue; }
+      verdict = verdict ?? "Wrong Answer";
+      if (details.length < 3) details.push(`Case ${index + 1}\ninput:\n${testCase.stdin.trim()}\nexpected: ${testCase.expected}\ngot: ${actual || "(no output)"}`);
+    }
+    return { passed, total: cases.length, details, error, verdict, time: slowest || undefined, memory: peakMemory || undefined };
+  }
+
   async function submitSolution() {
     markAttempted();
     setSubmission(null);
     if (language !== "JavaScript") {
-      await runCode();
+      const cases = judgeCases(problemNumber);
+      if (!cases?.length) {
+        setSubmission({ passed: 0, total: 0, details: [], error: "This problem’s examples use an input shape the line-based judge cannot express yet, such as a nested list or a string containing spaces. Use Run to execute your code." });
+        return;
+      }
+      setRunningCode(true);
+      setRunOutput(null);
+      try {
+        const result = await submitCompiledLanguage(cases);
+        setSubmission(result);
+        if (result.total > 0 && result.passed === result.total && !result.error && !solvedProblems.includes(problemNumber)) toggleSolved();
+      } catch (submitError) {
+        setSubmission({ passed: 0, total: cases.length, details: [], error: submitError instanceof Error ? submitError.message : "The submission could not be checked." });
+      } finally {
+        setRunningCode(false);
+      }
       return;
     }
     const solution = solutionFunction(code);
@@ -518,40 +584,6 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
     setCode(value); setStep(0); setPlaying(true); setRunOutput(null);
     try { localStorage.setItem(`codexsheet-live-code:${userId ?? "local"}:${problemNumber}:${language}`, value); } catch { /* browser storage is optional */ }
   }
-  function handleEditorKeyDown(event: { currentTarget: HTMLTextAreaElement; key: string; ctrlKey: boolean; metaKey: boolean; preventDefault: () => void }) {
-    const editor = event.currentTarget;
-    if (event.ctrlKey || event.metaKey) {
-      if (event.key === "Enter") { event.preventDefault(); void runCode(); return; }
-    }
-    const start = editor.selectionStart;
-    const end = editor.selectionEnd;
-    const insert = (text: string, cursorOffset = text.length) => {
-      event.preventDefault();
-      const updated = `${code.slice(0, start)}${text}${code.slice(end)}`;
-      editCode(updated);
-      requestAnimationFrame(() => { editor.focus(); editor.setSelectionRange(start + cursorOffset, start + cursorOffset); });
-    };
-    if (event.key === "Tab") { insert("  "); return; }
-    if (event.key === "Enter") {
-      const beforeCursor = code.slice(0, start);
-      const currentLine = beforeCursor.slice(beforeCursor.lastIndexOf("\n") + 1);
-      const indent = currentLine.match(/^\s*/)?.[0] ?? "";
-      const extraIndent = /[({\[]\s*$/.test(beforeCursor) ? "  " : "";
-      insert(`\n${indent}${extraIndent}`); return;
-    }
-    const pairs: Record<string, string> = { "(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'" };
-    if (pairs[event.key] && start === end) {
-      insert(`${event.key}${pairs[event.key]}`, 1); return;
-    }
-    if ([")", "]", "}"].includes(event.key) && code[start] === event.key) {
-      event.preventDefault(); editor.setSelectionRange(start + 1, start + 1);
-    }
-  }
-  function syncCursor(editor: HTMLTextAreaElement) {
-    const beforeCursor = editor.value.slice(0, editor.selectionStart);
-    const lines = beforeCursor.split("\n");
-    setCursor({ line: lines.length, column: lines[lines.length - 1].length + 1 });
-  }
   const bstNodes = useMemo(() => buildBst(trace.values), [trace.values]);
   const treeHeight = Math.max(1, ...bstNodes.map((node) => node.depth + 1));
   const currentProblemIndex = Math.max(0, challenges.findIndex((item) => item.number === problem?.number));
@@ -565,19 +597,33 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
     <div className="deva-commandbar"><button type="button" className={libraryOpen ? "active" : ""} onClick={() => { setLibraryOpen((open) => !open); setPage("workspace"); }}><BookOpen size={15}/> Problem library</button><button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => { setPage("dashboard"); setLibraryOpen(false); }}><LayoutDashboard size={15}/> Dashboard <span>{solvedProblems.length}/{challenges.length}</span></button><div className="deva-command-spacer"/><span>{attemptedProblems.length} attempted</span></div>
     {libraryOpen && <section className="deva-library" aria-label="Problem library"><header><div><strong>Problem library</strong><small>{challenges.length} DSA problems</small></div><button type="button" onClick={() => setLibraryOpen(false)} aria-label="Close problem library">×</button></header><label><Search size={14}/><input value={librarySearch} onChange={(event) => setLibrarySearch(event.target.value)} placeholder="Search problems or patterns"/></label><div className="deva-library-list">{challenges.filter((item) => `${item.title} ${item.pattern} ${item.difficulty}`.toLowerCase().includes(librarySearch.toLowerCase())).map((item) => <button type="button" key={item.number} className={item.number === problemNumber ? "active" : ""} onClick={() => { setProblemNumber(item.number); setLibraryOpen(false); setPage("workspace"); }}><span>{solvedProblems.includes(item.number) ? <Check size={13}/> : String(item.number).padStart(2, "0")}</span><span><strong>{item.title}</strong><small>{item.pattern}</small></span><i className={`difficulty ${(item.difficulty ?? "Easy").toLowerCase()}`}>{item.difficulty}</i></button>)}</div></section>}
     <nav className="dsa-live-tabs"><button className={page === "workspace" && tab === "code" ? "active" : ""} onClick={() => { setPage("workspace"); setTab("code"); }}><Code2 size={14}/> Code editor</button><button className={page === "workspace" && tab === "lessons" ? "active" : ""} onClick={() => { setPage("workspace"); setTab("lessons"); }}><Sparkles size={14}/> Guided visual lessons</button></nav>
-    {page === "dashboard" ? <section className="deva-dashboard"><header><span>YOUR PRACTICE</span><h2>DSA dashboard</h2><p>{userId ? "Progress and saved solutions sync to your account." : "Progress and saved solutions stay in this browser until you sign in."}</p></header><div className="deva-dashboard-stats"><article><small>SOLVED</small><strong>{solvedProblems.length}<i> / {challenges.length}</i></strong><span>Problems marked solved</span></article><article><small>ATTEMPTED</small><strong>{attemptedProblems.length}<i> / {challenges.length}</i></strong><span>Problems you have submitted</span></article><article><small>REMAINING</small><strong>{Math.max(0, challenges.length - solvedProblems.length)}</strong><span>Problems left to practice</span></article></div><div className="deva-dashboard-progress"><div><strong>Completion</strong><span>{challenges.length ? Math.round((solvedProblems.length / challenges.length) * 100) : 0}%</span></div><div><i style={{ width: `${challenges.length ? (solvedProblems.length / challenges.length) * 100 : 0}%` }}/></div></div><div className="deva-dashboard-list"><header><strong>Continue practicing</strong><button type="button" onClick={() => { setPage("workspace"); setLibraryOpen(true); }}>Browse all problems <ArrowRight size={14}/></button></header>{challenges.filter((item) => !solvedProblems.includes(item.number)).slice(0, 8).map((item) => <button type="button" key={item.number} onClick={() => { setProblemNumber(item.number); setPage("workspace"); }}><span>{String(item.number).padStart(3, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small><i className={`difficulty ${(item.difficulty ?? "Easy").toLowerCase()}`}>{item.difficulty}</i><ArrowRight size={14}/></button>)}</div></section> : tab === "lessons" ? <DsaVisualLessons/> : <div className="deva-split-layout">
+    {page === "dashboard" ? <section className="deva-dashboard"><header><span>YOUR PRACTICE</span><h2>DSA dashboard</h2><p>{userId ? "Progress and saved solutions sync to your account." : "Progress and saved solutions stay in this browser until you sign in."}</p></header><div className="deva-dashboard-stats"><article><small>SOLVED</small><strong>{solvedProblems.length}<i> / {challenges.length}</i></strong><span>Problems marked solved</span></article><article><small>ATTEMPTED</small><strong>{attemptedProblems.length}<i> / {challenges.length}</i></strong><span>Problems you have submitted</span></article><article><small>REMAINING</small><strong>{Math.max(0, challenges.length - solvedProblems.length)}</strong><span>Problems left to practice</span></article></div><div className="deva-dashboard-progress"><div><strong>Completion</strong><span>{challenges.length ? Math.round((solvedProblems.length / challenges.length) * 100) : 0}%</span></div><div><i style={{ width: `${challenges.length ? (solvedProblems.length / challenges.length) * 100 : 0}%` }}/></div></div><div className="deva-dashboard-list"><header><strong>Continue practicing</strong><button type="button" onClick={() => { setPage("workspace"); setLibraryOpen(true); }}>Browse all problems <ArrowRight size={14}/></button></header>{challenges.filter((item) => !solvedProblems.includes(item.number)).slice(0, 8).map((item) => <button type="button" key={item.number} onClick={() => { setProblemNumber(item.number); setPage("workspace"); }}><span>{String(item.number).padStart(3, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small><i className={`difficulty ${(item.difficulty ?? "Easy").toLowerCase()}`}>{item.difficulty}</i><ArrowRight size={14}/></button>)}</div></section> : tab === "lessons" ? <DsaCourseStudio/> : <div className="deva-split-layout">
       <section className="deva-challenge" aria-labelledby="deva-challenge-title"><div className="deva-challenge-main"><div className="deva-challenge-meta"><span>PROBLEM {String(problem?.number ?? 1).padStart(3, "0")}</span><span className={`difficulty ${(problem?.difficulty ?? "Easy").toLowerCase()}`}>{problem?.difficulty}</span><span>{problem?.pattern}</span></div><h2 id="deva-challenge-title">{problem?.title ?? "Choose a problem"}</h2>{twoSum ? <><p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return the indices of the two numbers that add up to <code>target</code>.</p><p>You may assume each input has exactly one solution, and you may not use the same element twice.</p></> : <><p>Work through this {problem?.pattern?.toLowerCase() ?? "DSA"} challenge. Read the original statement and examples before coding, then use the editor to build and run your solution.</p><div className="deva-challenge-note"><Sparkles size={15}/><span>Think about the input shape, the invariant your approach maintains, and the time and space cost.</span></div></>}
         <div className="deva-lc-examples"><header><strong>Test cases</strong><span>{devaTestCaseCount} total · 5 for this problem</span></header><p>{devaTestCases[problem?.number ?? 1]?.prompt}</p>{(devaTestCases[problem?.number ?? 1]?.examples ?? []).map((example, index) => <article key={`${problem?.number}-${index}`}><strong>Example {index + 1}</strong><pre><b>Input:</b> {example.input}{"\n"}<b>Output:</b> {example.output}</pre></article>)}</div>
       </div><div className="deva-challenge-side"><span>YOUR WORKFLOW</span><ol><li>Understand the input and expected output</li><li>Choose a pattern and state its invariant</li><li>Run your code, then inspect the trace</li></ol>{problem?.link && <a href={problem.link} target="_blank" rel="noreferrer">Full problem on LeetCode <ExternalLink size={14}/></a>}</div></section>
       <div className="deva-workspace-pane"><div className="deva-problem-toolbar"><span><i className={`difficulty ${(problem?.difficulty ?? "Easy").toLowerCase()}`}/>{problem?.difficulty} <b>·</b> {problem?.pattern}</span><button type="button" className={solvedProblems.includes(problemNumber) ? "solved" : ""} onClick={toggleSolved}>{solvedProblems.includes(problemNumber) ? <Check size={14}/> : <Check size={14}/>} {solvedProblems.includes(problemNumber) ? "Solved" : "Mark solved"}</button></div><section className="dsa-live-workspace">
       <div className="dsa-live-editor">
-        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}</strong><label className="deva-pattern-language"><span>{language === "JavaScript" ? "JS" : language}</span><select aria-label="Programming language" value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => setAiOpen((open) => !open)}><Sparkles size={12}/> AI help</button><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div>{aiOpen && <section className="deva-ai-panel" aria-label="Gemini editor help"><header><div><strong><Sparkles size={14}/> Ask Gemini 3.6 Flash</strong><small>Get a hint, explain your approach, or debug the current code.</small></div><button type="button" aria-label="Close AI help" onClick={() => setAiOpen(false)}><X size={15}/></button></header>{aiReply && <p className="deva-ai-reply">{aiReply}</p>}{aiError && <p className="deva-ai-error" role="alert">{aiError}</p>}<form onSubmit={(event) => { event.preventDefault(); void askDevaAi(aiQuestion); }}><input value={aiQuestion} onChange={(event) => setAiQuestion(event.target.value)} placeholder="e.g. Give me a hint for this problem" maxLength={300} disabled={aiBusy}/><button type="submit" disabled={aiBusy || !aiQuestion.trim()}>{aiBusy ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} {aiBusy ? "Thinking…" : "Ask"}</button></form></section>}<textarea className="deva-source-editor" ref={editorRef} aria-label="Type your solution code" spellCheck={false} autoCapitalize="off" autoComplete="off" autoCorrect="off" value={code} onChange={(event) => { editCode(event.target.value); syncCursor(event as unknown as HTMLTextAreaElement); }} onKeyDown={handleEditorKeyDown} onKeyUp={(event) => syncCursor(event.currentTarget)} onClick={(event) => syncCursor(event.currentTarget)} onSelect={(event) => syncCursor(event.currentTarget)} /></div>
+        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}</strong><label className="deva-pattern-language"><span>{language === "JavaScript" ? "JS" : language}</span><select aria-label="Programming language" value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => setAiOpen((open) => !open)}><Sparkles size={12}/> AI help</button><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div>{aiOpen && <section className="deva-ai-panel" aria-label="Gemini editor help"><header><div><strong><Sparkles size={14}/> Ask Gemini 3.6 Flash</strong><small>Get a hint, explain your approach, or debug the current code.</small></div><button type="button" aria-label="Close AI help" onClick={() => setAiOpen(false)}><X size={15}/></button></header>{aiReply && <p className="deva-ai-reply">{aiReply}</p>}{aiError && <p className="deva-ai-error" role="alert">{aiError}</p>}<form onSubmit={(event) => { event.preventDefault(); void askDevaAi(aiQuestion); }}><input value={aiQuestion} onChange={(event) => setAiQuestion(event.target.value)} placeholder="e.g. Give me a hint for this problem" maxLength={300} disabled={aiBusy}/><button type="submit" disabled={aiBusy || !aiQuestion.trim()}>{aiBusy ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} {aiBusy ? "Thinking…" : "Ask"}</button></form></section>}<CodeMirror
+          className="deva-source-editor deva-codemirror"
+          value={code}
+          theme="dark"
+          extensions={editorExtensions}
+          placeholder="Write your solution"
+          basicSetup={{ tabSize: 2, lineNumbers: true, foldGutter: true, autocompletion: true, bracketMatching: true, closeBrackets: true, highlightActiveLine: true, highlightSelectionMatches: true, searchKeymap: true, history: true }}
+          onChange={(value: string) => editCode(value)}
+          onUpdate={(update: ViewUpdate) => {
+            if (!update.selectionSet && !update.docChanged) return;
+            const head = update.state.selection.main.head;
+            const line = update.state.doc.lineAt(head);
+            setCursor({ line: line.number, column: head - line.from + 1 });
+          }}
+        /></div>
         <div className="dsa-live-editor-status"><span><i/> {trace.message ? "TRACE READY · ADD A LOOP" : "READY"}</span><span>Ln {cursor.line}, Col {cursor.column}</span><span>{language}</span><span>UTF-8</span><span>Ctrl/⌘ Enter · Run</span></div>
         <section className="deva-run-panel" aria-label="Run code">
           <div className="deva-run-input"><label htmlFor="deva-stdin">STANDARD INPUT</label><textarea id="deva-stdin" value={stdin} onChange={(event) => setStdin(event.target.value)} placeholder="Optional input for your program" rows={2}/></div>
           <button className="deva-run-button" type="button" onClick={runCode} disabled={runningCode || !code.trim()}>{runningCode ? <LoaderCircle className="deva-spinner" size={14}/> : <Play size={14}/>} {runningCode ? "Running…" : "Run"}<kbd>Ctrl ↵</kbd></button><button className="deva-submit-button" type="button" onClick={submitSolution} disabled={runningCode || !code.trim()}>{runningCode ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} Submit</button>
           {submission && <div className={`deva-run-output${submission.error || submission.passed < submission.total ? " has-error" : ""}`} aria-live="polite">
-            <div className="deva-run-output-head"><strong>{submission.error ? (submission.total > 0 ? "Runtime Error" : "Submission error") : submission.passed === submission.total ? "Accepted" : "Wrong Answer"}</strong><small>{submission.passed} / {submission.total} tests passed</small></div>
+            <div className="deva-run-output-head"><strong>{submission.verdict ?? (submission.error ? (submission.total > 0 ? "Runtime Error" : "Submission error") : submission.passed === submission.total ? "Accepted" : "Wrong Answer")}</strong><small>{submission.passed} / {submission.total} tests passed{submission.time ? ` · ${submission.time.toFixed(3)}s` : ""}{submission.memory ? ` · ${Math.round(submission.memory / 1024)} MB` : ""}</small></div>
             {submission.error && <pre>{submission.error}</pre>}
             {submission.details.map((detail, index) => <pre key={`${index}-${detail}`}>{detail}</pre>)}
           </div>}

@@ -60,11 +60,14 @@ import {
   MousePointer2,
   Trash2,
   Sparkles,
+  GraduationCap,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import DsaIde from "./DsaIde";
-import DsaVisualLessons from "./DsaVisualLessons";
+import DsaCourseStudio from "./DsaCourseStudio";
+import RoadmapBoard from "./RoadmapBoard";
+import MentorshipPayments from "./MentorshipPayments";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaTutor from "./DsaTutor";
@@ -98,7 +101,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship";
 type WorkspaceTheme = "light" | "midnight" | "forest";
 
 const viewPaths: Record<WorkspaceView, string> = {
@@ -118,6 +121,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   calls: "/calls",
   articles: "/articles",
   jobs: "/jobs",
+  mentorship: "/mentorship",
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -320,15 +324,39 @@ function HomePage({
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
           <p>Explore 1:1 guidance, practical resources, and project focused AI sessions.</p>
         </div>
+        <div className="home-offer-grid" aria-label="Featured DSA offers">
+          <article className="home-offer-card home-offer-editor">
+            <div className="home-offer-top"><span className="home-offer-icon">⌘</span><span className="home-offer-price">₹10</span></div>
+            <span className="home-offer-label">PRACTICE WITH AI</span>
+            <h3>Deva Editor access</h3>
+            <p>Practice DSA patterns and get AI help when you’re stuck, all in one coding workspace.</p>
+            <a href="https://topmate.io/aditya_bakshi/2377386" target="_blank" rel="noreferrer">Get Deva Editor <ArrowRight size={15}/></a>
+          </article>
+          <article className="home-offer-card home-offer-questions">
+            <div className="home-offer-top"><span className="home-offer-icon">250</span><span className="home-offer-price">₹99</span></div>
+            <span className="home-offer-label">PATTERN-WISE PRACTICE</span>
+            <h3>250 curated DSA questions</h3>
+            <p>A structured question set grouped by DSA pattern to help you practice with direction.</p>
+            <a href="https://topmate.io/aditya_bakshi/2328429" target="_blank" rel="noreferrer">Get the question pack <ArrowRight size={15}/></a>
+          </article>
+          <article className="home-offer-card home-offer-mentorship">
+            <div className="home-offer-top"><span className="home-offer-icon">1:1</span><span className="home-offer-price">₹19</span></div>
+            <span className="home-offer-label">LEARN WITH ADITYA</span>
+            <h3>1:1 mentorship &amp; long-term mentoring</h3>
+            <p>One 1:1 call for ₹19, or weekly sessions with DMs anytime — ₹100 for 3 months, ₹499 for 6 months. Pay on Paytm.</p>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>See mentorship plans <ArrowRight size={15}/></a>
+          </article>
+        </div>
         <div className="home-services-grid">
           {[
             { title: "Codex Sheet — 250 DSA Patterns Roadmap", type: "Digital product", price: "Free", icon: "📋", href: "https://topmate.io/aditya_bakshi/2296977" },
-            { title: "Online Guest Speaker", type: "Video meeting · 30 min", price: "Free", icon: "🎤", href: "https://topmate.io/aditya_bakshi/2277582/pay" },
+            { title: "Codex Sheet pattern wise DSA sheet", type: "Digital product", price: "₹99", icon: "🧩", href: "https://topmate.io/aditya_bakshi/2328429" },
+            { title: "Online Guest Speaker", type: "Video meeting · 30 min", price: "Free", icon: "🎤", href: "https://topmate.io/aditya_bakshi/2277582" },
             { title: "Vibe Coding + AI 1:1", type: "Project focused session", price: "Free", icon: "⚡", href: "https://topmate.io/aditya_bakshi/2253290" },
             { title: "DSA Pattern-Wise Roadmap", type: "Digital product", price: "Free", icon: "🗺️", href: "https://topmate.io/aditya_bakshi/2266884" },
-            { title: "Personalized DSA Roadmap", type: "Priority DM · 7 day reply", price: "Free", icon: "🧭", href: "https://topmate.io/aditya_bakshi/2098102/pay" },
+            { title: "Personalized DSA Roadmap", type: "Priority DM · 7 day reply", price: "Free", icon: "🧭", href: "https://topmate.io/aditya_bakshi/2098102" },
             { title: "Beginner to Intermediate DSA in C++", type: "Video meeting · 60 min", price: "₹5", icon: "⌘", href: "https://topmate.io/aditya_bakshi/1197418" },
-            { title: "DSA Questions", type: "Priority DM · 2 day reply", price: "₹25", icon: "💬", href: "https://topmate.io/aditya_bakshi/1763657/pay" },
+            { title: "DSA Questions", type: "Priority DM · 2 day reply", price: "₹25", icon: "💬", href: "https://topmate.io/aditya_bakshi/1763657" },
             { title: "150 Curated DSA Problems + AI", type: "Digital product", price: "₹99", icon: "📚", href: "https://topmate.io/aditya_bakshi/1930767" },
             { title: "Interview Prep & Tips", type: "Video meeting · 60 min", price: "₹150", icon: "🎯", href: "https://topmate.io/aditya_bakshi/1076702" },
             { title: "DSA + AI Career Accelerator", type: "Package · 21 products", price: "₹20", icon: "🚀", href: "https://topmate.io/aditya_bakshi/2283100" },
@@ -336,8 +364,8 @@ function HomePage({
             { title: "AI DSA Mentor — Your AI Voice Mentor", type: "Digital product", price: "Free", icon: "🤖", href: "https://topmate.io/aditya_bakshi/2264403" },
             { title: "Web Development + DSA Roadmap", type: "Digital product", price: "₹5", icon: "🛠️", href: "https://topmate.io/aditya_bakshi/2268701" },
             { title: "AI Package", type: "Package · 11 products", price: "Free", icon: "✨", href: "https://topmate.io/aditya_bakshi/2258400" },
-            { title: "Ask for Anything", type: "Priority DM · 2 day reply", price: "₹20", icon: "✳️", href: "https://topmate.io/aditya_bakshi/900194/pay" },
-            { title: "Web Development: Beginner to Advanced", type: "Priority DM · 3 day reply", price: "₹19–₹50", icon: "🌐", href: "https://topmate.io/aditya_bakshi/2106317/pay" },
+            { title: "Ask for Anything", type: "Priority DM · 2 day reply", price: "₹20", icon: "✳️", href: "https://topmate.io/aditya_bakshi/900194" },
+            { title: "Web Development: Beginner to Advanced", type: "Priority DM · 3 day reply", price: "₹19–₹50", icon: "🌐", href: "https://topmate.io/aditya_bakshi/2106317" },
             { title: "Data Structures & Algorithms Roadmap", type: "Video meeting · 60 min", price: "₹108", icon: "📈", href: "https://topmate.io/aditya_bakshi/1056724" },
           ].map((service, index) => <a className="home-service-card" href={service.href} target="_blank" rel="noreferrer" key={service.title}>
             <span className="home-service-top"><span className="home-service-icon" aria-hidden="true">{service.icon}</span><span className="home-service-index">{String(index + 1).padStart(2, "0")}</span></span>
@@ -1971,8 +1999,15 @@ function App() {
     return <main className="auth-gate"><div className="auth-gate-card auth-gate-loading"><img className="auth-gate-logo" src={workspaceTheme === "midnight" ? "/codexsheet-primary-reversed.svg" : "/codexsheet-primary.svg"} alt="CodexSheet" /><span>CODEXSHEET · DSA WORKSPACE</span><h1>Preparing your workspace…</h1></div></main>;
   }
 
-  if (!isSignedIn) {
+  // Students pay from a shared link, so the mentorship page stays public.
+  const publicMentorship = !isSignedIn && activeView === "mentorship";
+
+  if (!isSignedIn && !publicMentorship) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src={workspaceTheme === "midnight" ? "/codexsheet-primary-reversed.svg" : "/codexsheet-primary.svg"} alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div></main>;
+  }
+
+  if (publicMentorship) {
+    return <main className="mentorship-public"><MentorshipPayments /></main>;
   }
 
   return (
@@ -2001,7 +2036,7 @@ function App() {
             <Sparkles size={16} /> Ask Tutor
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "dashboard" || activeView === "companies" || activeView === "dsa-ide" || activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={activeView === "dashboard" || activeView === "companies" || activeView === "dsa-ide" || activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" || activeView === "mentorship" ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
               <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}><LayoutDashboard size={16} /> Progress</button>
               <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Companies</button>
@@ -2015,6 +2050,7 @@ function App() {
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
               <button className={activeView === "jobs" ? "active" : ""} aria-pressed={activeView === "jobs"} onClick={() => navigateToView("jobs")}><BriefcaseBusiness size={16} /> Job search</button>
+              <button className={activeView === "mentorship" ? "active" : ""} aria-pressed={activeView === "mentorship"} onClick={() => navigateToView("mentorship")}><GraduationCap size={16} /> 1:1 mentorship</button>
             </div>
           </details>
         </nav>
@@ -2078,6 +2114,7 @@ function App() {
                           ? "Personal notes"
                           : activeView === "calls"
                             ? "Video calls"
+                  : activeView === "mentorship" ? "Mentorship"
                   : activeView === "articles" ? "Articles" : "Job search"}
               </span>
             </div>
@@ -2154,11 +2191,12 @@ function App() {
       />}
       {activeView === "articles" && <ArticlesPage />}
       {activeView === "jobs" && <JobsPage />}
+      {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
       {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
-      {activeView === "dsa-course" && <DsaVisualLessons />}
+      {activeView === "dsa-course" && <DsaCourseStudio />}
       {activeView === "tutor" && <DsaTutor />}
       {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && (
@@ -2417,68 +2455,12 @@ function App() {
               <p>All 250 problems are marked solved.</p>
             </div>
           ) : (
-            <div className="roadmap-weeks">
-              {roadmapWeeks.map((week) => (
-                <article className="roadmap-week" key={week.number}>
-                  <header>
-                    <div>
-                      <span className="roadmap-week-label">WEEK {String(week.number).padStart(2, "0")}</span>
-                      <h3>
-                        {week.problems.some((problem) => progress[problem.number]?.status === "In progress")
-                          ? "Continue and build momentum"
-                          : roadmapPreferences.focusPattern === "Build weak areas"
-                            ? "Strengthen your foundations"
-                            : roadmapPreferences.focusPattern === "All patterns"
-                              ? "Keep a balanced pace"
-                              : `Focus on ${roadmapPreferences.focusPattern}`}
-                      </h3>
-                    </div>
-                    <span className="roadmap-week-count">{week.problems.length} problems</span>
-                  </header>
-                  <div className="roadmap-task-list">
-                    {week.problems.map((problem) => {
-                      const current = progress[problem.number]?.status ?? "Todo";
-                      const problemPatternStats = patternStats.find((item) => item.name === problem.pattern);
-                      const reason = current === "In progress"
-                        ? "Continue where you left off"
-                        : roadmapPreferences.focusPattern !== "All patterns" && roadmapPreferences.focusPattern !== "Build weak areas"
-                          ? `Matches your ${problem.pattern} focus`
-                          : problem.pattern === weakestPattern?.name
-                            ? "Targets your least-practiced pattern"
-                            : `${problemPatternStats?.completed ?? 0}/${problemPatternStats?.total ?? 0} in this pattern solved`;
-                      return (
-                        <div className="roadmap-task" key={problem.number}>
-                          <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
-                          <div className="roadmap-task-info">
-                            <a
-                              className="roadmap-problem-link"
-                              href={problem.link}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <strong>{problem.title}</strong>
-                              <ExternalLink size={12} />
-                            </a>
-                            <span>{problem.pattern} · {problem.difficulty}</span>
-                            <span className="roadmap-reason">{reason}</span>
-                          </div>
-                          <select
-                            className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
-                            aria-label={`Status for ${problem.title}`}
-                            value={current}
-                            onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
-                          >
-                            <option>Todo</option>
-                            <option>In progress</option>
-                            <option>Solved</option>
-                          </select>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </article>
-              ))}
-            </div>
+            <RoadmapBoard
+              weeks={roadmapWeeks}
+              patternStats={patternStats}
+              statusOf={(problemNumber) => progress[problemNumber]?.status ?? "Todo"}
+              onStatus={setProblemStatus}
+            />
           )}
         </section>
       )}

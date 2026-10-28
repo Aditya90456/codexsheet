@@ -5,6 +5,9 @@ import App from "./App";
 import "./styles.css";
 import "./redesign.css";
 import "./deva-runner.css";
+import "./deva-course.css";
+import "./roadmap-board.css";
+import "./mentorship.css";
 
 // Keep the local assistant isolated from the signed-in workspace.
 if (window.location.pathname === "/assistant") {

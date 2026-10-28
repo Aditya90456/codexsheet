@@ -115,6 +115,132 @@ def validate_request(data: object) -> tuple[dict | None, str | None]:
     return {"code": code, "fn": fn, "cases": cases, "unordered": bool(data.get("unordered"))}, None
 
 
+# Judge0's public CE instance rejects requests carrying the default urllib agent.
+RUNNER_USER_AGENT = "CodexSheetDevRunner/1.0 (+https://codexsheet.in)"
+PISTON_LANGUAGES = {"javascript": "javascript", "python": "python", "java": "java", "cpp": "c++"}
+PISTON_FILES = {"javascript": "main.js", "python": "main.py", "java": "Main.java", "cpp": "main.cpp"}
+PISTON_OK_STATUS = {"Finished", "Completed", "Running", ""}
+piston_version_cache: dict[str, str] = {}
+
+
+def piston_version(base_url: str, headers: dict, piston_language: str) -> str | None:
+    """Piston requires an exact runtime version, so ask the instance what it offers."""
+    if piston_language in piston_version_cache:
+        return piston_version_cache[piston_language]
+    try:
+        req = Request(f"{base_url}/runtimes", headers=headers, method="GET")
+        with urlopen(req, timeout=10) as response:
+            runtimes = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        app.logger.warning("Piston could not list runtimes: %s", exc)
+        return None
+    if not isinstance(runtimes, list):
+        return None
+    versions = []
+    for entry in runtimes:
+        if not isinstance(entry, dict) or not entry.get("version"):
+            continue
+        names = {str(entry.get("language", "")).lower()}
+        names.update(str(alias).lower() for alias in entry.get("aliases") or [])
+        if piston_language in names:
+            versions.append(str(entry["version"]))
+    if not versions:
+        return None
+    newest = max(versions, key=lambda version: [int(part) if part.isdigit() else 0 for part in version.split(".")])
+    piston_version_cache[piston_language] = newest
+    return newest
+
+
+def stage_text(stage: dict, *keys: str) -> str:
+    for key in keys:
+        value = stage.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    return ""
+
+
+def execute_on_piston(piston_url: str, language: str, source: str, stdin: str):
+    base_url = piston_url.rstrip("/")
+    headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": RUNNER_USER_AGENT}
+    api_key = os.environ.get("PISTON_API_KEY", "").strip()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    piston_language = PISTON_LANGUAGES[language]
+    version = piston_version(base_url, headers, piston_language)
+    if not version:
+        return jsonify({"error": f"The Piston instance at {base_url} does not report a {language} runtime."}), 503
+
+    payload = {
+        "language": piston_language,
+        "version": version,
+        "files": [{"name": PISTON_FILES[language], "content": source}],
+        "stdin": stdin,
+        "compile_timeout": 10_000,
+        "run_timeout": 5_000,
+    }
+    try:
+        req = Request(f"{base_url}/execute", data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+        with urlopen(req, timeout=25) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        try:
+            detail = exc.read().decode("utf-8", "ignore")[:400]
+        except OSError:
+            detail = ""
+        app.logger.warning("Piston rejected the run with HTTP %s: %s", exc.code, detail)
+        return jsonify({"error": f"Piston returned HTTP {exc.code}. {detail}".strip()}), 502
+    except (URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        app.logger.warning("Piston code execution failed: %s", exc)
+        return jsonify({"error": "Could not reach the Piston instance. Check PISTON_API_URL in the Flask environment."}), 502
+    if not isinstance(result, dict):
+        return jsonify({"error": "The Piston instance returned an invalid response."}), 502
+
+    compile_stage = result.get("compile") if isinstance(result.get("compile"), dict) else None
+    if compile_stage and (compile_stage.get("code") not in (0, None) or compile_stage.get("signal")):
+        return jsonify({
+            "status": "Compile Error",
+            "stdout": "",
+            "stderr": "",
+            "compile_output": stage_text(compile_stage, "stderr", "message"),
+            "time": None,
+            "memory": None,
+        })
+
+    run_stage = result.get("run") if isinstance(result.get("run"), dict) else None
+    if not run_stage:
+        return jsonify({
+            "status": "Execution Error",
+            "stdout": "",
+            "stderr": stage_text(result, "message") or "The Piston instance returned no run result.",
+            "compile_output": "",
+            "time": None,
+            "memory": None,
+        })
+
+    exit_code = run_stage.get("code")
+    signal = run_stage.get("signal")
+    run_status = str(run_stage.get("status") or "")
+    stdout = str(run_stage.get("stdout") or "")
+    stderr = str(run_stage.get("stderr") or "")
+    if run_status == "Time Limit Exceeded" or signal == "SIGXCPU" or exit_code == 124:
+        status = "Time Limit Exceeded"
+        stderr = stderr or "Execution timed out. Check for an infinite loop."
+    elif (run_status not in PISTON_OK_STATUS) or (exit_code not in (0, None)) or signal:
+        status = "Runtime Error"
+        reason = f" (signal {signal})" if signal else f" (exit code {exit_code})"
+        stderr = stderr or f"Runtime error{reason}."
+    else:
+        status = "Finished"
+    return jsonify({
+        "status": status,
+        "stdout": stdout,
+        "stderr": stderr,
+        "compile_output": "",
+        "time": None,
+        "memory": None,
+    })
+
+
 @app.post("/api/execute")
 def execute():
     origin = request.headers.get("Origin")
@@ -134,13 +260,6 @@ def execute():
         if not isinstance(stdin, str) or len(stdin) > 16_000:
             return jsonify({"error": "Standard input must be under 16,000 characters."}), 400
 
-        configured_judge_url = os.environ.get("JUDGE0_API_URL", "").strip()
-        judge_url = (configured_judge_url or ("" if os.environ.get("VERCEL") else "http://127.0.0.1:2358")).rstrip("/")
-        if not judge_url:
-            return jsonify({"error": "The compiler is not configured. Set JUDGE0_API_URL in the Flask environment."}), 503
-        parsed_judge_url = urlsplit(judge_url)
-        if parsed_judge_url.scheme != "https" and not (parsed_judge_url.scheme == "http" and parsed_judge_url.hostname in {"localhost", "127.0.0.1"}):
-            return jsonify({"error": "JUDGE0_API_URL must use HTTPS, or localhost for local development."}), 503
         now = time.monotonic()
         client_ip = request.remote_addr or "local"
         recent = request_times[client_ip]
@@ -150,8 +269,20 @@ def execute():
             return jsonify({"error": "Too many runs. Wait a minute and try again."}), 429
         recent.append(now)
 
+        piston_url = os.environ.get("PISTON_API_URL", "").strip()
+        if piston_url:
+            return execute_on_piston(piston_url, language, source, stdin)
+
+        configured_judge_url = os.environ.get("JUDGE0_API_URL", "").strip()
+        judge_url = (configured_judge_url or ("" if os.environ.get("VERCEL") else "http://127.0.0.1:2358")).rstrip("/")
+        if not judge_url:
+            return jsonify({"error": "The compiler is not configured. Set JUDGE0_API_URL in the Flask environment."}), 503
+        parsed_judge_url = urlsplit(judge_url)
+        if parsed_judge_url.scheme != "https" and not (parsed_judge_url.scheme == "http" and parsed_judge_url.hostname in {"localhost", "127.0.0.1"}):
+            return jsonify({"error": "JUDGE0_API_URL must use HTTPS, or localhost for local development."}), 503
+
         endpoint = f"{judge_url}/submissions/?{urlencode({'base64_encoded': 'false', 'wait': 'true'})}"
-        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        headers = {"Content-Type": "application/json", "Accept": "application/json", "User-Agent": RUNNER_USER_AGENT}
         api_key = os.environ.get("JUDGE0_API_KEY", "").strip()
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"

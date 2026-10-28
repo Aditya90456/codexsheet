@@ -1,0 +1,196 @@
+/* Mentorship payment page — Paytm-only, themed through variables so the
+   light, midnight and forest shells all keep their own palette. */
+.mentorship {
+  --ms-surface: #fff;
+  --ms-canvas: #f6f9fe;
+  --ms-ink: #183153;
+  --ms-muted: #71869f;
+  --ms-line: #dfe8f5;
+  --ms-accent: #3478df;
+  --ms-accent-ink: #fff;
+  --ms-paytm: #0f4fd8;
+  --ms-flag: #d08b2c;
+  --ms-good: #2f9c62;
+  --ms-warn: #c2622c;
+  color: var(--ms-ink);
+  background: var(--ms-canvas);
+  padding: 22px clamp(16px, 3vw, 34px) 46px;
+}
+
+:root[data-theme="midnight"] .mentorship {
+  --ms-surface: #1b1725;
+  --ms-canvas: #141220;
+  --ms-ink: #f1edf8;
+  --ms-muted: #9d93aa;
+  --ms-line: #30283b;
+  --ms-accent: #c4a7ff;
+  --ms-accent-ink: #1b1725;
+  --ms-paytm: #8fb4ff;
+  --ms-flag: #f0a86a;
+  --ms-good: #74c08c;
+  --ms-warn: #f0a86a;
+}
+
+:root[data-theme="forest"] .mentorship {
+  --ms-surface: #fbfcf8;
+  --ms-canvas: #f2f6ee;
+  --ms-ink: #1c3323;
+  --ms-muted: #6d8272;
+  --ms-line: #d5dfcf;
+  --ms-accent: #2f7d4f;
+  --ms-paytm: #2f7d4f;
+}
+
+.mentorship-public { min-height: 100vh; background: #f6f9fe; }
+:root[data-theme="midnight"] .mentorship-public { background: #141220; }
+.mentorship-public .mentorship { min-height: 100vh; box-sizing: border-box; }
+
+.mentorship-head { max-width: 780px; margin: 0 auto 22px; }
+.mentorship-kicker { font: 600 11px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .16em; color: var(--ms-muted); }
+.mentorship-head h1 { margin: 10px 0 8px; font-size: clamp(26px, 4vw, 40px); line-height: 1.1; }
+.mentorship-head h1 em { font-style: normal; color: var(--ms-accent); }
+.mentorship-head p { margin: 0; color: var(--ms-muted); font-size: 15px; }
+
+.mentorship-plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 1080px;
+  margin: 0 auto 20px;
+}
+
+.mentorship-plan {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid var(--ms-line);
+  border-radius: 16px;
+  background: var(--ms-surface);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.mentorship-plan:hover { transform: translateY(-2px); }
+.mentorship-plan.selected { border-color: var(--ms-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-accent) 35%, transparent); }
+.mentorship-plan-flag { position: absolute; top: -10px; right: 14px; padding: 3px 8px; border-radius: 999px; background: var(--ms-flag); color: #1b1725; font: 700 10px/1.4 "DM Mono", ui-monospace, monospace; letter-spacing: .1em; }
+.mentorship-plan-price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.mentorship-plan strong { font-size: 16px; }
+.mentorship-plan-subtitle, .mentorship-plan-cadence { color: var(--ms-muted); font-size: 13px; }
+.mentorship-plan-cadence { font-family: "DM Mono", ui-monospace, monospace; font-size: 12px; color: var(--ms-accent); }
+.mentorship-plan ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.mentorship-plan li { color: var(--ms-muted); font-size: 13px; }
+
+.mentorship-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 16px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.mentorship-pay, .mentorship-claim {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--ms-line);
+  border-radius: 18px;
+  background: var(--ms-surface);
+}
+
+.mentorship-pay h2, .mentorship-claim h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 18px; }
+.mentorship-step { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ms-accent); color: var(--ms-accent-ink); font: 700 12px/1 "DM Mono", ui-monospace, monospace; }
+.mentorship-pay-note, .mentorship-small { margin: 0; color: var(--ms-muted); font-size: 13px; line-height: 1.55; }
+
+.mentorship-pay-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.mentorship-primary, .mentorship-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mentorship-primary { background: var(--ms-paytm); color: #fff; }
+.mentorship-primary:disabled { opacity: .6; cursor: progress; }
+.mentorship-secondary { border-color: var(--ms-line); background: transparent; color: var(--ms-ink); }
+.mentorship-primary:hover, .mentorship-secondary:hover { filter: brightness(1.06); }
+
+.mentorship-inline-copy { border: 0; padding: 0 2px; background: none; color: var(--ms-accent); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+.mentorship-qr { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px dashed var(--ms-line); border-radius: 14px; }
+.mentorship-qr img { width: 132px; height: 132px; border-radius: 10px; background: #fff; }
+.mentorship-qr-label { display: flex; align-items: center; gap: 6px; font: 700 11px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--ms-accent); }
+.mentorship-qr p { margin: 6px 0 0; color: var(--ms-muted); font-size: 13px; }
+
+.mentorship-ref { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--ms-line); border-radius: 12px; background: var(--ms-canvas); }
+.mentorship-ref span { color: var(--ms-muted); font-size: 12px; }
+.mentorship-ref strong { flex: 1; font: 700 15px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .06em; }
+.mentorship-icon-button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--ms-line); border-radius: 9px; background: var(--ms-surface); color: var(--ms-ink); cursor: pointer; }
+
+.mentorship-form { display: grid; gap: 11px; }
+.mentorship-form label { display: grid; gap: 5px; color: var(--ms-muted); font-size: 12px; font-weight: 600; }
+.mentorship-form input, .mentorship-form textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--ms-line);
+  border-radius: 10px;
+  background: var(--ms-canvas);
+  color: var(--ms-ink);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+.mentorship-form input:focus, .mentorship-form textarea:focus { outline: 2px solid color-mix(in srgb, var(--ms-accent) 45%, transparent); border-color: var(--ms-accent); }
+.mentorship-summary { margin: 0; color: var(--ms-muted); font-size: 13px; }
+.mentorship-warning { margin: 0; color: var(--ms-warn); font-size: 13px; }
+
+.mentorship-confirm { display: grid; gap: 8px; justify-items: start; color: var(--ms-good); }
+.mentorship-confirm p { margin: 0; color: var(--ms-muted); font-size: 13px; }
+.mentorship-confirm a { color: var(--ms-accent); font-size: 14px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+
+.mentorship-lookup { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--ms-line); }
+.mentorship-lookup h3 { margin: 0; font-size: 14px; }
+.mentorship-lookup > div { display: flex; gap: 8px; }
+.mentorship-lookup input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--ms-line);
+  border-radius: 10px;
+  background: var(--ms-canvas);
+  color: var(--ms-ink);
+  font: 14px/1.2 "DM Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+}
+
+.mentorship-faq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 1080px; margin: 18px auto 0; }
+.mentorship-faq article { padding: 15px 16px; border: 1px solid var(--ms-line); border-radius: 14px; background: var(--ms-surface); }
+.mentorship-faq strong { display: block; margin-bottom: 4px; font-size: 14px; }
+.mentorship-faq p { margin: 0; color: var(--ms-muted); font-size: 13px; line-height: 1.5; }
+
+.mentorship-spin { animation: mentorship-rotate 1s linear infinite; }
+@keyframes mentorship-rotate { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .mentorship-plans, .mentorship-split, .mentorship-faq { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .mentorship-qr { flex-direction: column; align-items: stretch; }
+  .mentorship-qr img { width: 152px; height: 152px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mentorship-plan { transition: none; }
+  .mentorship-plan:hover { transform: none; }
+  .mentorship-spin { animation: none; }
+}
