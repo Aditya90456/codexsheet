@@ -1912,6 +1912,7 @@ tbody tr:hover {
 }
 
 .nav-more-menu button { justify-content: flex-start; width: 100%; }
+.nav-more-label { display: flex; padding: 9px 8px 2px; color: #8fa08c; font: 600 9px 'DM Mono', monospace; letter-spacing: .12em; text-transform: uppercase; }
 
 .view-switcher button.active {
   border-color: #dce5d9;
@@ -2104,6 +2105,26 @@ tbody tr:hover {
   color: #92889f;
   font-size: 11px;
 }
+
+.roadmap-buy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  margin-left: auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #55734c;
+  border-radius: 9px;
+  background: #55734c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease;
+}
+
+.roadmap-buy:hover { transform: translateY(-1px); filter: brightness(1.08); }
 
 .roadmap-controls {
   display: grid;
@@ -3569,13 +3590,13 @@ tbody tr:hover { background: #f4f8ff; }
 .home-lab > :not(.home-lab-scene) { position: relative; z-index: 1; }
 @media(max-width:600px) { .home-lab-scene { opacity: .27; } }
 .home-services { padding: 78px 5vw 84px; background: #eef1e7; }
-.home-services > .home-section-heading,.home-services-grid { width: min(1180px, 100%); }
+.home-services > .home-section-heading { width: min(1180px, 100%); }
 .home-offer-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; width:min(1180px,100%); margin:0 auto 28px; }
 .home-offer-card { display:grid; grid-template-rows:auto auto auto 1fr auto; gap:10px; min-height:250px; padding:23px; border:1px solid #d7e1cf; border-radius:16px; color:#263d32; background:linear-gradient(135deg,#fbfcf8 0%,#edf3e7 100%); box-shadow:0 10px 28px rgba(38,65,50,.05); }
-.home-offer-editor { background:linear-gradient(135deg,#fbfcf8 0%,#f1eee5 100%); }
 .home-offer-top { display:flex; align-items:center; justify-content:space-between; }
 .home-offer-icon { display:grid; place-items:center; width:42px; height:42px; border:1px solid #d9e2d2; border-radius:12px; color:#42644a; background:#e8efe1; font-size:16px; font-weight:800; }
-.home-offer-questions .home-offer-icon { font:700 12px 'DM Mono',monospace; }
+.home-offer-roadmap { background:linear-gradient(135deg,#fbfcf8 0%,#f1eee5 100%); }
+.home-offer-roadmap .home-offer-icon { font:700 12px 'DM Mono',monospace; }
 .home-offer-price { color:#537047; font-size:19px; font-weight:800; letter-spacing:-.04em; }
 .home-offer-label { margin-top:3px; color:#758674; font:600 9px 'DM Mono',monospace; letter-spacing:.11em; }
 .home-offer-card h3 { margin:0; color:#25392f; font-size:21px; letter-spacing:-.04em; }
@@ -3680,6 +3701,7 @@ tbody tr:hover { background: #f4f8ff; }
 :root[data-theme="midnight"] .roadmap-pattern-choice.active { border-color: #4d79bb; color: #c3d9ff; background: #243b5d; }
 :root[data-theme="midnight"] .roadmap-pattern-problems,:root[data-theme="midnight"] .roadmap-pattern-problem { border-color: #2b374a; }
 :root[data-theme="midnight"] .theme-picker select option { color: #e2eaf5; background: #182233; }
+:root[data-theme="midnight"] .nav-more-label { color: #7f93ab; }
 
 :root[data-theme="forest"] { color-scheme: light; color: #294237; background: #eff3e9; }
 :root[data-theme="forest"] body { color: #294237; background: radial-gradient(circle at 90% 0%,rgba(119,151,91,.14),transparent 28%),#eff3e9; }
@@ -3691,6 +3713,7 @@ tbody tr:hover { background: #f4f8ff; }
 :root[data-theme="forest"] .theme-picker select { color: #486247; }
 :root[data-theme="forest"] .roadmap-pattern-day { border-color: #d5dfcf; background: #f7f9f3; }
 :root[data-theme="forest"] .roadmap-pattern-choice.active { border-color: #9db38b; color: #486247; background: #e8efdf; }
+:root[data-theme="forest"] .nav-more-label { color: #7d8f78; }
 
 /* Carry theme colors through secondary views and the landing page */
 :root[data-theme="midnight"] .nav-more-menu,:root[data-theme="midnight"] .company-picker,:root[data-theme="midnight"] .article-row,:root[data-theme="midnight"] .featured-article,:root[data-theme="midnight"] .editorial-aside,:root[data-theme="midnight"] .articles-library,:root[data-theme="midnight"] .article-reader,:root[data-theme="midnight"] .schedule-main-card,:root[data-theme="midnight"] .schedule-side-card,:root[data-theme="midnight"] .share-link-card,:root[data-theme="midnight"] .feature-sign-in,:root[data-theme="midnight"] .feature-error { border-color: #2b374a; color: #e2eaf5; background-color: #182233; }

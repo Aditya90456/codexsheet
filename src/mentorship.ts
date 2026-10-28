@@ -8,7 +8,9 @@ export const payee = {
   displayName: "Aditya Bakshi CodexSheet",
 } as const;
 
-export type MentorshipPlanId = "one-to-one" | "ltm-3-months" | "ltm-6-months";
+export const mentorEmail = "adityabakshi1011@gmail.com";
+
+export type MentorshipPlanId = "one-to-one" | "ltm-3-months" | "ltm-6-months" | "roadmap";
 
 export type MentorshipPlan = {
   id: MentorshipPlanId;
@@ -49,6 +51,15 @@ export const mentorshipPlans: MentorshipPlan[] = [
     price: 499,
     cadence: "weekly session · 6 months",
     includes: ["Weekly 1:1 session", "DM Aditya anytime", "Interview prep and mock rounds included"],
+  },
+  {
+    id: "roadmap",
+    tag: "RMAP",
+    title: "250-Pattern DSA Roadmap",
+    subtitle: "Digital download, delivered by email",
+    price: 19,
+    cadence: "one-time purchase",
+    includes: ["Every pattern with its problems in order", "Beginner to interview-ready sequence", "Emailed within 24 hours of payment"],
   },
 ];
 
@@ -106,6 +117,7 @@ export type MentorshipOrder = {
   amount: number;
   buyerName: string;
   buyerContact: string;
+  buyerEmail: string;
   paytmReference: string;
   status: "awaiting" | "confirmed" | "delivered" | "cancelled";
   userId: string;
@@ -151,6 +163,7 @@ export async function recordOrder(
     amount: order.amount,
     buyer_name: order.buyerName.trim(),
     buyer_contact: order.buyerContact.trim(),
+    buyer_email: order.buyerEmail.trim(),
     paytm_reference: order.paytmReference.trim(),
     status: order.status,
     user_id: order.userId,

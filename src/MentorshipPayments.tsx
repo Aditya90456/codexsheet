@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, LoaderCircle, QrCode, Smartphone, Wallet } from "lucide-react";
+import { Check, Copy, LoaderCircle, Mail, QrCode, Smartphone, Wallet } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
+  mentorEmail,
   mentorshipPlans,
   orderReference,
   paytmAppUri,
@@ -16,7 +17,8 @@ import {
 
 type Order = { reference: string; plan: string; amount: number; status: string; filed_at: string };
 
-const dmUrl = "https://topmate.io/aditya_bakshi";
+const contactHref = (reference: string) =>
+  `mailto:${mentorEmail}?subject=${encodeURIComponent(`CodexSheet mentorship payment ${reference}`)}&body=${encodeURIComponent(`Reference: ${reference}\nPaytm transaction ID:\nWhat I want to work on:`)}`;
 
 function usePlatform() {
   return useMemo(() => {
@@ -25,12 +27,13 @@ function usePlatform() {
   }, []);
 }
 
-export default function MentorshipPayments({ userId = null, userName = "" }: { userId?: string | null; userName?: string }) {
-  const [planId, setPlanId] = useState(mentorshipPlans[1]!.id);
-  const plan = planById(planId) ?? mentorshipPlans[1]!;
-  const [reference, setReference] = useState(() => orderReference(mentorshipPlans[1]!));
+export default function MentorshipPayments({ userId = null, userName = "", userEmail = "", initialPlanId = null }: { userId?: string | null; userName?: string; userEmail?: string; initialPlanId?: string | null }) {
+  const chosenPlan = planById(initialPlanId ?? "") ?? mentorshipPlans[1]!;
+  const [planId, setPlanId] = useState(chosenPlan.id);
+  const plan = planById(planId) ?? chosenPlan;
+  const [reference, setReference] = useState(() => orderReference(chosenPlan));
   const [buyerName, setBuyerName] = useState(userName);
-  const [buyerContact, setBuyerContact] = useState("");
+  const [buyerContact, setBuyerContact] = useState(userEmail);
   const [paytmReference, setPaytmReference] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -68,6 +71,7 @@ export default function MentorshipPayments({ userId = null, userName = "" }: { u
       amount: plan.price,
       buyerName,
       buyerContact,
+      buyerEmail: /.+@.+\..+/.test(buyerContact.trim()) ? buyerContact.trim() : userEmail.trim(),
       paytmReference,
       status: "awaiting",
       userId: userId ?? "",
@@ -81,8 +85,8 @@ export default function MentorshipPayments({ userId = null, userName = "" }: { u
     const outcome = await recordOrder(order, insert as (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>);
     setSaving(false);
     setSaved(outcome.ok
-      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then sends your session link.` }
-      : { ok: false, message: `Saved on this device (${outcome.reason}). DM the reference ${reference} with your Paytm screenshot so it is not lost.` });
+      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then sends your session link or roadmap file.` }
+      : { ok: false, message: `Saved on this device (${outcome.reason}). Email the reference ${reference} with your Paytm screenshot so it is not lost.` });
   }
 
   async function checkStatus() {
@@ -103,12 +107,12 @@ export default function MentorshipPayments({ userId = null, userName = "" }: { u
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">1:1 MENTORSHIP · LONG-TERM MENTORSHIP</span>
+        <span className="mentorship-kicker">1:1 MENTORSHIP · LONG-TERM MENTORSHIP · DSA ROADMAP</span>
         <h1>Learn with Aditya. <em>Pay once on Paytm.</em></h1>
-        <p>One 1:1 session for ₹19, or long-term mentorship with a weekly session and DMs anytime. Paytm only, no card forms, no gateway.</p>
+        <p>One 1:1 session for ₹19, long-term mentorship with a weekly session and DMs anytime, or the 250-pattern DSA roadmap for ₹19. Paytm only, no card forms, no gateway.</p>
       </header>
 
-      <div className="mentorship-plans" role="radiogroup" aria-label="Choose a mentorship plan">
+      <div className="mentorship-plans" role="radiogroup" aria-label="Choose what to buy">
         {mentorshipPlans.map((item) => (
           <button
             type="button"
@@ -162,7 +166,7 @@ export default function MentorshipPayments({ userId = null, userName = "" }: { u
               <Check size={18} />
               <strong>Request {reference} recorded</strong>
               <p>{saved.message}</p>
-              <a href={dmUrl} target="_blank" rel="noreferrer">DM Aditya on Topmate <ExternalLink size={14} /></a>
+              <a href={contactHref(reference)}><Mail size={14} /> Email Aditya the reference {reference}</a>
               <button type="button" className="mentorship-secondary" onClick={() => { setReference(orderReference(plan)); setSaved(null); setPaytmReference(""); }}>Start another request</button>
             </div>
           ) : (
