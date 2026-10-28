@@ -4,7 +4,6 @@ import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
   mentorshipPlans,
   orderReference,
-  payee,
   paytmAppUri,
   paytmIntentUri,
   planById,
@@ -131,25 +130,20 @@ export default function MentorshipPayments({ userId = null, userName = "" }: { u
 
       <div className="mentorship-split">
         <article className="mentorship-pay">
-          <h2><span className="mentorship-step">1</span> Pay ₹{plan.price} to {payee.upiId}</h2>
-          <p className="mentorship-pay-note">The amount is locked in the link and QR below, and the reference code goes in the Paytm note so Aditya can match your payment.</p>
-
-          <div className="mentorship-pay-buttons">
-            <a className="mentorship-primary" href={paytmUri}><Smartphone size={16} /> Open in Paytm</a>
-            <a className="mentorship-secondary" href={upiUri(plan, reference)}><Wallet size={16} /> Any UPI app</a>
-          </div>
-          <p className="mentorship-small">
-            Nothing opens? Pay manually: send to Paytm number
-            <button type="button" className="mentorship-inline-copy" onClick={() => void copy("phone", payee.phone)}>{copied === "phone" ? "Copied" : `Copy ${payee.phone}`}</button> or UPI ID
-            <button type="button" className="mentorship-inline-copy" onClick={() => void copy("upi", payee.upiId)}>{copied === "upi" ? "Copied" : `Copy ${payee.upiId}`}</button>.
-          </p>
+          <h2><span className="mentorship-step">1</span> Pay ₹{plan.price} by scanning the QR</h2>
+          <p className="mentorship-pay-note">The amount and the payee are locked inside the code below, and the reference goes in the Paytm note so Aditya can match your payment.</p>
 
           <div className="mentorship-qr">
-            <img src={qrImageUrl(upiUri(plan, reference))} alt={`Pay ₹${plan.price} to ${payee.upiId}, reference ${reference}`} width={240} height={240} loading="lazy" />
+            <img src={qrImageUrl(upiUri(plan, reference))} alt={`Pay ₹${plan.price} to Aditya Bakshi on Paytm, reference ${reference}`} width={240} height={240} loading="lazy" />
             <div>
               <span className="mentorship-qr-label"><QrCode size={15} /> Scan with any UPI app</span>
               <p>Paytm, PhonePe, GPay or BHIM all read this code. Desktop students: scan it with your phone.</p>
             </div>
+          </div>
+
+          <div className="mentorship-pay-buttons">
+            <a className="mentorship-primary" href={paytmUri}><Smartphone size={16} /> Open in Paytm</a>
+            <a className="mentorship-secondary" href={upiUri(plan, reference)}><Wallet size={16} /> Any UPI app</a>
           </div>
 
           <div className="mentorship-ref">

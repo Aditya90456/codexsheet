@@ -126,10 +126,8 @@
 .mentorship-secondary { border-color: var(--ms-line); background: transparent; color: var(--ms-ink); }
 .mentorship-primary:hover, .mentorship-secondary:hover { filter: brightness(1.06); }
 
-.mentorship-inline-copy { border: 0; padding: 0 2px; background: none; color: var(--ms-accent); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
-
-.mentorship-qr { display: flex; align-items: center; gap: 14px; padding: 12px; border: 1px dashed var(--ms-line); border-radius: 14px; }
-.mentorship-qr img { width: 132px; height: 132px; border-radius: 10px; background: #fff; }
+.mentorship-qr { display: flex; align-items: center; gap: 16px; padding: 14px; border: 1px dashed var(--ms-line); border-radius: 14px; }
+.mentorship-qr img { width: 176px; height: 176px; border-radius: 10px; background: #fff; }
 .mentorship-qr-label { display: flex; align-items: center; gap: 6px; font: 700 11px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--ms-accent); }
 .mentorship-qr p { margin: 6px 0 0; color: var(--ms-muted); font-size: 13px; }
 
