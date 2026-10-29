@@ -264,6 +264,12 @@
 .mentorship-week-focus li { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border: 1px solid var(--ms-line); border-radius: 999px; color: var(--ms-muted); background: var(--ms-canvas); font: 600 10px/1.4 "DM Mono", ui-monospace, monospace; }
 .mentorship-week > p { margin: 0; color: var(--ms-muted); font-size: 12px; line-height: 1.6; }
 
+/* Refund promise, sitting where the money decision is actually made. */
+.mentorship-refund { display: flex; gap: 11px; padding: 12px 13px; border: 1px dashed color-mix(in srgb, var(--ms-good) 55%, var(--ms-line)); border-radius: 12px; background: color-mix(in srgb, var(--ms-good) 9%, var(--ms-canvas)); }
+.mentorship-refund > svg { flex: none; margin-top: 2px; color: var(--ms-good); }
+.mentorship-refund strong { display: block; margin-bottom: 3px; font-size: 13px; }
+.mentorship-refund p { margin: 0; color: var(--ms-muted); font-size: 12px; line-height: 1.55; }
+
 /* The mentor, as a person rather than a support alias. */
 .mentorship-mentor {
   display: grid;

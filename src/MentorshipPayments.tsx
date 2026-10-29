@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Check, Copy, GraduationCap, LoaderCircle, Mail, QrCode, RefreshCw, ArrowRight, Smartphone, Wallet } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Copy, GraduationCap, LoaderCircle, Mail, QrCode, RefreshCw, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
@@ -7,6 +7,7 @@ import {
   mentorCraft,
   mentorEmail,
   mentorshipPlans,
+  refundWindow,
   orderReference,
   passFlow,
   paytmAppUri,
@@ -218,6 +219,14 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
             <a className="mentorship-secondary" href={upiUri(plan, reference)}><Wallet size={16} /> Any UPI app</a>
           </div>
 
+          <div className="mentorship-refund">
+            <ShieldCheck size={17} />
+            <div>
+              <strong>{refundWindow.headline}</strong>
+              <p>{refundWindow.body.replace("{price}", rupees(plan.price))}</p>
+            </div>
+          </div>
+
           <div className="mentorship-ref">
             <span>Your reference</span>
             <strong>{reference}</strong>
@@ -338,6 +347,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
         <article><strong>Weekly session</strong><p>Every pass covers a 1:1 call, and you pick the hour yourself from the times Aditya publishes.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya between sessions, no extra charge.</p></article>
         <article><strong>How payment is confirmed</strong><p>Pay on Paytm, record the reference here, and Aditya marks it confirmed against his Paytm statement before the first call.</p></article>
+        <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if the pass is not for you, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>
       </section>
     </section>
   );

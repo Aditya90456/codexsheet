@@ -71,6 +71,13 @@ export const curriculum: CurriculumWeek[] = [
   { label: "Week 12", title: "Mixed set, then a real mock", focus: ["Greedy", "Bit Manipulation"], pace: "19 problems + a timed set", outcome: "One recorded 1:1 mock interview with Aditya and a written feedback note on your code." },
 ];
 
+/** Five days from a confirmed pass to ask for the money back. */
+export const refundWindow = {
+  days: 5,
+  headline: "Five days to decide",
+  body: "If the pass is not what you needed, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
+};
+
 /** What happens between the Paytm QR and the first call. */
 export const passFlow: { title: string; body: string }[] = [
   { title: "Pay on Paytm", body: "Scan the QR. Amount and payee are locked in the code, so there is nothing to mistype." },

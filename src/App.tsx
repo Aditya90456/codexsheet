@@ -152,7 +152,7 @@ function WorkspacePassLock({ checking, onOpenStore, onRecheck }: { checking: boo
           <button type="button" className="primary-button" onClick={onOpenStore}>Pay ₹1,000 on Paytm <ArrowRight size={16} /></button>
           <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I paid — unlock"}</button>
         </div>
-        <small>Aditya marks payments against his Paytm statement, usually the same day. Your reference starts with CS-FAM-.</small>
+        <small>Aditya marks payments against his Paytm statement, usually the same day. Your reference starts with CS-FAM-. Not for you? Ask within 5 days of confirmation and he refunds the full ₹1,000 on Paytm.</small>
       </div>
       <ul className="workspace-lock-list" aria-label="What the pass unlocks">
         {passFeatureNames.map((feature, index) => (
@@ -360,7 +360,7 @@ function HomePage({
             <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹1,000</span></div>
             <span className="home-offer-label">EVERY FEATURE, ONE PAYMENT</span>
             <h3>CodexSheet Family Pass</h3>
-            <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls — plus a 1:1 session with Aditya that you book yourself. The first 50 problems stay free.</p>
+            <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls — plus the 12-week plan and a 1:1 session with Aditya that you book yourself. Ask within 5 days of confirming and the ₹1,000 comes straight back.</p>
             <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all 19 features for ₹1,000 <ArrowRight size={15}/></a>
           </article>
         </div>
