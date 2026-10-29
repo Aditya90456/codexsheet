@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, LoaderCircle, Mail, QrCode, Smartphone, Wallet } from "lucide-react";
+import { Check, Copy, LoaderCircle, Mail, QrCode, RefreshCw, Smartphone, Wallet } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
   mentorEmail,
@@ -7,7 +7,8 @@ import {
   orderReference,
   paytmAppUri,
   paytmIntentUri,
-  planById,
+  paymentBadge,
+  planLabel,
   qrImageUrl,
   queuedOrders,
   recordOrder,
@@ -15,7 +16,11 @@ import {
   type MentorshipOrder,
 } from "./mentorship";
 
-type Order = { reference: string; plan: string; amount: number; status: string; filed_at: string };
+type Order = { reference: string; plan: string; amount: number; status: string; filed_at: string; paytm_reference?: string };
+type Payment = Order & { due: boolean; paid: boolean };
+
+const shortDay = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 const contactHref = (reference: string) =>
   `mailto:${mentorEmail}?subject=${encodeURIComponent(`CodexSheet mentorship payment ${reference}`)}&body=${encodeURIComponent(`Reference: ${reference}\nPaytm transaction ID:\nWhat I want to work on:`)}`;
@@ -27,11 +32,9 @@ function usePlatform() {
   }, []);
 }
 
-export default function MentorshipPayments({ userId = null, userName = "", userEmail = "", initialPlanId = null }: { userId?: string | null; userName?: string; userEmail?: string; initialPlanId?: string | null }) {
-  const chosenPlan = planById(initialPlanId ?? "") ?? mentorshipPlans[1]!;
-  const [planId, setPlanId] = useState(chosenPlan.id);
-  const plan = planById(planId) ?? chosenPlan;
-  const [reference, setReference] = useState(() => orderReference(chosenPlan));
+export default function MentorshipPayments({ userId = null, userName = "", userEmail = "" }: { userId?: string | null; userName?: string; userEmail?: string }) {
+  const plan = mentorshipPlans[0]!;
+  const [reference, setReference] = useState(() => orderReference(plan));
   const [buyerName, setBuyerName] = useState(userName);
   const [buyerContact, setBuyerContact] = useState(userEmail);
   const [paytmReference, setPaytmReference] = useState("");
@@ -42,13 +45,46 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   const [lookupReference, setLookupReference] = useState("");
   const [lookup, setLookup] = useState<{ text: string; order?: Order } | null>(null);
   const [looking, setLooking] = useState(false);
+  const [watched, setWatched] = useState<Order | null>(null);
+  const [watching, setWatching] = useState(false);
+  const [watchNote, setWatchNote] = useState("");
+  const [ledger, setLedger] = useState<Payment[] | null>(null);
+  const [ledgerBusy, setLedgerBusy] = useState(false);
+  const [ledgerNote, setLedgerNote] = useState("");
   const platform = usePlatform();
   const pendingOnThisDevice = queuedOrders().length;
+  const deviceOnly = queuedOrders().filter((item) => !(ledger ?? []).some((row) => row.reference === item.reference));
+  const dueRows = (ledger ?? []).filter((row) => row.due);
+  const dueSum = dueRows.reduce((total, row) => total + Number(row.amount), 0);
 
-  useEffect(() => {
-    setReference(orderReference(plan));
-    setSaved(null);
-  }, [plan]);
+  async function loadLedger() {
+    if (!supabase || !userId) { setLedger(null); setLedgerNote(""); return; }
+    setLedgerBusy(true);
+    const { data, error } = await supabase.rpc("my_mentorship_payments");
+    setLedgerBusy(false);
+    if (error) { setLedger(null); setLedgerNote(`Could not read your payment status: ${error.message}`); return; }
+    setLedgerNote("");
+    setLedger((data ?? []) as Payment[]);
+  }
+
+  // The ledger is keyed on the signed-in Clerk id (or the verified email of an
+  // order paid without signing in), so it only exists once there is an id.
+  useEffect(() => { void loadLedger(); }, [userId]);
+
+  async function refreshWatch(code: string) {
+    if (!supabase) { setWatchNote(supabaseConfigurationError ?? "Supabase is not configured."); return; }
+    setWatching(true);
+    const { data, error } = await supabase.rpc("mentorship_order_status", { p_reference: code });
+    setWatching(false);
+    if (error) { setWatchNote(`Status check failed: ${error.message}`); return; }
+    const rows = (data ?? []) as Order[];
+    const found = rows.find((item) => item.reference.toLowerCase() === code.toLowerCase());
+    setWatched(found ?? null);
+    setWatchNote(found
+      ? ""
+      : "Saved, but the server has not returned it yet. Refresh in a moment, or email the reference so Aditya can match it by hand.");
+    void loadLedger();
+  }
 
   const paytmUri = platform.android ? paytmIntentUri(plan, reference) : platform.ios ? paytmAppUri(plan, reference) : upiUri(plan, reference);
 
@@ -79,19 +115,25 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     };
     setSaving(true);
     setSaved(null);
+    setWatched(null);
+    setWatchNote("");
     const insert = supabase
       ? (row: Record<string, unknown>) => supabase!.from("mentorship_orders").insert(row)
       : async () => ({ error: { message: supabaseConfigurationError ?? "Supabase is not configured." } });
     const outcome = await recordOrder(order, insert as (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>);
     setSaving(false);
     setSaved(outcome.ok
-      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then sends your session link. For the roadmap, confirmation unlocks all 250 problems in your workspace.` }
+      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then the whole workspace unlocks.` }
       : { ok: false, message: `Saved on this device (${outcome.reason}). Email the reference ${reference} with your Paytm screenshot so it is not lost.` });
+    // The record is saved and the Paytm transaction is done, so show at once
+    // whether the money is still due or already confirmed.
+    if (outcome.ok) void refreshWatch(reference);
+    else void loadLedger();
   }
 
   async function checkStatus() {
     const value = lookupReference.trim();
-    if (!value) { setLookup({ text: "Type the reference code, for example CS-LT3-A2B3C4." }); return; }
+    if (!value) { setLookup({ text: "Type the reference code, for example CS-FAM-A2B3C4." }); return; }
     if (!supabase) { setLookup({ text: supabaseConfigurationError ?? "Supabase is not configured." }); return; }
     setLooking(true);
     const { data, error } = await supabase.rpc("mentorship_order_status", { p_reference: value });
@@ -107,29 +149,19 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">1:1 MENTORSHIP · LONG-TERM MENTORSHIP · DSA ROADMAP</span>
-        <h1>Learn with Aditya. <em>Pay once on Paytm.</em></h1>
-        <p>One 1:1 session for ₹19, long-term mentorship with a weekly session and DMs anytime, or the 250-pattern DSA roadmap for ₹19. Paytm only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">ALL 19 FEATURES · ONE PASS · ₹10</span>
+        <h1>Everything on CodexSheet. <em>₹10, once, on Paytm.</em></h1>
+        <p>₹{plan.price} opens the whole workspace — all 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself. Paytm only, no card forms, no gateway.</p>
       </header>
 
-      <div className="mentorship-plans" role="radiogroup" aria-label="Choose what to buy">
-        {mentorshipPlans.map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            role="radio"
-            aria-checked={item.id === plan.id}
-            className={`mentorship-plan${item.id === plan.id ? " selected" : ""}${item.highlight ? " featured" : ""}`}
-            onClick={() => setPlanId(item.id)}
-          >
-            {item.highlight && <span className="mentorship-plan-flag">MOST CHOSEN</span>}
-            <span className="mentorship-plan-price">₹{item.price}</span>
-            <strong>{item.title}</strong>
-            <span className="mentorship-plan-subtitle">{item.subtitle}</span>
-            <span className="mentorship-plan-cadence">{item.cadence}</span>
-            <ul>{item.includes.map((line) => <li key={line}>{line}</li>)}</ul>
-          </button>
-        ))}
+      <div className="mentorship-plans">
+        <article className="mentorship-plan selected">
+          <span className="mentorship-plan-price">₹{plan.price}</span>
+          <strong>{plan.title}</strong>
+          <span className="mentorship-plan-subtitle">{plan.subtitle}</span>
+          <span className="mentorship-plan-cadence">{plan.cadence}</span>
+          <ul>{plan.includes.map((line) => <li key={line}>{line}</li>)}</ul>
+        </article>
       </div>
 
       <div className="mentorship-split">
@@ -166,8 +198,25 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
               <Check size={18} />
               <strong>Request {reference} recorded</strong>
               <p>{saved.message}</p>
+              <div className="mentorship-due">
+                {watched ? (
+                  <>
+                    <span className={`mentorship-badge ${paymentBadge(watched).cls}`}>{paymentBadge(watched).label}</span>
+                    <p>{paymentBadge(watched).cls === "done"
+                      ? `Aditya confirmed ₹${Number(watched.amount)} for ${planLabel(watched.plan)}. ${watched.status === "delivered" ? "The session was delivered." : "Your weekly session and chat lane are live on /mentees."}`
+                      : paymentBadge(watched).cls === "off"
+                        ? "This request was cancelled. Record a new one if you still want the session."
+                        : `₹${Number(watched.amount)} is still due: Aditya has not ticked ${reference} against his Paytm statement yet. Keep the transaction ID until he does.`}</p>
+                  </>
+                ) : (
+                  <p className="mentorship-small">{watchNote || "Checking the record against the server…"}</p>
+                )}
+                <button type="button" className="mentorship-secondary" onClick={() => void refreshWatch(reference)} disabled={watching}>
+                  {watching ? <LoaderCircle size={14} className="mentorship-spin" /> : <RefreshCw size={14} />} {watching ? "Checking…" : "Refresh status"}
+                </button>
+              </div>
               <a href={contactHref(reference)}><Mail size={14} /> Email Aditya the reference {reference}</a>
-              <button type="button" className="mentorship-secondary" onClick={() => { setReference(orderReference(plan)); setSaved(null); setPaytmReference(""); }}>Start another request</button>
+              <button type="button" className="mentorship-secondary" onClick={() => { setReference(orderReference(plan)); setSaved(null); setPaytmReference(""); setWatched(null); setWatchNote(""); }}>Start another request</button>
             </div>
           ) : (
             <div className="mentorship-form">
@@ -190,13 +239,59 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
               <input value={lookupReference} onChange={(event) => setLookupReference(event.target.value)} placeholder="CS-ONE-A1B2C3" aria-label="Reference code" />
               <button type="button" className="mentorship-secondary" onClick={() => void checkStatus()} disabled={looking}>{looking ? "Checking…" : "Check status"}</button>
             </div>
-            {lookup && <p className="mentorship-small"><strong>{lookup.text}</strong>{lookup.order?.status === "confirmed" ? " · your weekly session is scheduled" : ""}</p>}
+            {lookup && (
+              <p className="mentorship-small mentorship-lookup-row">
+                {lookup.order && <span className={`mentorship-badge ${paymentBadge(lookup.order).cls}`}>{paymentBadge(lookup.order).label}</span>}
+                <strong>{lookup.text}</strong>
+              </p>
+            )}
           </div>
         </article>
       </div>
 
+      {(ledger !== null || deviceOnly.length > 0) && (
+        <section className="mentorship-ledger" aria-label="Your payments, due or done">
+          <header className="mentorship-ledger-head">
+            <h2>Your payments <span className={`mentorship-ledger-count${dueRows.length ? " due" : ""}`}>{ledger === null ? "not signed in" : dueRows.length ? `${dueRows.length} due · ₹${dueSum}` : "nothing due"}</span></h2>
+            {userId && (
+              <button type="button" className="mentorship-secondary" onClick={() => void loadLedger()} disabled={ledgerBusy}>
+                {ledgerBusy ? <LoaderCircle size={14} className="mentorship-spin" /> : <RefreshCw size={14} />} {ledgerBusy ? "Checking…" : "Refresh"}
+              </button>
+            )}
+          </header>
+          {ledgerNote && <p className="mentorship-warning">{ledgerNote}</p>}
+          <ul className="mentorship-ledger-list">
+            {(ledger ?? []).map((row) => {
+              const state = paymentBadge(row);
+              return (
+                <li key={row.reference}>
+                  <span className={`mentorship-badge ${state.cls}`}>{state.label}</span>
+                  <div>
+                    <strong>{planLabel(row.plan)} · ₹{Number(row.amount)}</strong>
+                    <span>{row.reference} · recorded {shortDay(row.filed_at)}{row.paytm_reference ? ` · UTR ${row.paytm_reference}` : ""}</span>
+                  </div>
+                </li>
+              );
+            })}
+            {deviceOnly.map((row) => (
+              <li className="local" key={row.reference}>
+                <span className="mentorship-badge local">NOT RECORDED</span>
+                <div>
+                  <strong>{planLabel(row.plan)} · ₹{row.amount}</strong>
+                  <span>{row.reference} · this one is stuck on your device, so it is still due. Email Aditya the reference with the Paytm receipt.</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {!userId && ledger === null && pendingOnThisDevice === 0 && (
+            <p className="mentorship-small">Sign in and the page tracks your own references, so you can see which payment is still due without retyping the code.</p>
+          )}
+          <p className="mentorship-small">DUE means Aditya has not matched your Paytm transaction against his statement yet. DONE means he has, and all 19 features unlock with it. Nothing here charges you twice: you pay once by scanning the QR.</p>
+        </section>
+      )}
+
       <section className="mentorship-faq" aria-label="How mentorship works">
-        <article><strong>Weekly session</strong><p>Long-term plans get one 1:1 call every week, at a time that fits your schedule.</p></article>
+        <article><strong>Weekly session</strong><p>Every pass covers a 1:1 call, and you pick the hour yourself from the times Aditya publishes.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya between sessions, no extra charge.</p></article>
         <article><strong>How payment is confirmed</strong><p>Pay on Paytm, record the reference here, and Aditya marks it confirmed against his Paytm statement before the first call.</p></article>
       </section>

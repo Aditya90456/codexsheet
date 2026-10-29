@@ -17,32 +17,23 @@
   padding: 22px clamp(16px, 3vw, 34px) 46px;
 }
 
-:root[data-theme="midnight"] .mentorship {
-  --ms-surface: #1b1725;
-  --ms-canvas: #141220;
-  --ms-ink: #f1edf8;
-  --ms-muted: #9d93aa;
-  --ms-line: #30283b;
-  --ms-accent: #c4a7ff;
-  --ms-accent-ink: #1b1725;
+:root[data-theme="blue"] .mentorship {
+  --ms-surface: #131f33;
+  --ms-canvas: #0c1526;
+  --ms-ink: #e6eefb;
+  --ms-muted: #8ea5c3;
+  --ms-line: #22354f;
+  --ms-accent: #7cb3fb;
+  --ms-accent-ink: #131f33;
   --ms-paytm: #8fb4ff;
-  --ms-flag: #f0a86a;
+  --ms-flag: #7dd3fc;
   --ms-good: #74c08c;
-  --ms-warn: #f0a86a;
+  --ms-warn: #7dd3fc;
 }
 
-:root[data-theme="forest"] .mentorship {
-  --ms-surface: #fbfcf8;
-  --ms-canvas: #f2f6ee;
-  --ms-ink: #1c3323;
-  --ms-muted: #6d8272;
-  --ms-line: #d5dfcf;
-  --ms-accent: #2f7d4f;
-  --ms-paytm: #2f7d4f;
-}
 
 .mentorship-public { min-height: 100vh; background: #f6f9fe; }
-:root[data-theme="midnight"] .mentorship-public { background: #141220; }
+:root[data-theme="blue"] .mentorship-public { background: #0c1526; }
 .mentorship-public .mentorship { min-height: 100vh; box-sizing: border-box; }
 
 .mentorship-head { max-width: 780px; margin: 0 auto 22px; }
@@ -51,37 +42,33 @@
 .mentorship-head h1 em { font-style: normal; color: var(--ms-accent); }
 .mentorship-head p { margin: 0; color: var(--ms-muted); font-size: 15px; }
 
+/* One product, so the offer is a single panel instead of a comparison grid. */
 .mentorship-plans {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
-  max-width: 1080px;
+  max-width: 820px;
   margin: 0 auto 20px;
 }
 
 .mentorship-plan {
-  position: relative;
   display: grid;
   gap: 6px;
-  padding: 18px;
-  text-align: left;
+  padding: 20px 22px;
   border: 1px solid var(--ms-line);
   border-radius: 16px;
   background: var(--ms-surface);
   color: inherit;
-  cursor: pointer;
-  transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease;
 }
 
-.mentorship-plan:hover { transform: translateY(-2px); }
 .mentorship-plan.selected { border-color: var(--ms-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-accent) 35%, transparent); }
-.mentorship-plan-flag { position: absolute; top: -10px; right: 14px; padding: 3px 8px; border-radius: 999px; background: var(--ms-flag); color: #1b1725; font: 700 10px/1.4 "DM Mono", ui-monospace, monospace; letter-spacing: .1em; }
-.mentorship-plan-price { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
-.mentorship-plan strong { font-size: 16px; }
+.mentorship-plan-price { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+.mentorship-plan strong { font-size: 17px; }
 .mentorship-plan-subtitle, .mentorship-plan-cadence { color: var(--ms-muted); font-size: 13px; }
 .mentorship-plan-cadence { font-family: "DM Mono", ui-monospace, monospace; font-size: 12px; color: var(--ms-accent); }
-.mentorship-plan ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; }
-.mentorship-plan li { color: var(--ms-muted); font-size: 13px; }
+.mentorship-plan ul { margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; list-style: none; }
+.mentorship-plan li { display: flex; gap: 8px; color: var(--ms-muted); font-size: 13px; }
+.mentorship-plan li::before { color: var(--ms-accent); content: "\2713"; font-weight: 700; }
 
 .mentorship-split {
   display: grid;
@@ -170,7 +157,39 @@
   text-transform: uppercase;
 }
 
-.mentorship-faq { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 1080px; margin: 18px auto 0; }
+/* Due-or-done readout. One badge, three states: money still to be matched,
+   money confirmed, request cancelled. */
+.mentorship-badge {
+  flex: none;
+  padding: 4px 9px;
+  border: 1px solid currentcolor;
+  border-radius: 999px;
+  font: 700 10px/1.4 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+
+.mentorship-badge.due { color: var(--ms-warn); background: color-mix(in srgb, var(--ms-warn) 12%, transparent); }
+.mentorship-badge.done { color: var(--ms-good); background: color-mix(in srgb, var(--ms-good) 14%, transparent); }
+.mentorship-badge.off { color: var(--ms-muted); background: color-mix(in srgb, var(--ms-muted) 12%, transparent); }
+.mentorship-badge.local { color: var(--ms-flag); background: color-mix(in srgb, var(--ms-flag) 14%, transparent); }
+
+.mentorship-due { display: grid; gap: 8px; justify-items: start; padding: 11px 13px; border: 1px solid var(--ms-line); border-radius: 12px; background: var(--ms-canvas); }
+.mentorship-due p { margin: 0; color: var(--ms-ink); font-size: 13px; line-height: 1.5; }
+
+.mentorship-lookup-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.mentorship-ledger { display: grid; gap: 10px; max-width: 1080px; margin: 16px auto 0; padding: 18px 20px; border: 1px solid var(--ms-line); border-radius: 18px; background: var(--ms-surface); }
+.mentorship-ledger-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.mentorship-ledger h2 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 17px; }
+.mentorship-ledger-count { padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--ms-good) 16%, transparent); color: var(--ms-good); font: 700 11px/1.4 "DM Mono", ui-monospace, monospace; letter-spacing: .08em; }
+.mentorship-ledger-count.due { background: color-mix(in srgb, var(--ms-warn) 16%, transparent); color: var(--ms-warn); }
+.mentorship-ledger-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.mentorship-ledger-list li { display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px; border: 1px solid var(--ms-line); border-radius: 12px; background: var(--ms-canvas); }
+.mentorship-ledger-list li div { display: grid; gap: 2px; }
+.mentorship-ledger-list strong { font-size: 14px; }
+.mentorship-ledger-list li span:not(.mentorship-badge) { color: var(--ms-muted); font-size: 12px; font-family: "DM Mono", ui-monospace, monospace; }
+.mentorship-ledger-list li.local { border-style: dashed; border-color: var(--ms-flag); }
 .mentorship-faq article { padding: 15px 16px; border: 1px solid var(--ms-line); border-radius: 14px; background: var(--ms-surface); }
 .mentorship-faq strong { display: block; margin-bottom: 4px; font-size: 14px; }
 .mentorship-faq p { margin: 0; color: var(--ms-muted); font-size: 13px; line-height: 1.5; }
@@ -179,7 +198,7 @@
 @keyframes mentorship-rotate { to { transform: rotate(360deg); } }
 
 @media (max-width: 900px) {
-  .mentorship-plans, .mentorship-split, .mentorship-faq { grid-template-columns: minmax(0, 1fr); }
+  .mentorship-plans, .mentorship-split, .mentorship-faq, .mentorship-plan ul { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 700px) {
@@ -188,7 +207,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mentorship-plan { transition: none; }
-  .mentorship-plan:hover { transform: none; }
   .mentorship-spin { animation: none; }
 }

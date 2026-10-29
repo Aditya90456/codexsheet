@@ -33,9 +33,15 @@ Deno.serve(async (request) => {
 
   const urls = (Deno.env.get("TURN_URLS") ?? "").split(",").map((url) => url.trim()).filter(Boolean);
   const sharedSecret = Deno.env.get("TURN_SHARED_SECRET");
+
+  // Without TURN, a caller behind a symmetric NAT simply cannot be reached, so
+  // hand back public STUN and let the client say the call may not connect.
   if (urls.length === 0 || !sharedSecret) {
-    console.error("Call TURN settings are missing from the Edge Function environment.");
-    return json({ error: "Call connection service is not configured." }, 503);
+    console.warn("TURN settings are absent; returning public STUN only.");
+    return json({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
+      turnConfigured: false,
+    });
   }
 
   const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60;

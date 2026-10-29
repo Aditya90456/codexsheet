@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, Download, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
-import { mentorEmail, planById } from "./mentorship";
+import { mentorEmail, paymentBadge, planLabel } from "./mentorship";
 
 type Mentee = {
   id: number;
@@ -23,6 +23,25 @@ type Mentee = {
 
 type LaneMessage = { id: number; sender_id: string; content: string; created_at: string };
 
+type Payment = { reference: string; plan: string; amount: number; status: string; due: boolean; paytm_reference?: string };
+
+type Slot = { starts_at: string; ends_at: string };
+type Hours = { weekday: number; start_time: string; end_time: string };
+
+const WEEKDAYS = [
+  { iso: 1, label: "Monday" },
+  { iso: 2, label: "Tuesday" },
+  { iso: 3, label: "Wednesday" },
+  { iso: 4, label: "Thursday" },
+  { iso: 5, label: "Friday" },
+];
+
+const istHour = (value: string) =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+
+const istDay = (value: string) =>
+  new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" }).format(new Date(value));
+
 type Claim = {
   reference: string;
   plan: string;
@@ -39,7 +58,7 @@ type Draft = { status: string; weekly_slot: string; user_id: string };
 
 const STATUSES = ["active", "paused", "completed", "cancelled"];
 
-const planLabel = (plan: string) => planById(plan)?.title ?? plan;
+
 
 const shortDate = (value: string | null) =>
   value ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value)) : "open ended";
@@ -215,6 +234,197 @@ function SessionChat({ mentee, userId, otherLabel }: { mentee: Mentee; userId: s
   );
 }
 
+/** The one control both people press: same label, same room, on each side. */
+function JoinButton({ mentee }: { mentee: Mentee }) {
+  if (!mentee.live_room_id && !mentee.meeting_url) return null;
+  const external = mentee.meeting_url !== "";
+  return (
+    <a
+      className="mentees-primary mentees-join"
+      href={mentee.meeting_url || `/calls?room=${mentee.live_room_id}`}
+      target={external ? "_blank" : undefined}
+      rel="noreferrer"
+    >
+      <PhoneCall size={15} /> Join session
+    </a>
+  );
+}
+
+// The student chooses the hour; the grid comes from the mentor's published
+// windows with already-held hours removed.
+function SlotPicker({ mentee, userId, onBooked }: { mentee: Mentee; userId: string; onBooked: () => Promise<void> }) {
+  const [slots, setSlots] = useState<Slot[] | null>(null);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState("");
+
+  const load = useCallback(async () => {
+    if (!supabase || userId === "") return;
+    const { data, error } = await supabase.rpc("mentor_open_slots", { p_mentee_id: mentee.id });
+    if (error) { setSlots([]); setNote(`Could not read Aditya's hours: ${error.message}`); return; }
+    setSlots((data as Slot[]) ?? []);
+  }, [mentee.id, userId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const days: { label: string; items: Slot[] }[] = [];
+  for (const slot of slots ?? []) {
+    const label = istDay(slot.starts_at);
+    const bucket = days.find((day) => day.label === label);
+    if (bucket) bucket.items.push(slot);
+    else days.push({ label, items: [slot] });
+  }
+
+  async function book(slot: Slot) {
+    if (!supabase) return;
+    setBusy(slot.starts_at);
+    setNote("");
+    const { error } = await supabase.rpc("mentee_book_slot", { p_mentee_id: mentee.id, p_starts_at: slot.starts_at });
+    if (error) setNote(error.message);
+    else await Promise.all([load(), onBooked()]);
+    setBusy("");
+  }
+
+  if (userId === "") return <p className="mentees-quiet">Sign in to pick your own session hour.</p>;
+
+  return (
+    <div className="mentees-slots">
+      <p className="mentees-slots-lead">
+        <CalendarDays size={14} /> Pick an hour. Aditya holds sessions Monday to Friday, 11:00–18:00 IST; booking opens the room for both of you.
+      </p>
+      {slots === null ? (
+        <p className="mentees-quiet"><LoaderCircle size={14} className="mentees-spin" /> Reading the schedule…</p>
+      ) : slots.length === 0 ? (
+        <p className="mentees-quiet">No open hour in the next seven days — Aditya has to publish his hours or free a slot first.</p>
+      ) : (
+        days.map((day) => (
+          <div className="mentees-slots-day" key={day.label}>
+            <span>{day.label}</span>
+            <div>
+              {day.items.map((slot) => (
+                <button
+                  type="button"
+                  key={slot.starts_at}
+                  disabled={busy !== ""}
+                  onClick={() => void book(slot)}
+                >
+                  {istHour(slot.starts_at)}
+                  {busy === slot.starts_at && <LoaderCircle size={12} className="mentees-spin" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+      {note && <p className="mentees-warning">{note}</p>}
+    </div>
+  );
+}
+
+// The mentor publishes the window once; every student books inside it.
+function AvailabilityEditor({ userId }: { userId: string }) {
+  const [rows, setRows] = useState<Record<number, Hours> | null>(null);
+  const [edits, setEdits] = useState<Record<number, { start: string; end: string }>>({});
+  const [closed, setClosed] = useState<Record<number, boolean>>({});
+  const [busy, setBusy] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+
+  const load = useCallback(async () => {
+    if (!supabase || userId === "") return;
+    const { data, error } = await supabase
+      .from("mentor_availability")
+      .select("weekday, start_time, end_time")
+      .eq("mentor_user_id", userId)
+      .order("weekday");
+    if (error) { setNote(error.message); setRows({}); return; }
+    const map: Record<number, Hours> = {};
+    for (const row of (data as Hours[]) ?? []) map[row.weekday] = row;
+    setRows(map);
+  }, [userId]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  function editOf(iso: number): { start: string; end: string } {
+    const edit = edits[iso];
+    if (edit) return edit;
+    const row = rows?.[iso];
+    return { start: row?.start_time.slice(0, 5) ?? "11:00", end: row?.end_time.slice(0, 5) ?? "18:00" };
+  }
+
+  async function save(iso: number) {
+    if (!supabase || userId === "") return;
+    setBusy(iso);
+    setNote("");
+    if (closed[iso]) {
+      const gone = await supabase.from("mentor_availability").delete().eq("mentor_user_id", userId).eq("weekday", iso);
+      if (gone.error) setNote(gone.error.message);
+    } else {
+      const edit = editOf(iso);
+      const up = await supabase
+        .from("mentor_availability")
+        .upsert(
+          { mentor_user_id: userId, weekday: iso, start_time: edit.start, end_time: edit.end, updated_at: new Date().toISOString() },
+          { onConflict: "mentor_user_id,weekday" },
+        );
+      if (up.error) setNote(up.error.message);
+    }
+    await load();
+    setEdits((current) => {
+      const next = { ...current };
+      delete next[iso];
+      return next;
+    });
+    setBusy(null);
+  }
+
+  if (userId === "") return null;
+
+  return (
+    <article className="mentees-hours">
+      <h2>Your session hours · IST</h2>
+      <p className="mentees-note">Students only ever see hours inside this window, and one call per hour at most.</p>
+      {rows === null ? (
+        <p className="mentees-quiet"><LoaderCircle size={14} className="mentees-spin" /> Reading your hours…</p>
+      ) : (
+        <div className="mentees-hours-grid">
+          {WEEKDAYS.map((day) => {
+            const edit = editOf(day.iso);
+            const off = closed[day.iso] ?? !rows[day.iso];
+            return (
+              <div className={off ? "mentees-hour off" : "mentees-hour"} key={day.iso}>
+                <label>{day.label}</label>
+                <input
+                  type="time"
+                  value={edit.start}
+                  disabled={off}
+                  onChange={(event) => setEdits((current) => ({ ...current, [day.iso]: { ...edit, start: event.target.value } }))}
+                />
+                <span>to</span>
+                <input
+                  type="time"
+                  value={edit.end}
+                  disabled={off}
+                  onChange={(event) => setEdits((current) => ({ ...current, [day.iso]: { ...edit, end: event.target.value } }))}
+                />
+                <button
+                  type="button"
+                  className={off ? "mentees-hour-state closed" : "mentees-hour-state"}
+                  onClick={() => setClosed((current) => ({ ...current, [day.iso]: !off }))}
+                >
+                  {off ? "Closed" : "Open"}
+                </button>
+                <button type="button" className="mentees-chat" onClick={() => void save(day.iso)} disabled={busy === day.iso}>
+                  {busy === day.iso ? <LoaderCircle size={14} className="mentees-spin" /> : <Check size={14} />} Save
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {note && <p className="mentees-warning">{note}</p>}
+    </article>
+  );
+}
+
 export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?: string | null; userEmail?: string }) {
   const [booting, setBooting] = useState(true);
   const [isMentor, setIsMentor] = useState(false);
@@ -228,6 +438,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
   const [sessionEdits, setSessionEdits] = useState<Record<number, { meeting: string; when: string }>>({});
   const [openLane, setOpenLane] = useState<number | null>(null);
   const [copiedRoom, setCopiedRoom] = useState<string | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -240,18 +451,25 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
     const rows = await supabase.from("mentees").select("*").order("created_at", { ascending: false });
     let pendingRows: Claim[] = [];
     let pendingError: string | null = null;
+    let myPayments: Payment[] = [];
     if (mentor) {
       const pending = await supabase.rpc("mentor_pending_orders");
       pendingRows = (pending.data as Claim[]) ?? [];
       pendingError = pending.error?.message ?? null;
+    } else if (userId) {
+      // The table itself is unreadable from the browser, so the student's own
+      // due-or-done list has to come from the security-definer function.
+      const placed = await supabase.rpc("my_mentorship_payments");
+      myPayments = (placed.data as Payment[]) ?? [];
     }
     if (rows.error) setError(rows.error.message);
     if (pendingError) setError(pendingError);
     setIsMentor(mentor);
     setMentees((rows.data as Mentee[]) ?? []);
     setClaims(pendingRows);
+    setPayments(myPayments);
     setBooting(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void load();
@@ -355,12 +573,14 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
         mentee.user_id === userId ||
         (userEmail.trim() !== "" && mentee.email?.toLowerCase() === userEmail.trim().toLowerCase()));
 
+  const dues = payments.filter((payment) => payment.due);
+
   return (
     <section className="mentees" aria-label="Mentorship records">
       <header className="mentees-head">
         <span className="mentees-kicker">MENTORSHIP · ACTIVE RECORDS</span>
         <h1><Users size={22} /> Mentees</h1>
-        <p>Confirmed payments, weekly slots, a private video room and a one-to-one chat lane. Only you and the student see a record.</p>
+        <p>Confirmed payments, weekly slots, hours the student books himself, one Join button for both sides and a one-to-one chat lane. Only you and the student see a record.</p>
       </header>
 
       {booting && <p className="mentees-note"><LoaderCircle size={14} className="mentees-spin" /> Loading mentorship records…</p>}
@@ -395,6 +615,8 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
           ))}
         </article>
       )}
+
+      {!booting && isMentor && <AvailabilityEditor userId={userId ?? ""} />}
 
       {!booting && isMentor && (
         <article className="mentees-roster">
@@ -446,11 +668,12 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                   </div>
                 )}
                 <div className="mentees-actions">
+                  <JoinButton mentee={mentee} />
                   <button type="button" className="mentees-session" onClick={() => void toggleSession(mentee)} disabled={roomBusy === mentee.id}>
                     {roomBusy === mentee.id
                       ? <LoaderCircle size={14} className="mentees-spin" />
                       : mentee.live_room_id ? <RotateCcw size={14} /> : <PhoneCall size={14} />}
-                    {mentee.live_room_id ? "End session" : mentee.meeting_url ? "Book with Meet" : "Start session"}
+                    {mentee.live_room_id ? "End session" : mentee.meeting_url ? "Re-book with Meet" : "Open room now"}
                   </button>
                   <button
                     type="button"
@@ -464,16 +687,17 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                       <Mail size={14} /> Contact
                     </a>
                   )}
-                  {mentee.live_room_id && (
+                  {mentee.live_room_id || mentee.scheduled_at ? (
                     <span className="mentees-room">
-                      <a href={joinHref(mentee)} target={mentee.meeting_url ? "_blank" : undefined} rel="noreferrer">
-                        {mentee.meeting_url ? "Open Google Meet" : "Open platform room"}
-                      </a>
-                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "Starts now"}</span>
-                      <button type="button" onClick={() => copyRoom(mentee)}>
-                        {copiedRoom === mentee.live_room_id ? "Link copied" : "Copy invite link"}
-                      </button>
+                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "No hour booked — opens on press"}</span>
+                      {mentee.live_room_id && (
+                        <button type="button" onClick={() => copyRoom(mentee)}>
+                          {copiedRoom === mentee.live_room_id ? "Link copied" : "Copy invite link"}
+                        </button>
+                      )}
                     </span>
+                  ) : (
+                    <span className="mentees-quiet">Waiting for the student to pick an hour from your published window.</span>
                   )}
                 </div>
                 {openLane === mentee.id && (
@@ -488,48 +712,63 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
       {!booting && !isMentor && (
         <article className="mentees-mine">
           <h2>Your mentorship</h2>
-          {mine.length === 0 ? (
+          {payments.length > 0 && (
+            <ul className="mentees-dues">
+              {payments.map((payment) => {
+                const state = paymentBadge(payment);
+                return (
+                  <li className={state.cls} key={payment.reference}>
+                    <span className="mentees-duo">{state.label}</span>
+                    <div>
+                      <strong>{planLabel(payment.plan)} · ₹{Number(payment.amount)}</strong>
+                      <span>
+                        {payment.reference}
+                        {state.cls === "due"
+                          ? ` · awaiting Aditya's confirmation against his Paytm statement${payment.paytm_reference ? ` (UTR ${payment.paytm_reference})` : ""}`
+                          : state.cls === "done"
+                            ? " · confirmed by Aditya"
+                            : " · cancelled"}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {mine.length === 0 && (
             <p className="mentees-note">
-              Nothing confirmed yet. Plans start at ₹19 on the{" "}
-              <a href="/mentorship">mentorship page</a>.
+              {dues.length > 0
+                ? "Your record appears here the moment Aditya confirms the payment above against his Paytm statement."
+                : <>Nothing confirmed yet. The pass is ₹10 on the <a href="/mentorship">mentorship page</a>.</>}
             </p>
-          ) : mine.map((mentee) => {
+          )}
+          {mine.map((mentee) => {
             const linked = mentee.user_id === (userId ?? "");
             return (
               <div className="mentees-mine-card" key={mentee.id}>
                 <strong>{planLabel(mentee.plan)}</strong>
                 <span>{mentee.status === "active" ? "Active" : mentee.status}</span>
-                <span>{mentee.weekly_slot || "Slot not fixed yet — Aditya sets it after confirming your payment."}</span>
+                <span>{mentee.weekly_slot || "Weekly slot not fixed — pick any hour below and Aditya keeps it."}</span>
                 <span>{mentee.reference} · until {shortDate(mentee.ends_at)}</span>
                 <div className="mentees-mine-actions">
-                  {mentee.live_room_id ? (
+                  <JoinButton mentee={mentee} />
+                  {mentee.scheduled_at && (
                     <>
-                      <a
-                        className="mentees-primary"
-                        href={mentee.meeting_url || `/calls?room=${mentee.live_room_id}`}
-                        target={mentee.meeting_url ? "_blank" : undefined}
-                        rel="noreferrer"
-                      >
-                        <PhoneCall size={15} /> {mentee.meeting_url ? "Join on Google Meet" : "Join live session"}
+                      <span className="mentees-when">{istLabel(mentee.scheduled_at)}</span>
+                      <a className="mentees-chat" href={googleCalendarHref(mentee)} target="_blank" rel="noreferrer">
+                        <CalendarDays size={14} /> Google Calendar
                       </a>
-                      <span className="mentees-when">{istLabel(mentee.scheduled_at) || "Time not set"}</span>
-                      {mentee.scheduled_at && (
-                        <>
-                          <a className="mentees-chat" href={googleCalendarHref(mentee)} target="_blank" rel="noreferrer">
-                            <CalendarDays size={14} /> Google Calendar
-                          </a>
-                          <button type="button" className="mentees-chat" onClick={() => downloadInvite(mentee)}>
-                            <Download size={14} /> .ics
-                          </button>
-                        </>
-                      )}
+                      <button type="button" className="mentees-chat" onClick={() => downloadInvite(mentee)}>
+                        <Download size={14} /> .ics
+                      </button>
                     </>
+                  )}
+                  {linked ? (
+                    <SlotPicker mentee={mentee} userId={userId ?? ""} onBooked={load} />
                   ) : (
-                    <span className="mentees-quiet">
-                      {mentee.weekly_slot
-                        ? `Weekly slot ${mentee.weekly_slot} — Aditya opens the room and posts the link there.`
-                        : "No session room yet — Aditya opens it when your call begins."}
-                    </span>
+                    <p className="mentees-quiet">
+                      This record is not linked to your sign-in id yet, so the schedule and chat stay closed. Send your <code>{userId ?? ""}</code> id to Aditya once.
+                    </p>
                   )}
                   <button
                     type="button"

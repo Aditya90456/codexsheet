@@ -1,0 +1,6 @@
+project_id = "ljotsavgkuluokfvlhdb"
+
+# The Edge gateway must verify the Clerk-issued Supabase JWT before the
+# function trusts its claims; without this, any forged token is accepted.
+[functions.call-ice]
+verify_jwt = true

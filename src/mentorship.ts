@@ -1,4 +1,4 @@
-// Mentorship plans and the Paytm-only payment contract.
+// Mentorship pricing and the Paytm-only payment contract.
 // Money moves through Aditya's personal Paytm UPI handle, so the app never
 // touches a gateway: it locks the amount, builds the UPI intent, and records
 // the claim for him to confirm against his Paytm statement.
@@ -10,7 +10,8 @@ export const payee = {
 
 export const mentorEmail = "adityabakshi1011@gmail.com";
 
-export type MentorshipPlanId = "one-to-one" | "ltm-3-months" | "ltm-6-months" | "roadmap";
+/** The only thing CodexSheet sells. Older rows in the ledger still name plans below. */
+export type MentorshipPlanId = "family";
 
 export type MentorshipPlan = {
   id: MentorshipPlanId;
@@ -25,46 +26,43 @@ export type MentorshipPlan = {
 
 export const mentorshipPlans: MentorshipPlan[] = [
   {
-    id: "one-to-one",
-    tag: "ONE",
-    title: "1:1 Mentorship",
-    subtitle: "One focused call, booked after you pay",
-    price: 19,
-    cadence: "single session",
-    includes: ["30–45 min 1:1 video call", "Your DSA roadblock, solved live", "Follow-up DM after the call"],
-  },
-  {
-    id: "ltm-3-months",
-    tag: "LT3",
-    title: "Long-Term Mentorship",
-    subtitle: "Weekly sessions for 3 months",
-    price: 100,
-    cadence: "weekly session · 3 months",
-    includes: ["Weekly 1:1 session", "DM Aditya anytime", "Pattern roadmap and review of your solutions"],
-    highlight: true,
-  },
-  {
-    id: "ltm-6-months",
-    tag: "LT6",
-    title: "Long-Term Mentorship",
-    subtitle: "Weekly sessions for 6 months",
-    price: 499,
-    cadence: "weekly session · 6 months",
-    includes: ["Weekly 1:1 session", "DM Aditya anytime", "Interview prep and mock rounds included"],
-  },
-  {
-    id: "roadmap",
-    tag: "RMAP",
-    title: "250-Pattern DSA Roadmap",
-    subtitle: "Full access, unlocked in your workspace",
-    price: 19,
-    cadence: "one-time purchase",
-    includes: ["Every pattern with its problems in order", "Beginner to interview-ready sequence", "Unlocks all 250 problems once Aditya confirms the payment"],
+    id: "family",
+    tag: "FAM",
+    title: "CodexSheet Family Pass",
+    subtitle: "All 19 features, one payment",
+    price: 10,
+    cadence: "one payment · no expiry",
+    includes: [
+      "Every one of the 19 workspace features, opened at once",
+      "All 250 patterns and the full problem library",
+      "Deva editor with real judged submissions, the animated course and the AI tutor",
+      "Roadmap board, notes, articles, LLD path, whiteboard, calendar and job search",
+      "Group chat, video calls and the personal AI",
+      "A 1:1 session with Aditya you book yourself, plus the private chat lane",
+    ],
   },
 ];
 
 export function planById(id: string): MentorshipPlan | undefined {
   return mentorshipPlans.find((plan) => plan.id === id);
+}
+
+/** Names a plan for a student, including the products retired when the pass launched. */
+export function planLabel(plan: string): string {
+  const legacy: Record<string, string> = {
+    "one-to-one": "1:1 Mentorship",
+    "ltm-3-months": "Long-Term Mentorship · 3 months",
+    "ltm-6-months": "Long-Term Mentorship · 6 months",
+    roadmap: "250-Pattern DSA Roadmap",
+  };
+  return planById(plan)?.title ?? legacy[plan] ?? plan;
+}
+
+/** DUE = Aditya has not ticked the money against his Paytm statement. DONE = he has. */
+export function paymentBadge(order: { status: string }): { cls: "due" | "done" | "off"; label: string } {
+  if (order.status === "confirmed" || order.status === "delivered") return { cls: "done", label: "PAYMENT DONE" };
+  if (order.status === "cancelled") return { cls: "off", label: "CANCELLED" };
+  return { cls: "due", label: "PAYMENT DUE" };
 }
 
 const referenceAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

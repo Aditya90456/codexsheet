@@ -15,7 +15,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   Code2,
   ExternalLink,
   Flame,
@@ -104,7 +103,6 @@ type RoadmapPreferences = {
   focusPattern: string;
 };
 type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees";
-type WorkspaceTheme = "light" | "midnight" | "forest";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -135,6 +133,36 @@ function viewFromLocation(): WorkspaceView {
   const match = (Object.entries(viewPaths) as Array<[WorkspaceView, string]>).find(([, route]) => route === path);
   return match?.[0] ?? "dashboard";
 }
+
+const passFeatureNames = [
+  "Landing", "250-problem library", "Deva editor", "Animated DSA course", "Ask a DSA tutor",
+  "Progress dashboard", "Company question sets", "Roadmap board", "Senior SDE · LLD", "LLD whiteboard",
+  "Personal notes", "Concept articles", "Job search", "Group chat", "Video calls",
+  "Practice calendar", "1:1 mentorship", "Mentee space", "Personal AI",
+];
+
+function WorkspacePassLock({ checking, onOpenStore, onRecheck }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void }) {
+  return (
+    <section className="workspace-lock" aria-label="CodexSheet Family Pass">
+      <div className="workspace-lock-card">
+        <span className="workspace-lock-kicker">CODEXSHEET FAMILY PASS · ₹10</span>
+        <h2>One payment opens all 19 features.</h2>
+        <p>The 250-problem sheet is the product. ₹10 on Paytm opens it in full, along with the Deva editor, the animated course, the AI tutor, notes, chat, calls and your 1:1 session. Nothing else is unlocked until Aditya confirms the payment.</p>
+        <div className="workspace-lock-actions">
+          <button type="button" className="primary-button" onClick={onOpenStore}>Pay ₹10 on Paytm <ArrowRight size={16} /></button>
+          <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I paid — unlock"}</button>
+        </div>
+        <small>Aditya marks payments against his Paytm statement, usually the same day. Your reference starts with CS-FAM-.</small>
+      </div>
+      <ul className="workspace-lock-list" aria-label="What the pass unlocks">
+        {passFeatureNames.map((feature, index) => (
+          <li key={feature}><i>{String(index + 1).padStart(2, "0")}</i>{feature}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 
 function HomePage({
   solved,
@@ -325,22 +353,15 @@ function HomePage({
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
-          <p>Mentorship calls, long-term plans and the full-roadmap unlock — paid straight to Paytm, no third-party store.</p>
+          <p>One ₹10 pass opens all 19 features, paid straight to Paytm — no tiers to compare and no third-party store.</p>
         </div>
-        <div className="home-offer-grid" aria-label="Featured DSA offers">
-          <article className="home-offer-card home-offer-mentorship">
-            <div className="home-offer-top"><span className="home-offer-icon">1:1</span><span className="home-offer-price">₹19</span></div>
-            <span className="home-offer-label">LEARN WITH ADITYA</span>
-            <h3>1:1 mentorship &amp; long-term mentoring</h3>
-            <p>One 1:1 call for ₹19, or weekly sessions with DMs anytime — ₹100 for 3 months, ₹499 for 6 months. Pay on Paytm.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>See mentorship plans <ArrowRight size={15}/></a>
-          </article>
-          <article className="home-offer-card home-offer-roadmap">
-            <div className="home-offer-top"><span className="home-offer-icon">250</span><span className="home-offer-price">₹19</span></div>
-            <span className="home-offer-label">PATTERN-WISE PRACTICE</span>
-            <h3>250-pattern DSA roadmap</h3>
-            <p>The first 50 problems are free; confirming your ₹19 Paytm payment unlocks all 250 patterns in the workspace — no files, no email attachments.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship", "roadmap"); }}>Get the roadmap <ArrowRight size={15}/></a>
+        <div className="home-offer-grid home-offer-solo" aria-label="The CodexSheet pass">
+          <article className="home-offer-card home-offer-pass">
+            <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹10</span></div>
+            <span className="home-offer-label">EVERY FEATURE, ONE PAYMENT</span>
+            <h3>CodexSheet Family Pass</h3>
+            <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls — plus a 1:1 session with Aditya that you book yourself. The first 50 problems stay free.</p>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all 19 features for ₹10 <ArrowRight size={15}/></a>
           </article>
         </div>
       </section>
@@ -889,6 +910,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [relayNotice, setRelayNotice] = useState("");
   const [connectingLabel, setConnectingLabel] = useState("Connecting to room…");
   const localId = useRef(crypto.randomUUID());
   const streamRef = useRef<MediaStream | null>(null);
@@ -944,7 +966,7 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
   async function startRoom(targetRoomId: string) {
     if (!supabase || !userId) { setError("Sign in to join this peer room."); return; }
     if (connecting) return;
-    setConnecting(true); setConnectingLabel("Joining room…"); setError("");
+    setConnecting(true); setConnectingLabel("Joining room…"); setError(""); setRelayNotice("");
     try {
       const { error: joinError } = await supabase.rpc("join_call_room", { p_room_id: targetRoomId });
       if (joinError) throw new Error(joinError.message);
@@ -953,10 +975,14 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
       setRoomCreatorId(room.created_by);
       setRoomId(targetRoomId);
       const { data: iceConfig, error: iceConfigError } = await supabase.functions.invoke("call-ice");
-      if (iceConfigError || !Array.isArray(iceConfig?.iceServers) || iceConfig.iceServers.length === 0) {
-        throw new Error("Could not load secure call connection settings. Configure and deploy the call-ice Supabase function, then try again.");
+      const servedIceServers: RTCIceServer[] = !iceConfigError && Array.isArray(iceConfig?.iceServers)
+        ? iceConfig.iceServers as RTCIceServer[]
+        : [];
+      if (servedIceServers.length > 0) iceServers.current = servedIceServers;
+      // STUN alone cannot cross a symmetric NAT, so say so instead of failing quietly.
+      if (iceConfigError || servedIceServers.length === 0 || iceConfig?.turnConfigured === false) {
+        setRelayNotice("This room has no call relay, so it can fail on strict mobile or office networks. A Google Meet link always connects.");
       }
-      iceServers.current = iceConfig.iceServers as RTCIceServer[];
       setConnectingLabel("Allow camera and microphone access…");
       const media = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       streamRef.current = media;
@@ -1148,13 +1174,14 @@ function VideoCalls({ userId, userName }: { userId: string | null; userName: str
       {!roomToShare ? <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>Meet your peers.<br/><em>Face to face.</em></h2><p>Create a private video room and share its link with classmates. Peers with the link can join directly, and you can talk together in real time.</p>{userId ? <><button className="request-room-button create-room-button" onClick={() => void createRoom()}><Video size={17}/> Create a peer room <ArrowRight size={15}/></button><div className="join-room-divider"><span>OR JOIN A ROOM</span></div><form className="join-room-form" onSubmit={(event) => { event.preventDefault(); openRoomInvite(); }}><input aria-label="Room invite link or ID" value={joinRoomInput} onChange={(event) => setJoinRoomInput(event.target.value)} placeholder="Paste an invite link or room ID"/><button type="submit"><ArrowRight size={15}/> Join room</button></form></> : <div className="share-link-hint"><ShieldCheck size={14}/> Sign in to create or join a room.</div>}</div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Users size={23}/></div><span>PEER TO PEER</span><strong>Study together</strong><small>Open link · Join · Connect</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section> : <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>{isRoomOwner ? <>Your peer room.<br/><em>Ready when you are.</em></> : <>You’re invited.<br/><em>Join the room.</em></>}</h2><p>{isRoomOwner ? "Share this private link with anyone you’d like to meet. Peers can join directly." : "Join the shared room to meet the host and other peers. No request or approval needed."}</p><div className="share-link-field"><Link2 size={17}/><span title={shareUrl.toString()}>{shareUrl.toString()}</span><button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl.toString()); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setError("Could not copy the peer room link."); } }}><Copy size={15}/>{copied ? "Copied" : "Copy link"}</button></div><div className="share-link-hint"><ShieldCheck size={14}/> Anyone with this link can join while signed in.</div></div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Video size={23}/></div><span>LIVE PEER ROOM</span><strong>Room for everyone</strong><small>Share · Join · Talk</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section>}
       {roomToShare && userId && <div className="schedule-layout room-meeting-layout"><div className="schedule-main-card room-request-card"><div className="room-card-icon"><Video size={22}/></div><span className="schedule-kicker">{isRoomOwner ? "YOUR PEER ROOM" : "PEER ROOM INVITE"}</span><h3>{isRoomOwner ? "Start the call" : "Join the conversation"}</h3><p>{isRoomOwner ? "Start your camera and microphone, then your peers can connect through the link above." : "Your camera and microphone turn on only after you join."}</p><div className="room-card-steps"><span><i>01</i> Share the room link</span><span><i>02</i> Peers join directly</span><span><i>03</i> Talk face to face</span></div><div className="peer-room-actions"><button className="request-room-button" disabled={connecting} onClick={() => void startRoom(roomToShare)}><Video size={16}/>{connecting ? "Joining…" : isRoomOwner ? "Start call" : "Join call"}<ArrowRight size={15}/></button><button className="invite-peers-button" onClick={() => void invitePeers(shareUrl)}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button></div></div><aside className="schedule-side-card"><div className="schedule-side-heading"><span className="schedule-kicker">PEER ROOM</span><span className="approval-count"><Users size={13}/></span></div><h3>Bring your study group</h3><p>Share the room link with peers. Everyone who joins appears in the call.</p><div className="request-empty"><div className="request-empty-icon"><Link2 size={20}/></div><strong>One link, shared conversation</strong><span>Peer-to-peer video, microphone, and screen sharing.</span></div><div className="approval-footnote"><ShieldCheck size={15}/> Calls stay private to people with the room link.</div></aside></div>}
       {connecting && <div className="call-connecting">{connectingLabel}</div>}
+      {(relayNotice && !connecting) && <div className="call-toast relay-notice" role="status">{relayNotice}<button onClick={() => setRelayNotice("")}>×</button></div>}
       {(error) && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}
       <div className="call-footnote"><span><span className="status-dot"/> PEER ROOM</span><span>Private peer-to-peer calls · No recording</span></div>
     </section>;
   }
 
   const participants = Object.entries(remoteStreams);
-  return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}</section>;
+  return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}{relayNotice && <div className="call-toast relay-notice" role="status">{relayNotice}<button onClick={() => setRelayNotice("")}>×</button></div>}</section>;
 }
 
 function App() {
@@ -1190,9 +1217,7 @@ function App() {
   const [query, setQuery] = useState("");
   const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
-  const [workspaceTheme, setWorkspaceTheme] = useState<WorkspaceTheme>("midnight");
-  const [storePlan, setStorePlan] = useState<string | null>(null);
-  const navigateToView = (view: WorkspaceView, plan: string | null = null) => {
+  const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
     if (view !== "calls") {
@@ -1201,24 +1226,22 @@ function App() {
       url.searchParams.delete("call");
     }
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
-    setStorePlan(view === "mentorship" ? plan : null);
     setActiveView(view);
   };
-  // The ₹19 roadmap plan unlocks the full 250-problem set in the library and
-  // the board; signed out, the preview is free. Supabase missing => unlocked.
-  const [roadmapLocked, setRoadmapLocked] = useState(true);
-  const [roadmapChecking, setRoadmapChecking] = useState(false);
-  const refreshRoadmapAccess = useCallback(async () => {
-    if (!supabase) { setRoadmapLocked(false); return; }
-    setRoadmapChecking(true);
-    const result = await supabase.rpc("roadmap_unlocked");
-    if (!result.error) setRoadmapLocked(result.data !== true);
-    setRoadmapChecking(false);
+  // One ₹10 pass opens every feature, including the full 250-problem set;
+  // signed out, only the landing page and the store are open. Supabase missing => unlocked.
+  const [passLocked, setPassLocked] = useState(true);
+  const [passChecking, setPassChecking] = useState(() => Boolean(supabase));
+  const refreshPassAccess = useCallback(async () => {
+    if (!supabase) { setPassLocked(false); return; }
+    setPassChecking(true);
+    const result = await supabase.rpc("workspace_unlocked");
+    if (!result.error) setPassLocked(result.data !== true);
+    setPassChecking(false);
   }, []);
   useEffect(() => {
-    if (isSignedIn && (activeView === "problems" || activeView === "roadmap")) void refreshRoadmapAccess();
-  }, [isSignedIn, activeView, refreshRoadmapAccess]);
-  const FREE_ROADMAP_COUNT = 50;
+    if (isSignedIn) void refreshPassAccess();
+  }, [isSignedIn, activeView, refreshPassAccess]);
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
     const canonicalPath = viewPaths[viewFromLocation()];
@@ -1228,10 +1251,9 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-  useEffect(() => {
-    document.documentElement.dataset.theme = workspaceTheme;
-    localStorage.setItem("codexsheet-theme", workspaceTheme);
-  }, [workspaceTheme]);
+  // Only the landing page and the store are free. The 250-problem sheet and
+  // every other feature wait for the confirmed ₹10 pass.
+  const passGate = !(["home", "mentorship"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -1390,9 +1412,8 @@ function App() {
           if (focusDifference !== 0) return focusDifference;
         }
         return left.number - right.number;
-      })
-      .slice(0, roadmapLocked ? FREE_ROADMAP_COUNT : problems.length);
-  }, [patternStats, progress, roadmapPreferences.focusPattern, roadmapLocked]);
+      });
+  }, [patternStats, progress, roadmapPreferences.focusPattern]);
   const roadmapWeeks = useMemo(() => {
     if (roadmapProblems.length === 0) return [];
     const weekCount = Math.min(roadmapPreferences.targetWeeks, roadmapProblems.length);
@@ -1982,14 +2003,14 @@ function App() {
   }
 
   if (!isLoaded) {
-    return <main className="auth-gate"><div className="auth-gate-card auth-gate-loading"><img className="auth-gate-logo" src={workspaceTheme === "midnight" ? "/codexsheet-primary-reversed.svg" : "/codexsheet-primary.svg"} alt="CodexSheet" /><span>CODEXSHEET · DSA WORKSPACE</span><h1>Preparing your workspace…</h1></div></main>;
+    return <main className="auth-gate"><div className="auth-gate-card auth-gate-loading"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span>CODEXSHEET · DSA WORKSPACE</span><h1>Preparing your workspace…</h1></div></main>;
   }
 
   // Students pay from a shared link, so the mentorship page stays public.
   const publicMentorship = !isSignedIn && activeView === "mentorship";
 
   if (!isSignedIn && !publicMentorship) {
-    return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src={workspaceTheme === "midnight" ? "/codexsheet-primary-reversed.svg" : "/codexsheet-primary.svg"} alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div></main>;
+    return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div></main>;
   }
 
   if (publicMentorship) {
@@ -2000,7 +2021,7 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-lockup">
-          <img className="brand-primary-image" src={workspaceTheme === "midnight" ? "/codexsheet-primary-reversed.svg" : "/codexsheet-primary.svg"} alt="CodexSheet" />
+          <img className="brand-primary-image" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" />
           <span className="workspace-name">DSA practice workspace</span>
           <ChevronDown size={14} className="muted-icon" />
         </div>
@@ -2022,46 +2043,28 @@ function App() {
             <Sparkles size={16} /> Ask Tutor
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={activeView === "dashboard" || activeView === "companies" || activeView === "dsa-ide" || activeView === "calendar" || activeView === "roadmap" || activeView === "lld" || activeView === "whiteboard" || activeView === "chat" || activeView === "calls" || activeView === "notes" || activeView === "articles" || activeView === "jobs" || activeView === "mentorship" || activeView === "mentees" ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={["dashboard", "calendar", "roadmap", "lld", "whiteboard", "chat", "calls", "notes", "articles", "mentorship", "mentees"].includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
               <span className="nav-more-label">Practice</span>
               <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}><LayoutDashboard size={16} /> Progress</button>
-              <button className={activeView === "companies" ? "active" : ""} aria-pressed={activeView === "companies"} onClick={() => navigateToView("companies")}><UsersRound size={16} /> Companies</button>
-              <span className="nav-more-label">Learn</span>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
+              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
+              <span className="nav-more-label">Study</span>
               <button className={activeView === "lld" ? "active" : ""} aria-pressed={activeView === "lld"} onClick={() => navigateToView("lld")}><Layers3 size={16} /> Senior SDE · LLD</button>
-              <button className={activeView === "whiteboard" ? "active" : ""} aria-pressed={activeView === "whiteboard"} onClick={() => navigateToView("whiteboard")}><MousePointer2 size={16} /> LLD whiteboard</button>
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
-              <span className="nav-more-label">Content</span>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
-              <button className={activeView === "jobs" ? "active" : ""} aria-pressed={activeView === "jobs"} onClick={() => navigateToView("jobs")}><BriefcaseBusiness size={16} /> Job search</button>
-              <span className="nav-more-label">Community</span>
+              <span className="nav-more-label">Connect</span>
               <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
               <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
-              <span className="nav-more-label">Mentorship</span>
               <button className={activeView === "mentorship" ? "active" : ""} aria-pressed={activeView === "mentorship"} onClick={() => navigateToView("mentorship")}><GraduationCap size={16} /> 1:1 mentorship</button>
               <button className={activeView === "mentees" ? "active" : ""} aria-pressed={activeView === "mentees"} onClick={() => navigateToView("mentees")}><Users size={16} /> Mentees</button>
-              <span className="nav-more-label">Assistant</span>
-              <button onClick={() => { window.location.href = "/assistant"; }}><MessageCircle size={16} /> Personal AI</button>
             </div>
           </details>
         </nav>
         <div className="top-actions">
-          <label className="theme-picker">
-            <Palette size={15} aria-hidden="true" />
-            <span className="sr-only">Color theme</span>
-            <select
-              aria-label="Color theme"
-              value={workspaceTheme}
-              onChange={(event) => setWorkspaceTheme(event.target.value as WorkspaceTheme)}
-            >
-              <option value="light">Light</option>
-              <option value="midnight">Midnight</option>
-              <option value="forest">Forest</option>
-            </select>
-          </label>
-          <CircleHelp size={18} className="muted-icon" />
+          <button type="button" className="assistant-launcher" onClick={() => { window.location.href = "/assistant"; }} title="Ask your personal AI">
+            <Sparkles size={15} /> <span>AI</span>
+          </button>
             {isLoaded ? user ? (
               <UserButton />
             ) : (
@@ -2168,13 +2171,15 @@ function App() {
                         : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : "Explore early career roles and find a team where you can grow."}
             </p>
           </div>
-          <div className="title-actions">
-            <button className="secondary-button">
-              <GitBranch size={16} /> View repo
-            </button>
-          </div>
         </div>}
       </section>
+      {passGate && passLocked && !passChecking && (
+        <WorkspacePassLock
+          checking={passChecking}
+          onOpenStore={() => navigateToView("mentorship")}
+          onRecheck={() => void refreshPassAccess()}
+        />
+      )}
       {activeView === "home" && <HomePage
         solved={solved}
         inProgress={inProgress}
@@ -2183,18 +2188,18 @@ function App() {
         patterns={patternStats}
         onNavigate={navigateToView}
       />}
-      {activeView === "articles" && <ArticlesPage />}
-      {activeView === "jobs" && <JobsPage />}
-      {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} initialPlanId={storePlan} />}
-      {activeView === "mentees" && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
-      {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
-      {activeView === "whiteboard" && <LldWhiteboardPage />}
-      {activeView === "companies" && <CompanyProblems />}
-      {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
-      {activeView === "dsa-course" && <DsaCourseStudio />}
-      {activeView === "tutor" && <DsaTutor />}
-      {activeView === "calls" && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
-      {activeView === "dashboard" && (
+      {activeView === "articles" && !passLocked && <ArticlesPage />}
+      {activeView === "jobs" && !passLocked && <JobsPage />}
+      {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
+      {activeView === "mentees" && !passLocked && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
+      {activeView === "lld" && !passLocked && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
+      {activeView === "whiteboard" && !passLocked && <LldWhiteboardPage />}
+      {activeView === "companies" && !passLocked && <CompanyProblems />}
+      {activeView === "dsa-ide" && !passLocked && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
+      {activeView === "dsa-course" && !passLocked && <DsaCourseStudio />}
+      {activeView === "tutor" && !passLocked && <DsaTutor />}
+      {activeView === "calls" && !passLocked && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
+      {activeView === "dashboard" && !passLocked && (
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
             <div className="dashboard-welcome-copy">
@@ -2204,6 +2209,8 @@ function App() {
               <div className="dashboard-welcome-actions">
                 <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
                 <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
+                <button className="dashboard-tool-link" onClick={() => navigateToView("companies")}><UsersRound size={15} /> Company sets</button>
+                <button className="dashboard-tool-link" onClick={() => navigateToView("jobs")}><BriefcaseBusiness size={15} /> Job board</button>
               </div>
             </div>
             <div className="dashboard-welcome-progress" aria-label={`${percent}% complete`}>
@@ -2322,7 +2329,7 @@ function App() {
           </section>
         </>
       )}
-      {activeView === "roadmap" && (
+      {activeView === "roadmap" && !passLocked && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
@@ -2331,7 +2338,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className={roadmapLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship", "roadmap")}>{roadmapLocked ? <>Unlock all 250 patterns · ₹19 <ArrowRight size={15}/></> : <>Roadmap unlocked <Check size={15}/></>}</button>
+            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all 19 features · ₹10 <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
           </header>
           <div className="roadmap-controls">
             <label>
@@ -2460,7 +2467,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "calendar" && (
+      {activeView === "calendar" && !passLocked && (
         <section className="calendar-card" aria-label="Practice activity calendar">
           <header className="calendar-topline">
             <div className="calendar-titlelockup">
@@ -2564,7 +2571,7 @@ function App() {
           </footer>
         </section>
       )}
-      {activeView === "chat" && (
+      {activeView === "chat" && !passLocked && (
         <section className="chat-card" aria-label="Shared group chat">
           <header className="chat-heading">
             <div className="group-chat-icon"><UsersRound size={18} /></div>
@@ -2670,7 +2677,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "notes" && (
+      {activeView === "notes" && !passLocked && (
         <section className="notebook-card" aria-label="Personal notebook">
           <header className="notebook-heading">
             <div className="notebook-icon"><NotebookPen size={18} /></div>
@@ -2797,7 +2804,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "problems" && <section className="problem-library-page">
+      {activeView === "problems" && !passLocked && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> YOUR PRACTICE, WITH PURPOSE</span>
@@ -2825,16 +2832,8 @@ function App() {
             <label className="problem-filter-select"><span>DIFFICULTY</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select><ChevronDown size={14}/></label>
             <label className="problem-filter-select"><span>STATUS</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>All status</option><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={14}/></label>
           </div>
-          <div className="problem-list-toolbar"><span><strong>{roadmapLocked ? Math.min(visibleProblems.length, FREE_ROADMAP_COUNT) : visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
-          {roadmapLocked && (
-            <div className="problem-library-gate">
-              <Lock size={15} />
-              <span>Free preview shows the first {FREE_ROADMAP_COUNT} problems. Pay ₹19 to open all 250 patterns.</span>
-              <button type="button" onClick={() => navigateToView("mentorship", "roadmap")}>Unlock for ₹19</button>
-              <button type="button" className="gate-check" disabled={roadmapChecking} onClick={() => void refreshRoadmapAccess()}>{roadmapChecking ? "Checking…" : "I've paid — check"}</button>
-            </div>
-          )}
-          <div className="problem-list">{(roadmapLocked ? visibleProblems.filter((problem) => problem.number <= FREE_ROADMAP_COUNT) : visibleProblems).length ? (roadmapLocked ? visibleProblems.filter((problem) => problem.number <= FREE_ROADMAP_COUNT) : visibleProblems).map((problem) => {
+          <div className="problem-list-toolbar"><span><strong>{visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
+          <div className="problem-list">{visibleProblems.length ? visibleProblems.map((problem) => {
             const current = progress[problem.number]?.status ?? "Todo";
             const statusClass = current.toLowerCase().replace(" ", "-");
             return <article className="problem-list-row" key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label></article>;
