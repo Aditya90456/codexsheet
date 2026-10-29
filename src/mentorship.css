@@ -1,5 +1,6 @@
-/* Mentorship payment page — Paytm-only, themed through variables so the
-   light, midnight and forest shells all keep their own palette. */
+/* Mentorship page — Paytm-only, and deliberately classroom-looking: a
+   syllabus, a lesson path and the mentor himself, not a bare checkout panel.
+   Everything is coloured through the --ms-* variables. */
 .mentorship {
   --ms-surface: #fff;
   --ms-canvas: #f6f9fe;
@@ -196,6 +197,103 @@
 
 .mentorship-spin { animation: mentorship-rotate 1s linear infinite; }
 @keyframes mentorship-rotate { to { transform: rotate(360deg); } }
+
+
+/* Lesson path: the four things that happen between the QR and the first call. */
+.mentorship-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 1080px;
+  margin: 0 auto 18px;
+}
+
+.mentorship-flow article {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--ms-line);
+  border-radius: 13px;
+  background: var(--ms-surface);
+}
+
+.mentorship-flow-index {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: var(--ms-accent);
+  color: var(--ms-accent-ink);
+  font: 700 11px/1 "DM Mono", ui-monospace, monospace;
+}
+
+.mentorship-flow article strong { display: block; margin-bottom: 3px; font-size: 13px; }
+.mentorship-flow article p { margin: 0; color: var(--ms-muted); font-size: 12px; line-height: 1.5; }
+.mentorship-flow-arrow { position: absolute; top: 50%; right: -8px; transform: translateY(-50%); color: var(--ms-accent); background: var(--ms-canvas); border-radius: 50%; }
+
+/* Syllabus: ruled exercise-book pages, one per week. */
+.mentorship-syllabus { max-width: 1080px; margin: 0 auto 20px; }
+.mentorship-syllabus > header { margin-bottom: 12px; }
+.mentorship-syllabus-kicker { display: inline-flex; align-items: center; gap: 6px; color: var(--ms-accent); font: 700 10px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .14em; }
+.mentorship-syllabus h2 { margin: 8px 0 5px; font-size: 22px; letter-spacing: -.02em; }
+.mentorship-syllabus > header p { margin: 0; max-width: 720px; color: var(--ms-muted); font-size: 13px; }
+
+.mentorship-weeks { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 12px; }
+
+.mentorship-week {
+  --ms-rule: color-mix(in srgb, var(--ms-line) 70%, transparent);
+  display: grid;
+  gap: 9px;
+  padding: 14px 16px 15px;
+  border: 1px solid var(--ms-line);
+  border-left: 3px solid var(--ms-accent);
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 26px, var(--ms-rule) 26px 27px),
+    var(--ms-surface);
+  background-position: 0 46px, 0 0;
+}
+
+.mentorship-week-label { display: flex; align-items: center; gap: 7px; color: var(--ms-accent); font: 700 10px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .12em; }
+.mentorship-week-label i { padding: 2px 6px; border: 1px solid var(--ms-line); border-radius: 999px; color: var(--ms-muted); background: var(--ms-canvas); font: 600 9px/1.4 "DM Mono", ui-monospace, monospace; font-style: normal; letter-spacing: .04em; }
+.mentorship-week h3 { margin: 0; font-size: 15px; line-height: 1.3; }
+.mentorship-week-focus { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.mentorship-week-focus li { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border: 1px solid var(--ms-line); border-radius: 999px; color: var(--ms-muted); background: var(--ms-canvas); font: 600 10px/1.4 "DM Mono", ui-monospace, monospace; }
+.mentorship-week > p { margin: 0; color: var(--ms-muted); font-size: 12px; line-height: 1.6; }
+
+/* The mentor, as a person rather than a support alias. */
+.mentorship-mentor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  max-width: 1080px;
+  margin: 0 auto 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--ms-line);
+  border-radius: 18px;
+  background: var(--ms-surface);
+}
+
+.mentorship-mentor img { width: 132px; height: 132px; border-radius: 50%; object-fit: cover; border: 3px solid var(--ms-accent); }
+.mentorship-mentor h2 { margin: 7px 0 9px; font-size: 21px; }
+.mentorship-mentor ul { margin: 0; padding: 0; display: grid; gap: 7px; list-style: none; }
+.mentorship-mentor li { position: relative; padding-left: 19px; color: var(--ms-muted); font-size: 13px; line-height: 1.55; }
+.mentorship-mentor li::before { position: absolute; left: 0; top: 1px; color: var(--ms-accent); content: "\2713"; font-weight: 700; }
+
+@media (max-width: 1080px) {
+  .mentorship-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mentorship-flow-arrow { display: none; }
+}
+
+@media (max-width: 640px) {
+  .mentorship-flow, .mentorship-weeks { grid-template-columns: minmax(0, 1fr); }
+  .mentorship-mentor { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .mentorship-mentor img { width: 104px; height: 104px; }
+}
 
 @media (max-width: 900px) {
   .mentorship-plans, .mentorship-split, .mentorship-faq, .mentorship-plan ul { grid-template-columns: minmax(0, 1fr); }

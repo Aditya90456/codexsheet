@@ -30,7 +30,7 @@ export const mentorshipPlans: MentorshipPlan[] = [
     tag: "FAM",
     title: "CodexSheet Family Pass",
     subtitle: "All 19 features, one payment",
-    price: 10,
+    price: 1000,
     cadence: "one payment · no expiry",
     includes: [
       "Every one of the 19 workspace features, opened at once",
@@ -45,6 +45,51 @@ export const mentorshipPlans: MentorshipPlan[] = [
 
 export function planById(id: string): MentorshipPlan | undefined {
   return mentorshipPlans.find((plan) => plan.id === id);
+}
+
+/** Twelve weeks over the sheet - patterns and interviews only, no LLD or HLD. */
+export type CurriculumWeek = {
+  label: string;
+  title: string;
+  focus: string[];
+  pace: string;
+  outcome: string;
+};
+
+export const curriculum: CurriculumWeek[] = [
+  { label: "Week 1", title: "Build the lookup reflex", focus: ["Arrays & Hashing"], pace: "21 problems", outcome: "You stop writing a loop before asking what a hash map already answers." },
+  { label: "Week 2", title: "Move two ends, not one", focus: ["Two Pointers"], pace: "21 problems", outcome: "Sorted input becomes a reflex: pair sums, containers, trapped water." },
+  { label: "Week 3", title: "Windows you can shrink", focus: ["Sliding Window"], pace: "21 problems", outcome: "Longest, shortest and at-most-K questions collapse into one template you own." },
+  { label: "Week 4", title: "What is still open", focus: ["Stack", "Monotonic Stack"], pace: "21 problems", outcome: "Next-greater, valid parentheses and histogram problems stop being guesses." },
+  { label: "Week 5", title: "Boundaries without off-by-ones", focus: ["Binary Search"], pace: "21 problems", outcome: "You write the predicate first and let the search fall out of it." },
+  { label: "Week 6", title: "Pointers that must not leak", focus: ["Linked List"], pace: "21 problems", outcome: "Fast and slow pointers, in-place reversal and cycle detection, drawn before coded." },
+  { label: "Week 7", title: "Recursion you can draw", focus: ["Trees"], pace: "21 problems", outcome: "BFS, DFS, paths and tree DP with the call stack visible on paper." },
+  { label: "Week 8", title: "Traversals on real graphs", focus: ["Graphs"], pace: "21 problems", outcome: "Islands, course schedules, shortest unweighted path - you pick the traversal from the question." },
+  { label: "Week 9", title: "Choose, explore, undo", focus: ["Backtracking"], pace: "21 problems", outcome: "Subsets, permutations and pruning, and you can explain the state you carry." },
+  { label: "Week 10", title: "Order things under pressure", focus: ["Heaps", "Intervals"], pace: "21 problems", outcome: "Top-K, merge intervals and scheduling: sort by end, then sweep." },
+  { label: "Week 11", title: "States and transitions", focus: ["1-D DP", "2-D DP"], pace: "21 problems", outcome: "You define the state before the recurrence and memoise what you actually proved." },
+  { label: "Week 12", title: "Mixed set, then a real mock", focus: ["Greedy", "Bit Manipulation"], pace: "19 problems + a timed set", outcome: "One recorded 1:1 mock interview with Aditya and a written feedback note on your code." },
+];
+
+/** What happens between the Paytm QR and the first call. */
+export const passFlow: { title: string; body: string }[] = [
+  { title: "Pay on Paytm", body: "Scan the QR. Amount and payee are locked in the code, so there is nothing to mistype." },
+  { title: "Record your reference", body: "Fill the small form on this page. It files the claim with your reference code." },
+  { title: "Aditya matches the money", body: "He ticks your reference against his own Paytm statement. The badge flips DUE → DONE." },
+  { title: "Your lane opens", body: "All 19 features, the full 250-problem sheet, your weekly slot and the private chat." },
+];
+
+/** Only promises the product actually keeps — no invented résumé. */
+export const mentorCraft: string[] = [
+  "He reads your solution line by line, on the real judged submission in the Deva editor — not a paragraph of advice.",
+  "One 1:1 call every week, and you pick the hour from the slots he publishes (Mon–Fri, 11:00–18:00 IST).",
+  "Stuck between sessions? Message him in the private lane; there is no per-question charge.",
+  "He confirms your payment himself before the first call, so the ledger and his Paytm statement always agree.",
+];
+
+/** Rupee display with Indian grouping, so 1000 reads as ₹1,000. */
+export function rupees(amount: number): string {
+  return `₹${amount.toLocaleString("en-IN")}`;
 }
 
 /** Names a plan for a student, including the products retired when the pass launched. */

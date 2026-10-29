@@ -145,11 +145,11 @@ function WorkspacePassLock({ checking, onOpenStore, onRecheck }: { checking: boo
   return (
     <section className="workspace-lock" aria-label="CodexSheet Family Pass">
       <div className="workspace-lock-card">
-        <span className="workspace-lock-kicker">CODEXSHEET FAMILY PASS · ₹10</span>
+        <span className="workspace-lock-kicker">CODEXSHEET FAMILY PASS · ₹1,000</span>
         <h2>One payment opens all 19 features.</h2>
-        <p>The 250-problem sheet is the product. ₹10 on Paytm opens it in full, along with the Deva editor, the animated course, the AI tutor, notes, chat, calls and your 1:1 session. Nothing else is unlocked until Aditya confirms the payment.</p>
+        <p>The 250-problem sheet is the product. ₹1,000 on Paytm opens it in full, along with the Deva editor, the animated course, the AI tutor, notes, chat, calls and your 1:1 session. Nothing else is unlocked until Aditya confirms the payment.</p>
         <div className="workspace-lock-actions">
-          <button type="button" className="primary-button" onClick={onOpenStore}>Pay ₹10 on Paytm <ArrowRight size={16} /></button>
+          <button type="button" className="primary-button" onClick={onOpenStore}>Pay ₹1,000 on Paytm <ArrowRight size={16} /></button>
           <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I paid — unlock"}</button>
         </div>
         <small>Aditya marks payments against his Paytm statement, usually the same day. Your reference starts with CS-FAM-.</small>
@@ -353,15 +353,15 @@ function HomePage({
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
-          <p>One ₹10 pass opens all 19 features, paid straight to Paytm — no tiers to compare and no third-party store.</p>
+          <p>One ₹1,000 pass opens all 19 features, paid straight to Paytm — no tiers to compare and no third-party store.</p>
         </div>
         <div className="home-offer-grid home-offer-solo" aria-label="The CodexSheet pass">
           <article className="home-offer-card home-offer-pass">
-            <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹10</span></div>
+            <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹1,000</span></div>
             <span className="home-offer-label">EVERY FEATURE, ONE PAYMENT</span>
             <h3>CodexSheet Family Pass</h3>
             <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls — plus a 1:1 session with Aditya that you book yourself. The first 50 problems stay free.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all 19 features for ₹10 <ArrowRight size={15}/></a>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all 19 features for ₹1,000 <ArrowRight size={15}/></a>
           </article>
         </div>
       </section>
@@ -1228,7 +1228,7 @@ function App() {
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
   };
-  // One ₹10 pass opens every feature, including the full 250-problem set;
+  // One ₹1,000 pass opens every feature, including the full 250-problem set;
   // signed out, only the landing page and the store are open. Supabase missing => unlocked.
   const [passLocked, setPassLocked] = useState(true);
   const [passChecking, setPassChecking] = useState(() => Boolean(supabase));
@@ -1252,12 +1252,12 @@ function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
   // Only the landing page and the store are free. The 250-problem sheet and
-  // every other feature wait for the confirmed ₹10 pass.
+  // every other feature wait for the confirmed ₹1,000 pass.
   const passGate = !(["home", "mentorship"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
-        '{"targetWeeks":8,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
+        '{"targetWeeks":12,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
     ) as RoadmapPreferences,
   );
   const [patternOfDay, setPatternOfDay] = useState(patterns[0] ?? "");
@@ -2338,7 +2338,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all 19 features · ₹10 <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
+            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all 19 features · ₹1,000 <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
           </header>
           <div className="roadmap-controls">
             <label>

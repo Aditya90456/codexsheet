@@ -733,7 +733,7 @@ create table if not exists public.mentorship_orders (
   -- UPDATE; dropping them would leave the two older claims stuck. What is for
   -- sale is enforced by the insert trigger below.
   constraint mentorship_orders_amount_matches_plan check (
-    (plan = 'family' and amount = 10)
+    (plan = 'family' and amount = 1000)
     or (plan = 'one-to-one' and amount = 19)
     or (plan = 'ltm-3-months' and amount = 100)
     or (plan = 'ltm-6-months' and amount = 499)
@@ -772,14 +772,14 @@ grant select, insert, update on public.mentorship_orders to authenticated;
 grant insert on public.mentorship_orders to anon;
 grant usage, select on sequence public.mentorship_orders_id_seq to anon, authenticated;
 
--- One product at one price: a claim that is not the ₹10 Family pass never lands.
+-- One product at one price: a claim that is not the ₹1,000 Family pass never lands.
 create or replace function public.mentorship_orders_family_pass_only()
 returns trigger
 language plpgsql
 as $fn$
 begin
-  if new.plan <> 'family' or new.amount <> 10 then
-    raise exception 'CodexSheet sells one product: the Family pass at ₹10 (got plan "%")', new.plan
+  if new.plan <> 'family' or new.amount <> 1000 then
+    raise exception 'CodexSheet sells one product: the Family pass at ₹1,000 (got plan "%")', new.plan
       using errcode = '22023';
   end if;
   return new;
@@ -1187,7 +1187,7 @@ $fn$;
 revoke all on function public.mentor_confirm_mentee(text, text, text) from public;
 grant execute on function public.mentor_confirm_mentee(text, text, text) to authenticated, service_role;
 
--- ₹10 opens all 19 features. The gate asks one question instead of naming a
+-- ₹1,000 opens all 19 features. The gate asks one question instead of naming a
 -- product: is this a mentor, or a buyer with a confirmed payment (matched on the
 -- Clerk id or the verified email of an order paid without signing in)?
 -- mentorship_orders itself stays unreadable from the browser.

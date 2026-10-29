@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, Download, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
-import { mentorEmail, paymentBadge, planLabel } from "./mentorship";
+import { mentorEmail, paymentBadge, planLabel, rupees } from "./mentorship";
 
 type Mentee = {
   id: number;
@@ -595,7 +595,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <div className="mentees-claim" key={claim.reference}>
               <div>
                 <strong>{claim.student}</strong>
-                <span>{planLabel(claim.plan)} · ₹{claim.amount} · {claim.reference}</span>
+                <span>{planLabel(claim.plan)} · {rupees(Number(claim.amount))} · {claim.reference}</span>
                 <span>{[claim.contact, claim.paytm_reference && `UTR ${claim.paytm_reference}`, claim.note].filter(Boolean).join(" · ")}</span>
               </div>
               <label className="mentees-slot">
@@ -720,7 +720,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                   <li className={state.cls} key={payment.reference}>
                     <span className="mentees-duo">{state.label}</span>
                     <div>
-                      <strong>{planLabel(payment.plan)} · ₹{Number(payment.amount)}</strong>
+                      <strong>{planLabel(payment.plan)} · {rupees(Number(payment.amount))}</strong>
                       <span>
                         {payment.reference}
                         {state.cls === "due"
@@ -739,7 +739,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <p className="mentees-note">
               {dues.length > 0
                 ? "Your record appears here the moment Aditya confirms the payment above against his Paytm statement."
-                : <>Nothing confirmed yet. The pass is ₹10 on the <a href="/mentorship">mentorship page</a>.</>}
+                : <>Nothing confirmed yet. The pass is ₹1,000 on the <a href="/mentorship">mentorship page</a>.</>}
             </p>
           )}
           {mine.map((mentee) => {

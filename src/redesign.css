@@ -210,7 +210,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
   .home-services { padding: 50px 17px; }
 }
 
-/* Family Pass lock: replaces any feature the confirmed ₹10 pass has not opened. */
+/* Family Pass lock: replaces any feature the confirmed ₹1,000 pass has not opened. */
 .workspace-lock {
   display: grid;
   gap: 18px;

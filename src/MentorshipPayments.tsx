@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, LoaderCircle, Mail, QrCode, RefreshCw, Smartphone, Wallet } from "lucide-react";
+import { BookOpen, Check, Copy, GraduationCap, LoaderCircle, Mail, QrCode, RefreshCw, ArrowRight, Smartphone, Wallet } from "lucide-react";
+import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
+  curriculum,
+  mentorCraft,
   mentorEmail,
   mentorshipPlans,
   orderReference,
+  passFlow,
   paytmAppUri,
   paytmIntentUri,
   paymentBadge,
@@ -12,6 +16,7 @@ import {
   qrImageUrl,
   queuedOrders,
   recordOrder,
+  rupees,
   upiUri,
   type MentorshipOrder,
 } from "./mentorship";
@@ -142,21 +147,21 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     const rows = (data ?? []) as Order[];
     const order = rows.find((item) => item.reference.toLowerCase() === value.toLowerCase());
     setLookup(order
-      ? { text: `${order.reference} · ₹${order.amount} · ${order.status}`, order }
+      ? { text: `${order.reference} · ${rupees(Number(order.amount))} · ${order.status}`, order }
       : { text: `No request found for ${value.toUpperCase()}. Paytm note codes are case-insensitive.` });
   }
 
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">ALL 19 FEATURES · ONE PASS · ₹10</span>
-        <h1>Everything on CodexSheet. <em>₹10, once, on Paytm.</em></h1>
-        <p>₹{plan.price} opens the whole workspace — all 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself. Paytm only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">ALL 19 FEATURES · ONE PASS · ₹1,000</span>
+        <h1>Everything on CodexSheet. <em>₹1,000, once, on Paytm.</em></h1>
+        <p>{rupees(plan.price)} opens the whole workspace — all 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself. Paytm only, no card forms, no gateway.</p>
       </header>
 
       <div className="mentorship-plans">
         <article className="mentorship-plan selected">
-          <span className="mentorship-plan-price">₹{plan.price}</span>
+          <span className="mentorship-plan-price">{rupees(plan.price)}</span>
           <strong>{plan.title}</strong>
           <span className="mentorship-plan-subtitle">{plan.subtitle}</span>
           <span className="mentorship-plan-cadence">{plan.cadence}</span>
@@ -164,13 +169,44 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
         </article>
       </div>
 
+      <section className="mentorship-flow" aria-label="What happens after you pay">
+        {passFlow.map((step, index) => (
+          <article key={step.title}>
+            <span className="mentorship-flow-index">{index + 1}</span>
+            <div>
+              <strong>{step.title}</strong>
+              <p>{step.body}</p>
+            </div>
+            {index < passFlow.length - 1 && <ArrowRight size={15} className="mentorship-flow-arrow" aria-hidden="true" />}
+          </article>
+        ))}
+      </section>
+
+      <section className="mentorship-syllabus" aria-label="Your twelve-week plan">
+        <header>
+          <span className="mentorship-syllabus-kicker"><GraduationCap size={15} /> THE 12-WEEK PLAN</span>
+          <h2>Twelve weeks, 250 problems, one pattern at a time</h2>
+          <p>The same order the roadmap board uses, at about 21 problems a week with revision and a timed set at the end. DSA only - no LLD or HLD units in this plan.</p>
+        </header>
+        <div className="mentorship-weeks">
+          {curriculum.map((week) => (
+            <article className="mentorship-week" key={week.label}>
+              <span className="mentorship-week-label">{week.label}<i>{week.pace}</i></span>
+              <h3>{week.title}</h3>
+              <ul className="mentorship-week-focus">{week.focus.map((pattern) => <li key={pattern}><BookOpen size={12} /> {pattern}</li>)}</ul>
+              <p>{week.outcome}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <div className="mentorship-split">
         <article className="mentorship-pay">
-          <h2><span className="mentorship-step">1</span> Pay ₹{plan.price} by scanning the QR</h2>
+          <h2><span className="mentorship-step">1</span> Pay {rupees(plan.price)} by scanning the QR</h2>
           <p className="mentorship-pay-note">The amount and the payee are locked inside the code below, and the reference goes in the Paytm note so Aditya can match your payment.</p>
 
           <div className="mentorship-qr">
-            <img src={qrImageUrl(upiUri(plan, reference))} alt={`Pay ₹${plan.price} to Aditya Bakshi on Paytm, reference ${reference}`} width={240} height={240} loading="lazy" />
+            <img src={qrImageUrl(upiUri(plan, reference))} alt={`Pay ${rupees(plan.price)} to Aditya Bakshi on Paytm, reference ${reference}`} width={240} height={240} loading="lazy" />
             <div>
               <span className="mentorship-qr-label"><QrCode size={15} /> Scan with any UPI app</span>
               <p>Paytm, PhonePe, GPay or BHIM all read this code. Desktop students: scan it with your phone.</p>
@@ -203,10 +239,10 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
                   <>
                     <span className={`mentorship-badge ${paymentBadge(watched).cls}`}>{paymentBadge(watched).label}</span>
                     <p>{paymentBadge(watched).cls === "done"
-                      ? `Aditya confirmed ₹${Number(watched.amount)} for ${planLabel(watched.plan)}. ${watched.status === "delivered" ? "The session was delivered." : "Your weekly session and chat lane are live on /mentees."}`
+                      ? `Aditya confirmed ${rupees(Number(watched.amount))} for ${planLabel(watched.plan)}. ${watched.status === "delivered" ? "The session was delivered." : "Your weekly session and chat lane are live on /mentees."}`
                       : paymentBadge(watched).cls === "off"
                         ? "This request was cancelled. Record a new one if you still want the session."
-                        : `₹${Number(watched.amount)} is still due: Aditya has not ticked ${reference} against his Paytm statement yet. Keep the transaction ID until he does.`}</p>
+                        : `${rupees(Number(watched.amount))} is still due: Aditya has not ticked ${reference} against his Paytm statement yet. Keep the transaction ID until he does.`}</p>
                   </>
                 ) : (
                   <p className="mentorship-small">{watchNote || "Checking the record against the server…"}</p>
@@ -224,7 +260,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
               <label>Email or phone<input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="where the session link goes" maxLength={160} /></label>
               <label>Paytm reference / UTR<input value={paytmReference} onChange={(event) => setPaytmReference(event.target.value)} placeholder="from the Paytm receipt, optional" maxLength={80} /></label>
               <label>What do you want to work on<textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="DSA roadmap, system design, mock interviews…" maxLength={1000} /></label>
-              <p className="mentorship-summary">Plan: <strong>{plan.title} · {plan.subtitle}</strong> · ₹{plan.price} · ref {reference}</p>
+              <p className="mentorship-summary">Plan: <strong>{plan.title} · {plan.subtitle}</strong> · {rupees(plan.price)} · ref {reference}</p>
               <button type="button" className="mentorship-primary" onClick={() => void submit()} disabled={saving}>
                 {saving ? <LoaderCircle size={16} className="mentorship-spin" /> : <Check size={16} />} {saving ? "Recording…" : "Record my payment"}
               </button>
@@ -252,7 +288,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
       {(ledger !== null || deviceOnly.length > 0) && (
         <section className="mentorship-ledger" aria-label="Your payments, due or done">
           <header className="mentorship-ledger-head">
-            <h2>Your payments <span className={`mentorship-ledger-count${dueRows.length ? " due" : ""}`}>{ledger === null ? "not signed in" : dueRows.length ? `${dueRows.length} due · ₹${dueSum}` : "nothing due"}</span></h2>
+            <h2>Your payments <span className={`mentorship-ledger-count${dueRows.length ? " due" : ""}`}>{ledger === null ? "not signed in" : dueRows.length ? `${dueRows.length} due · ${rupees(dueSum)}` : "nothing due"}</span></h2>
             {userId && (
               <button type="button" className="mentorship-secondary" onClick={() => void loadLedger()} disabled={ledgerBusy}>
                 {ledgerBusy ? <LoaderCircle size={14} className="mentorship-spin" /> : <RefreshCw size={14} />} {ledgerBusy ? "Checking…" : "Refresh"}
@@ -267,7 +303,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
                 <li key={row.reference}>
                   <span className={`mentorship-badge ${state.cls}`}>{state.label}</span>
                   <div>
-                    <strong>{planLabel(row.plan)} · ₹{Number(row.amount)}</strong>
+                    <strong>{planLabel(row.plan)} · {rupees(Number(row.amount))}</strong>
                     <span>{row.reference} · recorded {shortDay(row.filed_at)}{row.paytm_reference ? ` · UTR ${row.paytm_reference}` : ""}</span>
                   </div>
                 </li>
@@ -277,7 +313,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
               <li className="local" key={row.reference}>
                 <span className="mentorship-badge local">NOT RECORDED</span>
                 <div>
-                  <strong>{planLabel(row.plan)} · ₹{row.amount}</strong>
+                  <strong>{planLabel(row.plan)} · {rupees(Number(row.amount))}</strong>
                   <span>{row.reference} · this one is stuck on your device, so it is still due. Email Aditya the reference with the Paytm receipt.</span>
                 </div>
               </li>
@@ -290,6 +326,14 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
         </section>
       )}
 
+      <section className="mentorship-mentor" aria-label="Who mentors you">
+        <img src={adityaPortrait} alt="Aditya Bakshi, your mentor" width={132} height={132} loading="lazy" />
+        <div>
+          <span className="mentorship-syllabus-kicker"><GraduationCap size={15} /> YOUR MENTOR</span>
+          <h2>Aditya Bakshi</h2>
+          <ul>{mentorCraft.map((line) => <li key={line}>{line}</li>)}</ul>
+        </div>
+      </section>
       <section className="mentorship-faq" aria-label="How mentorship works">
         <article><strong>Weekly session</strong><p>Every pass covers a 1:1 call, and you pick the hour yourself from the times Aditya publishes.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya between sessions, no extra charge.</p></article>
