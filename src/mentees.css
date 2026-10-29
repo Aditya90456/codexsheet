@@ -77,6 +77,19 @@
 
 .mentees-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 11px; }
 
+.mentees-schedule {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--mt-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--mt-canvas) 55%, transparent);
+}
+
+.mentees-schedule label { display: grid; gap: 5px; font-size: 11px; color: var(--mt-muted); }
+
 .mentees-session, .mentees-chat {
   display: inline-flex;
   align-items: center;
@@ -99,6 +112,7 @@
 :root[data-theme="midnight"] .mentees-chat.on { color: #1b1725; }
 
 .mentees-room { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: 12px; }
+.mentees-room span { color: var(--mt-muted); font-weight: 700; }
 .mentees-room a { color: var(--mt-accent); font-weight: 700; text-decoration: none; }
 .mentees-room a:hover { text-decoration: underline; }
 .mentees-room button {
@@ -168,6 +182,9 @@
 .mentees-mine-actions a.mentees-primary { color: var(--mt-surface); text-decoration: none; }
 :root[data-theme="midnight"] .mentees-mine-actions a.mentees-primary { color: #1b1725; }
 .mentees-quiet { color: var(--mt-muted); font-size: 12px; }
+.mentees-mine-card .mentees-when { color: var(--mt-ink); font-size: 12px; font-weight: 700; }
+.mentees-mine-actions a.mentees-chat { color: var(--mt-ink); text-decoration: none; }
+.mentees-mine-actions a.mentees-chat:hover { border-color: var(--mt-accent); color: var(--mt-accent); }
 .mentees-mine-card .mentees-warning { max-width: none; margin: 10px 0 0; }
 
 .lane {
@@ -201,6 +218,7 @@
   .mentees-claim, .mentees-row { grid-template-columns: 1fr 1fr; }
   .mentees-claim > div, .mentees-row-main { grid-column: 1 / -1; }
   .mentees-room { margin-left: 0; }
+  .mentees-schedule { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

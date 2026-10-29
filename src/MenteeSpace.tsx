@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
+import { CalendarDays, Check, Download, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import { mentorEmail, planById } from "./mentorship";
 
@@ -15,6 +15,8 @@ type Mentee = {
   weekly_slot: string;
   notes: string;
   live_room_id: string | null;
+  meeting_url: string;
+  scheduled_at: string | null;
   started_at: string;
   ends_at: string | null;
 };
@@ -46,6 +48,75 @@ const isEmail = (value: string) => /.+@.+\..+/.test(value);
 
 const laneTime = (value: string) =>
   new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+
+const istLabel = (value: string | null) =>
+  value
+    ? new Intl.DateTimeFormat("en-IN", {
+        timeZone: "Asia/Kolkata",
+        weekday: "short",
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(value)) + " IST"
+    : "";
+
+// datetime-local carries a wall clock, so give it one in IST rather than an instant.
+function toLocalInput(value: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+const fromLocalInput = (value: string) => new Date(`${value}+05:30`).toISOString();
+
+function googleCalendarHref(mentee: Mentee) {
+  if (!mentee.scheduled_at) return "";
+  const start = new Date(mentee.scheduled_at);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const utc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const link = mentee.meeting_url || `https://codexsheet.in/calls?room=${mentee.live_room_id}`;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `CodexSheet mentorship · ${planLabel(mentee.plan)}`,
+    dates: `${utc(start)}/${utc(end)}`,
+    details: `Reference ${mentee.reference} · with Aditya Bakshi · ${link}`,
+    location: link,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+// Google Calendar and Apple Calendar both accept a plain .ics download.
+function downloadInvite(mentee: Mentee) {
+  if (!mentee.scheduled_at) return;
+  const start = new Date(mentee.scheduled_at);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const utc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const link = mentee.meeting_url || `https://codexsheet.in/calls?room=${mentee.live_room_id}`;
+  const body = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//CodexSheet//Mentorship//EN",
+    "BEGIN:VEVENT",
+    `UID:${mentee.live_room_id ?? mentee.reference}@codexsheet.in`,
+    `DTSTAMP:${utc(new Date())}`,
+    `DTSTART:${utc(start)}`,
+    `DTEND:${utc(end)}`,
+    `SUMMARY:CodexSheet mentorship · ${planLabel(mentee.plan)}`,
+    `DESCRIPTION:Reference ${mentee.reference} · with Aditya Bakshi · ${link}`,
+    `URL:${link}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const blob = new Blob([body], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `codexsheet-session-${mentee.reference}.ics`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function SessionChat({ mentee, userId, otherLabel }: { mentee: Mentee; userId: string; otherLabel: string }) {
   const [messages, setMessages] = useState<LaneMessage[]>([]);
@@ -154,6 +225,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
   const [slots, setSlots] = useState<Record<string, string>>({});
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [roomBusy, setRoomBusy] = useState<number | null>(null);
+  const [sessionEdits, setSessionEdits] = useState<Record<number, { meeting: string; when: string }>>({});
   const [openLane, setOpenLane] = useState<number | null>(null);
   const [copiedRoom, setCopiedRoom] = useState<string | null>(null);
 
@@ -223,17 +295,42 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
     if (!supabase) return;
     setRoomBusy(mentee.id);
     setError(null);
-    const result = mentee.live_room_id
-      ? await supabase.rpc("mentor_close_session", { p_mentee_id: mentee.id })
-      : await supabase.rpc("mentor_open_session", { p_mentee_id: mentee.id });
+    let result;
+    if (mentee.live_room_id) {
+      result = await supabase.rpc("mentor_close_session", { p_mentee_id: mentee.id });
+    } else {
+      const edit = sessionEdits[mentee.id] ?? { meeting: "", when: "" };
+      result = await supabase.rpc("mentor_open_session", {
+        p_mentee_id: mentee.id,
+        p_meeting_url: edit.meeting.trim(),
+        p_scheduled_at: edit.when ? fromLocalInput(edit.when) : null,
+      });
+    }
     if (result.error) setError(result.error.message);
     await load();
     setRoomBusy(null);
   }
 
+  function editOf(mentee: Mentee): { meeting: string; when: string } {
+    const edit = sessionEdits[mentee.id];
+    if (edit) return edit;
+    return {
+      meeting: mentee.meeting_url,
+      when: mentee.scheduled_at ? toLocalInput(mentee.scheduled_at) : "",
+    };
+  }
+
+  function patchEdit(mentee: Mentee, patch: Partial<{ meeting: string; when: string }>) {
+    setSessionEdits((current) => ({ ...current, [mentee.id]: { ...editOf(mentee), ...patch } }));
+  }
+
+  function joinHref(mentee: Mentee) {
+    return mentee.meeting_url || `${window.location.origin}/calls?room=${mentee.live_room_id}`;
+  }
+
   function copyRoom(mentee: Mentee) {
     if (!mentee.live_room_id) return;
-    const href = `${window.location.origin}/calls?room=${mentee.live_room_id}`;
+    const href = joinHref(mentee);
     navigator.clipboard
       .writeText(href)
       .then(() => {
@@ -329,12 +426,31 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                     {busy === String(mentee.id) ? <LoaderCircle size={15} className="mentees-spin" /> : <Check size={15} />} Save
                   </button>
                 </div>
+                {!mentee.live_room_id && (
+                  <div className="mentees-schedule">
+                    <label><span>Session time (IST)</span>
+                      <input
+                        type="datetime-local"
+                        value={editOf(mentee).when}
+                        onChange={(event) => patchEdit(mentee, { when: event.target.value })}
+                      />
+                    </label>
+                    <label><span>Google Meet link · optional</span>
+                      <input
+                        value={editOf(mentee).meeting}
+                        onChange={(event) => patchEdit(mentee, { meeting: event.target.value })}
+                        placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                        maxLength={300}
+                      />
+                    </label>
+                  </div>
+                )}
                 <div className="mentees-actions">
                   <button type="button" className="mentees-session" onClick={() => void toggleSession(mentee)} disabled={roomBusy === mentee.id}>
                     {roomBusy === mentee.id
                       ? <LoaderCircle size={14} className="mentees-spin" />
                       : mentee.live_room_id ? <RotateCcw size={14} /> : <PhoneCall size={14} />}
-                    {mentee.live_room_id ? "End session" : "Start session"}
+                    {mentee.live_room_id ? "End session" : mentee.meeting_url ? "Book with Meet" : "Start session"}
                   </button>
                   <button
                     type="button"
@@ -350,7 +466,10 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                   )}
                   {mentee.live_room_id && (
                     <span className="mentees-room">
-                      <a href={`/calls?room=${mentee.live_room_id}`}>Room open · join</a>
+                      <a href={joinHref(mentee)} target={mentee.meeting_url ? "_blank" : undefined} rel="noreferrer">
+                        {mentee.meeting_url ? "Open Google Meet" : "Open platform room"}
+                      </a>
+                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "Starts now"}</span>
                       <button type="button" onClick={() => copyRoom(mentee)}>
                         {copiedRoom === mentee.live_room_id ? "Link copied" : "Copy invite link"}
                       </button>
@@ -384,11 +503,33 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                 <span>{mentee.reference} · until {shortDate(mentee.ends_at)}</span>
                 <div className="mentees-mine-actions">
                   {mentee.live_room_id ? (
-                    <a className="mentees-primary" href={`/calls?room=${mentee.live_room_id}`}>
-                      <PhoneCall size={15} /> Join live session
-                    </a>
+                    <>
+                      <a
+                        className="mentees-primary"
+                        href={mentee.meeting_url || `/calls?room=${mentee.live_room_id}`}
+                        target={mentee.meeting_url ? "_blank" : undefined}
+                        rel="noreferrer"
+                      >
+                        <PhoneCall size={15} /> {mentee.meeting_url ? "Join on Google Meet" : "Join live session"}
+                      </a>
+                      <span className="mentees-when">{istLabel(mentee.scheduled_at) || "Time not set"}</span>
+                      {mentee.scheduled_at && (
+                        <>
+                          <a className="mentees-chat" href={googleCalendarHref(mentee)} target="_blank" rel="noreferrer">
+                            <CalendarDays size={14} /> Google Calendar
+                          </a>
+                          <button type="button" className="mentees-chat" onClick={() => downloadInvite(mentee)}>
+                            <Download size={14} /> .ics
+                          </button>
+                        </>
+                      )}
+                    </>
                   ) : (
-                    <span className="mentees-quiet">No room open right now — Aditya starts it when your session begins.</span>
+                    <span className="mentees-quiet">
+                      {mentee.weekly_slot
+                        ? `Weekly slot ${mentee.weekly_slot} — Aditya opens the room and posts the link there.`
+                        : "No session room yet — Aditya opens it when your call begins."}
+                    </span>
                   )}
                   <button
                     type="button"
