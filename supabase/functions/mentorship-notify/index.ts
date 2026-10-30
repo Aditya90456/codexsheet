@@ -57,8 +57,14 @@ const kindLabels: Record<NotificationKind, string> = {
   feedback: "Student feedback",
 };
 
+// A new queue kind can reach this function before its label is deployed, and
+// losing the whole batch is far worse than a generic heading.
+function labelFor(kind: NotificationKind) {
+  return kindLabels[kind] ?? "CodexSheet alert";
+}
+
 function subjectLine(groups: Map<NotificationKind, QueueItem[]>) {
-  const parts = [...groups].map(([kind, list]) => `${list.length} ${kindLabels[kind]}${list.length > 1 ? "s" : ""}`);
+  const parts = [...groups].map(([kind, list]) => `${list.length} ${labelFor(kind)}${list.length > 1 ? "s" : ""}`);
   return `CodexSheet alerts · ${parts.join(" · ")}`;
 }
 
@@ -74,7 +80,7 @@ function renderHtml(groups: Map<NotificationKind, QueueItem[]>) {
         </td>
       </tr>`).join("");
     return `
-      <h2 style="margin:22px 0 8px;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#1f2a44;">${kindLabels[kind]}</h2>
+      <h2 style="margin:22px 0 8px;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#1f2a44;">${labelFor(kind)}</h2>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;border:1px solid #e3e8f0;border-radius:10px;overflow:hidden;">${rows}</table>`;
   }).join("");
   return `<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;">
@@ -87,7 +93,7 @@ function renderHtml(groups: Map<NotificationKind, QueueItem[]>) {
 function renderText(groups: Map<NotificationKind, QueueItem[]>) {
   const lines: string[] = ["New activity in your CodexSheet workspace.", ""];
   for (const [kind, list] of groups) {
-    lines.push(kindLabels[kind].toUpperCase());
+    lines.push(labelFor(kind).toUpperCase());
     for (const item of list) {
       lines.push(`- ${item.student ?? "Unknown"}: ${item.headline ?? ""}`);
       if (item.detail) lines.push(`  ${item.detail}`);
@@ -148,18 +154,26 @@ Deno.serve(async (request: Request) => {
   const groups = itemsByKind(items ?? []);
   if (groups.size === 0) return respond({ queued: 0, sent: 0 });
 
-  const mailResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: subjectLine(groups),
-      html: renderHtml(groups),
-      text: renderText(groups),
-    }),
-    signal: AbortSignal.timeout(20000),
-  }).catch(() => null);
+  // The rows are already stamped as notified, so anything thrown while the mail
+  // is built must put them back — otherwise a payment alert is lost for good.
+  let mailResponse: Response | null = null;
+  try {
+    mailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: subjectLine(groups),
+        html: renderHtml(groups),
+        text: renderText(groups),
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (error) {
+    await requeue(items);
+    return respond({ error: `The digest mail could not be prepared. Rows returned to the queue. ${error instanceof Error ? error.message : ""}` }, 502);
+  }
 
   if (!mailResponse || !mailResponse.ok) {
     const detail = mailResponse ? (await mailResponse.text()).slice(0, 300) : "Resend could not be reached.";

@@ -10,6 +10,16 @@ import { mentorEmail } from "./mentorship";
 import { useT } from "./i18n";
 
 const emailShape = /^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/;
+// Students type the gmail username they remember rather than the full address,
+// and a native type="email" check would then swallow the click with a tooltip
+// nobody reads, so the bare name is completed here and validated in code.
+const bareUsername = /^[a-z0-9][a-z0-9._%+-]*$/i;
+
+function resolveEmail(value: string) {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed.includes("@") && bareUsername.test(trimmed) && trimmed.length >= 6) return `${trimmed}@gmail.com`;
+  return trimmed;
+}
 
 export default function StudentFooter({ compact = false }: { compact?: boolean }) {
   const tr = useT();
@@ -18,13 +28,14 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
   const [message, setMessage] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
   const [reason, setReason] = useState("");
+  const [repliedTo, setRepliedTo] = useState("");
 
-  const mailtoHref = `mailto:${mentorEmail}?subject=${encodeURIComponent("CodexSheet student feedback")}&body=${encodeURIComponent(`${message}\n\n— ${name || "Anonymous"} (${email})`)}`;
+  const mailtoHref = `mailto:${mentorEmail}?subject=${encodeURIComponent("CodexSheet student feedback")}&body=${encodeURIComponent(`${message}\n\n— ${name || "Anonymous"} (${resolveEmail(email)})`)}`;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = message.trim();
-    const address = email.trim();
+    const address = resolveEmail(email);
     if (body.length < 5 || !emailShape.test(address)) {
       setReason(tr("footer.feedbackBadInput"));
       setState("failed");
@@ -52,6 +63,7 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
       setState("failed");
       return;
     }
+    setRepliedTo(address);
     setName("");
     setEmail("");
     setMessage("");
@@ -73,14 +85,14 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
         <p>{tr("footer.feedbackBody")}</p>
         <div className="site-footer-fields">
           <input value={name} onChange={(event) => setName(event.target.value)} placeholder={tr("footer.feedbackName")} aria-label={tr("footer.feedbackName")} maxLength={80} />
-          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder={tr("footer.feedbackEmail")} aria-label={tr("footer.feedbackEmail")} type="email" required maxLength={160} />
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder={tr("footer.feedbackEmail")} aria-label={tr("footer.feedbackEmail")} type="text" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={160} />
         </div>
-        <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder={tr("footer.feedbackMessage")} aria-label={tr("footer.feedbackMessage")} rows={compact ? 2 : 3} maxLength={2000} required />
+        <textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder={tr("footer.feedbackMessage")} aria-label={tr("footer.feedbackMessage")} rows={compact ? 2 : 3} maxLength={2000} />
         <div className="site-footer-send">
           <button className="primary-button" type="submit" disabled={state === "sending" || message.trim().length < 5}>
             <Send size={14} /> {state === "sending" ? tr("footer.feedbackSending") : tr("footer.feedbackSend")}
           </button>
-          {state === "sent" && <span className="site-footer-done">{tr("footer.feedbackSent")}</span>}
+          {state === "sent" && <span className="site-footer-done">{tr("footer.feedbackSent")} {repliedTo}</span>}
           {state === "failed" && (
             <span className="site-footer-error">
               {tr("footer.feedbackError")}{" "}
