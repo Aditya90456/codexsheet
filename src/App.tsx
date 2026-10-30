@@ -9,6 +9,7 @@ import {
 import {
   ArrowRight,
   AudioLines,
+  BrainCircuit,
   Zap,
   CalendarDays,
   Check,
@@ -72,6 +73,8 @@ import MenteeSpace from "./MenteeSpace";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaTutor from "./DsaTutor";
+import DsaGuru from "./DsaGuru";
+import { useT } from "./i18n";
 
 type Status = "Todo" | "In progress" | "Solved";
 type Problem = {
@@ -102,7 +105,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -112,6 +115,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   "dsa-ide": "/ide/dsa",
   "dsa-course": "/learn/dsa",
   tutor: "/tutor",
+  guru: "/guru",
   calendar: "/calendar",
   roadmap: "/roadmap",
   lld: "/roadmap/lld",
@@ -141,18 +145,20 @@ const passFeatureNames = [
   "Practice calendar", "1:1 mentorship", "Mentee space", "Personal AI",
 ];
 
-function WorkspacePassLock({ checking, onOpenStore, onRecheck }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void }) {
+function WorkspacePassLock({ checking, onOpenStore, onRecheck, onOpenGuru }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void; onOpenGuru: () => void }) {
+  const tr = useT();
   return (
     <section className="workspace-lock" aria-label="CodexSheet Family Pass">
       <div className="workspace-lock-card">
-        <span className="workspace-lock-kicker">CODEXSHEET FAMILY PASS · ₹1,000</span>
-        <h2>One payment opens all 19 features.</h2>
-        <p>The 250-problem sheet is the product. ₹1,000 on Paytm opens it in full, along with the Deva editor, the animated course, the AI tutor, notes, chat, calls and your 1:1 session. Nothing else is unlocked until Aditya confirms the payment.</p>
+        <span className="workspace-lock-kicker">{tr("lock.kicker")}</span>
+        <h2>{tr("lock.title")}</h2>
+        <p>{tr("lock.body")}</p>
         <div className="workspace-lock-actions">
-          <button type="button" className="primary-button" onClick={onOpenStore}>Pay ₹1,000 on Paytm <ArrowRight size={16} /></button>
-          <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I paid — unlock"}</button>
+          <button type="button" className="primary-button" onClick={onOpenStore}>{tr("lock.pay")} <ArrowRight size={16} /></button>
+          <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? tr("lock.checking") : tr("lock.paid")}</button>
+          <button type="button" className="workspace-lock-guru" onClick={onOpenGuru}>{tr("lock.free")} <ArrowRight size={15} /></button>
         </div>
-        <small>Aditya marks payments against his Paytm statement, usually the same day. Your reference starts with CS-FAM-. Not for you? Ask within 5 days of confirmation and he refunds the full ₹1,000 on Paytm.</small>
+        <small>{tr("lock.note")}</small>
       </div>
       <ul className="workspace-lock-list" aria-label="What the pass unlocks">
         {passFeatureNames.map((feature, index) => (
@@ -180,6 +186,7 @@ function HomePage({
   onNavigate: (view: WorkspaceView, plan?: string) => void;
 }) {
   const pageRef = useRef<HTMLElement>(null);
+  const tr = useT();
 
   useEffect(() => {
     let cancelled = false;
@@ -263,14 +270,14 @@ function HomePage({
       <section className="home-hero">
         <div className="home-hero-inner">
           <div className="home-copy">
-            <span className="home-eyebrow"><span className="home-live-dot" /> YOUR NEXT INTERVIEW STARTS HERE</span>
-            <h1>DSA interview practice <em>with a plan.</em></h1>
-            <p>Build problem-solving fluency one pattern at a time. Keep your practice, progress, and study group in one focused workspace.</p>
+            <span className="home-eyebrow"><span className="home-live-dot" /> {tr("home.eyebrow")}</span>
+            <h1>{tr("home.title1")} <em>{tr("home.title2")}</em></h1>
+            <p>{tr("home.body")}</p>
             <div className="home-actions">
-              <button className="home-primary" type="button" onClick={() => onNavigate("dsa-ide")}>Open Deva editor <ArrowRight size={16} /></button>
-              <button className="home-secondary" type="button" onClick={() => onNavigate("problems")}>Browse problems</button>
+              <button className="home-primary" type="button" onClick={() => onNavigate("guru")}>{tr("home.cta2")} <ArrowRight size={16} /></button>
+              <button className="home-secondary" type="button" onClick={() => onNavigate("dsa-ide")}>{tr("home.cta1")}</button>
             </div>
-            <div className="home-proof"><span><Check size={14} /> 250 curated problems</span><span><Check size={14} /> 18 core patterns</span></div>
+            <div className="home-proof"><span><Check size={14} /> {tr("home.proof1")}</span><span><Check size={14} /> {tr("home.proof2")}</span></div>
           </div>
 
           <div className="home-lab" aria-label="A problem-solving path from problem to pattern to solution">
@@ -353,15 +360,22 @@ function HomePage({
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
-          <p>One ₹1,000 pass opens all 19 features, paid straight to Paytm — no tiers to compare and no third-party store.</p>
+          <p>Pay what you can — ₹10 to ₹800 — and all 19 features open, paid straight to Paytm. Guru, the AI teacher, stays free for everyone.</p>
         </div>
-        <div className="home-offer-grid home-offer-solo" aria-label="The CodexSheet pass">
+        <div className="home-offer-grid" aria-label="The CodexSheet pass and the free AI teacher">
           <article className="home-offer-card home-offer-pass">
-            <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹1,000</span></div>
-            <span className="home-offer-label">EVERY FEATURE, ONE PAYMENT</span>
+            <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹10–₹800</span></div>
+            <span className="home-offer-label">EVERY FEATURE, PAY WHAT YOU CAN</span>
             <h3>CodexSheet Family Pass</h3>
-            <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls — plus the 12-week plan and a 1:1 session with Aditya that you book yourself. Ask within 5 days of confirming and the ₹1,000 comes straight back.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all 19 features for ₹1,000 <ArrowRight size={15}/></a>
+            <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat, calls — plus the 12-week plan and a 1:1 session with Aditya that you book yourself. ₹10 opens the same workspace as ₹800. Ask within 5 days of confirming and the amount comes straight back.</p>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Choose your amount and open all 19 features <ArrowRight size={15}/></a>
+          </article>
+          <article className="home-offer-card home-offer-guru">
+            <div className="home-offer-top"><span className="home-offer-icon">AI</span><span className="home-offer-price">FREE</span></div>
+            <span className="home-offer-label">NO CARD · NO SIGN-IN NEEDED TO LEARN</span>
+            <h3>Guru · the AI DSA teacher</h3>
+            <p>He teaches out loud in 7 Indian languages, draws every pattern as a 3D figure on the board, and has a face that smiles when you get it and frowns when you skip the basics. He keeps teaching when your network drops.</p>
+            <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
           </article>
         </div>
       </section>
@@ -1228,8 +1242,8 @@ function App() {
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
   };
-  // One ₹1,000 pass opens every feature, including the full 250-problem set;
-  // signed out, only the landing page and the store are open. Supabase missing => unlocked.
+  // One pay-what-you-can pass (₹10 to ₹800) opens every feature, including the
+  // full 250-problem set; signed out, only the landing page and the store are open. Supabase missing => unlocked.
   const [passLocked, setPassLocked] = useState(true);
   const [passChecking, setPassChecking] = useState(() => Boolean(supabase));
   const refreshPassAccess = useCallback(async () => {
@@ -1251,9 +1265,11 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-  // Only the landing page and the store are free. The 250-problem sheet and
-  // every other feature wait for the confirmed ₹1,000 pass.
-  const passGate = !(["home", "mentorship"] as WorkspaceView[]).includes(activeView);
+  // Only the landing page, the store and Guru (the free AI teacher) are open.
+  // Every other feature waits for a confirmed pass at whatever amount the
+  // student could pay between ₹10 and ₹800.
+  const tr = useT();
+  const passGate = !(["home", "mentorship", "guru"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -2006,15 +2022,18 @@ function App() {
     return <main className="auth-gate"><div className="auth-gate-card auth-gate-loading"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span>CODEXSHEET · DSA WORKSPACE</span><h1>Preparing your workspace…</h1></div></main>;
   }
 
-  // Students pay from a shared link, so the mentorship page stays public.
-  const publicMentorship = !isSignedIn && activeView === "mentorship";
+  // Students pay from a shared link, so the store stays public. Guru is the free
+  // teacher, so a student with no account and no money still gets taught.
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru");
 
-  if (!isSignedIn && !publicMentorship) {
+  if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div></main>;
   }
 
-  if (publicMentorship) {
-    return <main className="mentorship-public"><MentorshipPayments /></main>;
+  if (publicView) {
+    return activeView === "guru"
+      ? <main className="guru-public"><DsaGuru onOpenPass={() => navigateToView("mentorship")} /></main>
+      : <main className="mentorship-public"><MentorshipPayments /></main>;
   }
 
   return (
@@ -2027,20 +2046,23 @@ function App() {
         </div>
         <nav className="view-switcher" aria-label="Workspace views">
           <button className={activeView === "home" ? "active" : ""} aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
-            <House size={16} /> Home
+            <House size={16} /> {tr("nav.home")}
           </button>
           <button className={activeView === "problems" ? "active" : ""} aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
-            <Rows3 size={16} /> Problems
+            <Rows3 size={16} /> {tr("nav.problems")}
             <span>{visibleProblems.length}</span>
           </button>
           <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}>
-            <CodeXml size={16} /> Deva
+            <CodeXml size={16} /> {tr("nav.deva")}
           </button>
           <button className={activeView === "dsa-course" ? "active" : ""} aria-pressed={activeView === "dsa-course"} onClick={() => navigateToView("dsa-course")}>
-            <BookOpen size={16} /> DSA Course
+            <BookOpen size={16} /> {tr("nav.course")}
+          </button>
+          <button className={activeView === "guru" ? "active" : ""} aria-pressed={activeView === "guru"} onClick={() => navigateToView("guru")}>
+            <Sparkles size={16} /> {tr("nav.guru")}
           </button>
           <button className={activeView === "tutor" ? "active" : ""} aria-pressed={activeView === "tutor"} onClick={() => navigateToView("tutor")}>
-            <Sparkles size={16} /> Ask Tutor
+            <BrainCircuit size={16} /> {tr("nav.tutor")}
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
           <summary className={["dashboard", "calendar", "roadmap", "lld", "whiteboard", "chat", "calls", "notes", "articles", "mentorship", "mentees"].includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
@@ -2080,7 +2102,7 @@ function App() {
         </div>
       </header>
       <section className={`workspace-header${activeView === "companies" ? " company-workspace-header" : ""}`}>
-        {activeView !== "home" && <div className="title-row">
+        {activeView !== "home" && activeView !== "guru" && <div className="title-row">
           <div>
             <div className="breadcrumb">
               <span>Library</span>
@@ -2178,6 +2200,7 @@ function App() {
           checking={passChecking}
           onOpenStore={() => navigateToView("mentorship")}
           onRecheck={() => void refreshPassAccess()}
+          onOpenGuru={() => navigateToView("guru")}
         />
       )}
       {activeView === "home" && <HomePage
@@ -2198,6 +2221,7 @@ function App() {
       {activeView === "dsa-ide" && !passLocked && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
       {activeView === "dsa-course" && !passLocked && <DsaCourseStudio />}
       {activeView === "tutor" && !passLocked && <DsaTutor />}
+      {activeView === "guru" && <DsaGuru onOpenPass={() => navigateToView("mentorship")} />}
       {activeView === "calls" && !passLocked && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && !passLocked && (
         <>

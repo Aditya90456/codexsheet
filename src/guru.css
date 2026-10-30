@@ -1,0 +1,485 @@
+/* Guru — the free AI DSA teacher. One blue dark theme, classroom feel,
+   the face sits in real CSS 3D so its head turn has depth. */
+.guru {
+  --guru-line: var(--ui-line, #243449);
+  --guru-surface: var(--ui-surface, #131f33);
+  --guru-ink: var(--ui-ink, #e8eff9);
+  display: grid;
+  gap: 22px;
+  padding: 4px 0 34px;
+}
+
+.guru-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.guru-kicker {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.guru-head h1 {
+  margin: 8px 0 6px;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.15;
+  color: var(--guru-ink);
+}
+
+.guru-head p {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #9fb3cf;
+}
+
+.guru-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.guru-lang {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #7f93b1;
+}
+
+.guru-lang select {
+  min-width: 190px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--guru-line);
+  background: var(--guru-surface);
+  color: var(--guru-ink);
+  font-size: 13px;
+}
+
+.guru-voice,
+.guru-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--guru-line);
+  background: transparent;
+  color: #9fb3cf;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.16s, color 0.16s, background 0.16s;
+}
+
+.guru-voice.on {
+  border-color: #3b82f6;
+  color: #dbeafe;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.guru-reset {
+  padding: 10px;
+}
+
+.guru-voice:hover,
+.guru-reset:hover {
+  border-color: #60a5fa;
+  color: var(--guru-ink);
+}
+
+.guru-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.guru-board,
+.guru-chat {
+  border: 1px solid var(--guru-line);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #101c2f, var(--guru-surface));
+  padding: 16px;
+}
+
+.guru-board-top {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.guru-face {
+  position: relative;
+  width: 132px;
+  height: 150px;
+  flex: 0 0 auto;
+  perspective: 620px;
+}
+
+.guru-face-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.22, 0.8, 0.3, 1);
+  will-change: transform;
+}
+
+.guru-face-svg {
+  width: 132px;
+  height: 150px;
+  display: block;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 16px color-mix(in srgb, var(--guru-glow, #3b82f6) 45%, transparent));
+}
+
+.guru-brows path {
+  transition: d 0.32s ease, stroke 0.32s ease;
+}
+
+.guru-eyes g {
+  transition: transform 0.18s ease;
+}
+
+.guru-blush,
+.guru-halo {
+  transition: opacity 0.4s ease, fill 0.4s ease;
+}
+
+.guru-mood-chip {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  border: 1px solid var(--guru-glow, #3b82f6);
+  color: var(--guru-glow, #3b82f6);
+  background: rgba(10, 18, 32, 0.9);
+}
+
+.guru-board-meta {
+  min-width: 0;
+}
+
+.guru-pattern-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: #7f93b1;
+}
+
+.guru-board-meta strong {
+  display: block;
+  margin: 4px 0 10px;
+  font-size: 17px;
+  color: var(--guru-ink);
+}
+
+.guru-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #9fb3cf;
+}
+
+.guru-steps button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--guru-line);
+  background: rgba(59, 130, 246, 0.08);
+  color: #cfe0f7;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.guru-steps button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dsa-mentor-stage {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--guru-line);
+  background: radial-gradient(circle at 50% 30%, #14243c, #0a1220 70%);
+}
+
+.dsa-mentor-stage canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.dsa-mentor-stage-caption {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #9fb3cf;
+}
+
+.dsa-mentor-stage-fallback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 18px;
+  align-items: flex-end;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.guru-narration {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #dbe7f6;
+  min-height: 44px;
+}
+
+.guru-step-code {
+  margin: 10px 0 0;
+  padding: 11px 13px;
+  border: 1px solid #223550;
+  border-radius: 12px;
+  background: #0c1727;
+  box-shadow: inset 0 1px 0 rgba(96, 165, 250, 0.08);
+  overflow-x: auto;
+}
+
+.guru-step-code code {
+  display: block;
+  font: 500 12.5px/1.7 ui-monospace, Menlo, Consolas, monospace;
+  color: #9ecbff;
+  white-space: pre;
+}
+
+.guru-quick {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.guru-quick button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px dashed #2f4763;
+  background: rgba(59, 130, 246, 0.07);
+  color: #cfe0f7;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.guru-quick button:hover {
+  border-color: #60a5fa;
+  color: #fff;
+}
+
+.guru-fineprint {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #6f849f;
+}
+
+.guru-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 420px;
+}
+
+.guru-thread {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+  max-height: 460px;
+}
+
+.guru-msg {
+  position: relative;
+  max-width: 92%;
+  padding: 11px 13px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.guru-msg.assistant {
+  align-self: flex-start;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid #2b4463;
+  color: #e8eff9;
+  border-bottom-left-radius: 4px;
+}
+
+.guru-msg.user {
+  align-self: flex-end;
+  background: #1b2a41;
+  border: 1px solid var(--guru-line);
+  color: #c9d8ec;
+  border-bottom-right-radius: 4px;
+}
+
+.guru-msg pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #0a1220;
+  border: 1px solid var(--guru-line);
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.guru-starters {
+  display: grid;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.guru-starters button {
+  text-align: left;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--guru-line);
+  background: rgba(19, 31, 51, 0.7);
+  color: #cfe0f7;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.16s, transform 0.16s;
+}
+
+.guru-starters button:hover {
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+.guru-free-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #34d399;
+}
+
+.guru-thinking {
+  align-self: flex-start;
+  font-size: 12px;
+  color: #7f93b1;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.guru-notice {
+  margin: 0;
+  font-size: 11px;
+  color: #fbbf24;
+}
+
+.guru-input {
+  display: flex;
+  gap: 8px;
+}
+
+.guru-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--guru-line);
+  background: #0e1828;
+  color: var(--guru-ink);
+  font-size: 14px;
+}
+
+.guru-input input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.guru-pass {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px dashed #2f4763;
+  background: transparent;
+  color: #7f93b1;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.guru-pass:hover {
+  border-color: #60a5fa;
+  color: #cfe0f7;
+}
+
+[data-lang="hi"] .guru-msg,
+[data-lang="mr"] .guru-msg,
+[data-lang="bn"] .guru-msg {
+  line-height: 1.85;
+}
+
+[data-lang="ta"] .guru-msg,
+[data-lang="te"] .guru-msg,
+[data-lang="gu"] .guru-msg {
+  line-height: 1.8;
+}
+
+@media (max-width: 1080px) {
+  .guru-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dsa-mentor-stage {
+    height: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .guru-board-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .guru-face {
+    width: 108px;
+    height: 124px;
+  }
+  .guru-face-svg {
+    width: 108px;
+    height: 124px;
+  }
+}
+
+/* Logged-out Guru keeps the same full-bleed dark canvas as the pass page. */
+.guru-public {
+  min-height: 100vh;
+  background: #0c1526;
+}
+
+.guru-public .guru {
+  min-height: 100vh;
+  box-sizing: border-box;
+}

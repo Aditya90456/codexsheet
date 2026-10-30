@@ -733,7 +733,7 @@ create table if not exists public.mentorship_orders (
   -- UPDATE; dropping them would leave the two older claims stuck. What is for
   -- sale is enforced by the insert trigger below.
   constraint mentorship_orders_amount_matches_plan check (
-    (plan = 'family' and amount = 1000)
+    (plan = 'family' and amount >= 10 and amount <= 800)
     or (plan = 'one-to-one' and amount = 19)
     or (plan = 'ltm-3-months' and amount = 100)
     or (plan = 'ltm-6-months' and amount = 499)
@@ -772,14 +772,14 @@ grant select, insert, update on public.mentorship_orders to authenticated;
 grant insert on public.mentorship_orders to anon;
 grant usage, select on sequence public.mentorship_orders_id_seq to anon, authenticated;
 
--- One product at one price: a claim that is not the ₹1,000 Family pass never lands.
+-- Pay what you can: a Family pass outside the ₹10 to ₹800 band never lands.
 create or replace function public.mentorship_orders_family_pass_only()
 returns trigger
 language plpgsql
 as $fn$
 begin
-  if new.plan <> 'family' or new.amount <> 1000 then
-    raise exception 'CodexSheet sells one product: the Family pass at ₹1,000 (got plan "%")', new.plan
+  if new.plan = 'family' and (new.amount < 10 or new.amount > 800) then
+    raise exception 'The CodexSheet pass is pay-what-you-can between ₹10 and ₹800 (got ₹%)', new.amount
       using errcode = '22023';
   end if;
   return new;

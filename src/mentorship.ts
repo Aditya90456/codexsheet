@@ -13,12 +13,26 @@ export const mentorEmail = "adityabakshi1011@gmail.com";
 /** The only thing CodexSheet sells. Older rows in the ledger still name plans below. */
 export type MentorshipPlanId = "family";
 
+/**
+ * Pay what you can. Most students cannot clear a fixed fee, so the band is the
+ * price: the DB trigger rejects a family order outside ₹10 to ₹800 and
+ * workspace_unlocked() treats every confirmed amount as a full pass.
+ */
+export const passBand = { min: 10, max: 800, suggested: 250, presets: [10, 50, 100, 250, 500, 800] } as const;
+
+export function clampAmount(value: number): number {
+  if (!Number.isFinite(value)) return passBand.suggested;
+  return Math.min(passBand.max, Math.max(passBand.min, Math.round(value)));
+}
+
 export type MentorshipPlan = {
   id: MentorshipPlanId;
   tag: string;
   title: string;
   subtitle: string;
-  price: number;
+  min: number;
+  max: number;
+  suggested: number;
   cadence: string;
   includes: string[];
   highlight?: boolean;
@@ -29,8 +43,10 @@ export const mentorshipPlans: MentorshipPlan[] = [
     id: "family",
     tag: "FAM",
     title: "CodexSheet Family Pass",
-    subtitle: "All 19 features, one payment",
-    price: 1000,
+    subtitle: "All 19 features, whatever you can pay",
+    min: passBand.min,
+    max: passBand.max,
+    suggested: passBand.suggested,
     cadence: "one payment · no expiry",
     includes: [
       "Every one of the 19 workspace features, opened at once",
@@ -130,14 +146,14 @@ export function orderReference(plan: MentorshipPlan): string {
 }
 
 /** NPCI UPI intent URI — every UPI app (Paytm, PhonePe, GPay, BHIM) resolves this. */
-export function upiUri(plan: MentorshipPlan, reference: string): string {
+export function upiUri(plan: MentorshipPlan, reference: string, amount: number): string {
   // UPI apps decode query values percent-style only, so `+` must never appear
   // for a space and the `@` in a VPA stays literal.
   const encode = (value: string) => encodeURIComponent(value).replace(/%40/g, "@");
   const params = [
     `pa=${encode(payee.upiId)}`,
     `pn=${encode(payee.displayName)}`,
-    `am=${plan.price.toFixed(2)}`,
+    `am=${clampAmount(amount).toFixed(2)}`,
     "cu=INR",
     `tn=${encode(reference)}`,
     `tr=${encode(reference)}`,
@@ -146,14 +162,14 @@ export function upiUri(plan: MentorshipPlan, reference: string): string {
 }
 
 /** Android intent URL that opens the Paytm app directly instead of the picker. */
-export function paytmIntentUri(plan: MentorshipPlan, reference: string): string {
-  const query = upiUri(plan, reference).slice("upi://pay?".length);
+export function paytmIntentUri(plan: MentorshipPlan, reference: string, amount: number): string {
+  const query = upiUri(plan, reference, amount).slice("upi://pay?".length);
   return `intent://pay?${query}#Intent;scheme=upi;package=net.one97.paytm;end`;
 }
 
 /** iOS Paytm scheme, for students on an iPhone where `upi://` has no handler. */
-export function paytmAppUri(plan: MentorshipPlan, reference: string): string {
-  const query = upiUri(plan, reference).slice("upi://pay?".length);
+export function paytmAppUri(plan: MentorshipPlan, reference: string, amount: number): string {
+  const query = upiUri(plan, reference, amount).slice("upi://pay?".length);
   return `paytmmp://pay?${query}`;
 }
 

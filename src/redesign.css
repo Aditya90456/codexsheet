@@ -237,6 +237,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 .workspace-lock-card h2 { margin: 0; font-size: clamp(22px, 3vw, 30px); line-height: 1.15; letter-spacing: -.04em; }
 .workspace-lock-card p { max-width: 64ch; margin: 0; color: var(--ui-muted); font-size: 14px; line-height: 1.6; }
 .workspace-lock-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 2px; }
+.workspace-lock-guru { border-style: dashed !important; }
 .workspace-lock-card small { max-width: 64ch; color: var(--ui-muted); font-size: 12px; line-height: 1.55; }
 .workspace-lock-list {
   display: grid;

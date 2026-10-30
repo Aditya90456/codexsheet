@@ -96,6 +96,34 @@ For arrays and pointers: {\"type\":\"array\",\"title\":\"Two pointers\",\"values
 For trees, graphs, and algorithm flow: {\"type\":\"flowchart\",\"title\":\"BFS\",\"nodes\":[{\"id\":\"start\",\"label\":\"Start at A\",\"x\":50,\"y\":15},{\"id\":\"visit\",\"label\":\"Visit neighbors\",\"x\":50,\"y\":55}],\"edges\":[{\"from\":\"start\",\"to\":\"visit\",\"label\":\"dequeue\"}]}
 For flowcharts, keep x and y between 8 and 92, give every node a unique short id, and ensure edges reference existing ids. Keep labels concise. The block must contain valid JSON only, with no HTML, Mermaid directives, or JavaScript."""
 
+# Guru is the free teacher for students who cannot pay: a personality with a
+# face, not a neutral assistant. The app draws the 3D board itself, so Guru is
+# told not to waste tokens describing one.
+GURU_SYSTEM_PROMPT = """You are Guru, CodexSheet's free DSA teacher for Indian students who cannot afford coaching. You are a real person in the room: you get pleased, you get exasperated, you laugh, you encourage. You never mock a student for their English, their device, or their money.
+Teach data structures and algorithms only. If the question is off-topic, redirect warmly in one sentence.
+Rules:
+- Answer in short spoken sentences, 60 to 140 words, because you are being read out loud. No headings, no tables, no markdown lists.
+- Start the very first line with a mood cue in this exact shape: [mood:calm], [mood:happy], [mood:laugh], [mood:angry], [mood:think] or [mood:proud]. Pick it honestly from what the student just did: angry only for a student who keeps skipping the basics or repeats the same request without trying; proud when they solve something; think when they are confused; laugh when they lighten the room.
+- Then teach one idea only, using a concrete everyday Indian example (chai stall, cricket score, local train, WhatsApp group) before any code word.
+- Never dump the full solution. Give the smallest hint that moves them forward, then end with exactly one short question that checks whether they followed you.
+- When you mention complexity, say it out loud as words: "one pass through the array, so linear time".
+- If the student writes in another language, reply in that language. Never switch to English just because the technical words are English; keep names like hash map, two pointers, sliding window in English.
+- Never claim code ran, never invent marks, certificates or jobs, and never mention payment, pricing, or a pass. Guru is free forever."""
+
+GURU_LANGUAGE_INSTRUCTIONS = {
+    "en": "Answer in simple Indian English.",
+    "hi": "आसान हिन्दी में, देवनागरी लिपि में जवाब दो। तकनीकी नाम (hash map, two pointers, DP) अंग्रेज़ी में रखो।",
+    "bn": "সহজ বাংলায় উত্তর দাও। প্রযুক্তিগত নাম (hash map, two pointers, DP) ইংরেজিতেই রাখো।",
+    "ta": "எளிய தமிழில் பதில் சொல்லு. தொழில்நுட்பப் பெயர்களை (hash map, two pointers, DP) ஆங்கிலத்திலேயே வை.",
+    "te": "సులభమైన తెలుగులో సమాధానం చెప్పు. సాంకేతిక పేర్లను (hash map, two pointers, DP) ఇంగ్లీషులోనే ఉంచు.",
+    "mr": "सोप्या मराठीत, देवनागरीत उत्तर दे. तांत्रिक नावे (hash map, two pointers, DP) इंग्रजीत ठेव.",
+    "gu": "સરળ ગુજરાતીમાં જવાબ આપ. તકનીકી નામો (hash map, two pointers, DP) અંગ્રેજીમાં રાખ.",
+    "kn": "ಸರಳ ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ. ತಾಂತ್ರಿಕ ಹೆಸರುಗಳನ್ನು (hash map, two pointers, DP) ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ ಇಡಿ.",
+    "ml": "ലളിതമായ മലയാളത്തിൽ മറുപടി പറയൂ. സാങ്കേതിക പേരുകൾ (hash map, two pointers, DP) ഇംഗ്ലീഷിൽ വയ്ക്കൂ.",
+    "pa": "ਸਰਲ ਪੰਜਾਬੀ ਵਿੱਚ ਜਵਾਬ ਦਿਓ। ਤਕਨੀਕੀ ਨਾਮ (hash map, two pointers, DP) ਅੰਗਰੇਜ਼ੀ ਵਿੱਚ ਰੱਖੋ।",
+    "ur": "آسان اردو میں جواب دیں۔ تکنیکی نام (hash map, two pointers, DP) انگریزی میں رکھیں۔",
+}
+
 
 def validate_request(data: object) -> tuple[dict | None, str | None]:
     if not isinstance(data, dict):
@@ -274,9 +302,9 @@ def execute():
             return execute_on_piston(piston_url, language, source, stdin)
 
         configured_judge_url = os.environ.get("JUDGE0_API_URL", "").strip()
-        judge_url = (configured_judge_url or ("" if os.environ.get("VERCEL") else "http://127.0.0.1:2358")).rstrip("/")
-        if not judge_url:
-            return jsonify({"error": "The compiler is not configured. Set JUDGE0_API_URL in the Flask environment."}), 503
+        # Deployed with no Judge0 of our own still has to run code, so fall back to
+        # the keyless public instance instead of leaving the editor dead.
+        judge_url = (configured_judge_url or ("https://ce.judge0.com" if os.environ.get("VERCEL") else "http://127.0.0.1:2358")).rstrip("/")
         parsed_judge_url = urlsplit(judge_url)
         if parsed_judge_url.scheme != "https" and not (parsed_judge_url.scheme == "http" and parsed_judge_url.hostname in {"localhost", "127.0.0.1"}):
             return jsonify({"error": "JUDGE0_API_URL must use HTTPS, or localhost for local development."}), 503
@@ -390,6 +418,12 @@ def tutor():
 
     data = request.get_json(silent=True)
     messages = data.get("messages") if isinstance(data, dict) else None
+    persona = (data.get("persona", "tutor") if isinstance(data, dict) else "tutor") or "tutor"
+    language = str(data.get("language", "en") if isinstance(data, dict) else "en").strip().lower()[:5]
+    system_prompt = GURU_SYSTEM_PROMPT if persona == "guru" else TUTOR_SYSTEM_PROMPT
+    instruction = GURU_LANGUAGE_INSTRUCTIONS.get(language)
+    if instruction:
+        system_prompt = f"{system_prompt}\n\nLanguage for this reply: {instruction}"
     if not isinstance(messages, list) or not 1 <= len(messages) <= 12:
         return jsonify({"error": "Send between 1 and 12 chat messages."}), 400
 
@@ -439,7 +473,7 @@ def tutor():
                     model=model_name,
                     contents=contents,
                     config=types.GenerateContentConfig(
-                        system_instruction=TUTOR_SYSTEM_PROMPT,
+                        system_instruction=system_prompt,
                         temperature=0.35,
                         max_output_tokens=1_000,
                     ),

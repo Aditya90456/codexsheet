@@ -8,6 +8,7 @@ import "./deva-runner.css";
 import "./deva-course.css";
 import "./roadmap-board.css";
 import "./mentorship.css";
+import "./guru.css";
 import "./mentees.css";
 
 // Keep the local assistant isolated from the signed-in workspace.

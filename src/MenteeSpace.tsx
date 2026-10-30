@@ -739,7 +739,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <p className="mentees-note">
               {dues.length > 0
                 ? "Your record appears here the moment Aditya confirms the payment above against his Paytm statement."
-                : <>Nothing confirmed yet. The pass is ₹1,000 on the <a href="/mentorship">mentorship page</a>.</>}
+                : <>Nothing confirmed yet. The pass is ₹10–₹800 on the <a href="/mentorship">mentorship page</a>.</>}
             </p>
           )}
           {mine.map((mentee) => {

@@ -4,11 +4,13 @@ import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
   curriculum,
+  clampAmount,
   mentorCraft,
   mentorEmail,
   mentorshipPlans,
   refundWindow,
   orderReference,
+  passBand,
   passFlow,
   paytmAppUri,
   paytmIntentUri,
@@ -41,6 +43,7 @@ function usePlatform() {
 export default function MentorshipPayments({ userId = null, userName = "", userEmail = "" }: { userId?: string | null; userName?: string; userEmail?: string }) {
   const plan = mentorshipPlans[0]!;
   const [reference, setReference] = useState(() => orderReference(plan));
+  const [amount, setAmount] = useState(plan.suggested);
   const [buyerName, setBuyerName] = useState(userName);
   const [buyerContact, setBuyerContact] = useState(userEmail);
   const [paytmReference, setPaytmReference] = useState("");
@@ -92,7 +95,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     void loadLedger();
   }
 
-  const paytmUri = platform.android ? paytmIntentUri(plan, reference) : platform.ios ? paytmAppUri(plan, reference) : upiUri(plan, reference);
+  const paytmUri = platform.android ? paytmIntentUri(plan, reference, amount) : platform.ios ? paytmAppUri(plan, reference, amount) : upiUri(plan, reference, amount);
 
   async function copy(label: string, value: string) {
     try {
@@ -110,7 +113,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     const order: MentorshipOrder = {
       reference,
       plan: plan.id,
-      amount: plan.price,
+      amount,
       buyerName,
       buyerContact,
       buyerEmail: /.+@.+\..+/.test(buyerContact.trim()) ? buyerContact.trim() : userEmail.trim(),
@@ -155,17 +158,40 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">ALL 19 FEATURES · ONE PASS · ₹1,000</span>
-        <h1>Everything on CodexSheet. <em>₹1,000, once, on Paytm.</em></h1>
-        <p>{rupees(plan.price)} opens the whole workspace — all 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself. Paytm only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">ALL 19 FEATURES · PAY WHAT YOU CAN · {rupees(plan.min)} TO {rupees(plan.max)}</span>
+        <h1>Everything on CodexSheet. <em>You pick the price, {rupees(plan.min)} to {rupees(plan.max)}.</em></h1>
+        <p>All 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself — the same 19 features whatever you pay. Paytm only, no card forms, no gateway.</p>
       </header>
 
       <div className="mentorship-plans">
         <article className="mentorship-plan selected">
-          <span className="mentorship-plan-price">{rupees(plan.price)}</span>
+          <span className="mentorship-plan-price">{rupees(amount)}</span>
           <strong>{plan.title}</strong>
           <span className="mentorship-plan-subtitle">{plan.subtitle}</span>
           <span className="mentorship-plan-cadence">{plan.cadence}</span>
+          <div className="mentorship-amount">
+            <label className="mentorship-amount-slider">
+              <span>PAY WHAT YOU CAN · {rupees(plan.min)} TO {rupees(plan.max)}</span>
+              <input type="range" min={plan.min} max={plan.max} step={5} value={amount} onChange={(event) => setAmount(clampAmount(Number(event.target.value)))} aria-label="Slide to choose your pass amount" />
+              <b>{rupees(amount)}</b>
+            </label>
+            <div className="mentorship-amount-presets">
+              {passBand.presets.map((value) => (
+                <button type="button" key={value} className={amount === value ? "selected" : ""} aria-pressed={amount === value} onClick={() => setAmount(value)}>{rupees(value)}</button>
+              ))}
+              <label className="mentorship-amount-own">
+                <span>Own amount</span>
+                <input type="number" min={plan.min} max={plan.max} step={1} value={amount} onChange={(event) => setAmount(clampAmount(Number(event.target.value)))} aria-label="Type any amount from ₹10 to ₹800" />
+              </label>
+            </div>
+            <p className="mentorship-amount-note">
+              {amount <= plan.min + 15
+                ? "₹10 is the floor, not a trial. It opens all 19 features, and you pay the rest when you are working."
+                : amount >= plan.max
+                  ? `₹${plan.max} is the top of the band. That is the one that funds the students paying ₹${plan.min}.`
+                  : "Same workspace at every amount. Anything above ₹" + plan.min + " pays for a student who could only give ₹" + plan.min + "."}
+            </p>
+          </div>
           <ul>{plan.includes.map((line) => <li key={line}>{line}</li>)}</ul>
         </article>
       </div>
@@ -203,11 +229,11 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
 
       <div className="mentorship-split">
         <article className="mentorship-pay">
-          <h2><span className="mentorship-step">1</span> Pay {rupees(plan.price)} by scanning the QR</h2>
+          <h2><span className="mentorship-step">1</span> Pay {rupees(amount)} by scanning the QR</h2>
           <p className="mentorship-pay-note">The amount and the payee are locked inside the code below, and the reference goes in the Paytm note so Aditya can match your payment.</p>
 
           <div className="mentorship-qr">
-            <img src={qrImageUrl(upiUri(plan, reference))} alt={`Pay ${rupees(plan.price)} to Aditya Bakshi on Paytm, reference ${reference}`} width={240} height={240} loading="lazy" />
+            <img src={qrImageUrl(upiUri(plan, reference, amount))} alt={`Pay ${rupees(amount)} to Aditya Bakshi on Paytm, reference ${reference}`} width={240} height={240} loading="lazy" />
             <div>
               <span className="mentorship-qr-label"><QrCode size={15} /> Scan with any UPI app</span>
               <p>Paytm, PhonePe, GPay or BHIM all read this code. Desktop students: scan it with your phone.</p>
@@ -216,14 +242,14 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
 
           <div className="mentorship-pay-buttons">
             <a className="mentorship-primary" href={paytmUri}><Smartphone size={16} /> Open in Paytm</a>
-            <a className="mentorship-secondary" href={upiUri(plan, reference)}><Wallet size={16} /> Any UPI app</a>
+            <a className="mentorship-secondary" href={upiUri(plan, reference, amount)}><Wallet size={16} /> Any UPI app</a>
           </div>
 
           <div className="mentorship-refund">
             <ShieldCheck size={17} />
             <div>
               <strong>{refundWindow.headline}</strong>
-              <p>{refundWindow.body.replace("{price}", rupees(plan.price))}</p>
+              <p>{refundWindow.body.replace("{price}", rupees(amount))}</p>
             </div>
           </div>
 
@@ -269,7 +295,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
               <label>Email or phone<input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="where the session link goes" maxLength={160} /></label>
               <label>Paytm reference / UTR<input value={paytmReference} onChange={(event) => setPaytmReference(event.target.value)} placeholder="from the Paytm receipt, optional" maxLength={80} /></label>
               <label>What do you want to work on<textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="DSA roadmap, system design, mock interviews…" maxLength={1000} /></label>
-              <p className="mentorship-summary">Plan: <strong>{plan.title} · {plan.subtitle}</strong> · {rupees(plan.price)} · ref {reference}</p>
+              <p className="mentorship-summary">Plan: <strong>{plan.title} · {plan.subtitle}</strong> · {rupees(amount)} · ref {reference}</p>
               <button type="button" className="mentorship-primary" onClick={() => void submit()} disabled={saving}>
                 {saving ? <LoaderCircle size={16} className="mentorship-spin" /> : <Check size={16} />} {saving ? "Recording…" : "Record my payment"}
               </button>
