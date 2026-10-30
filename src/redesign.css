@@ -515,6 +515,7 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea { accent-colo
 .site-footer-done { color: #34d399; font-weight: 600; }
 .site-footer-error { color: #f87171; }
 .site-footer-error a { color: #60a5fa; font-weight: 600; }
+.site-footer-reason { display: block; margin-top: 4px; color: #7f9bbd; font-style: normal; font-size: 11px; }
 .site-footer.compact { margin-top: 18px; padding: 16px 18px 18px; }
 
 @media (max-width: 900px) {

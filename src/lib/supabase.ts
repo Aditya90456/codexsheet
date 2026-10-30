@@ -33,4 +33,11 @@ const supabase = !supabaseConfigurationError
     })
   : null;
 
-export { supabase };
+// Insert-only public writes, such as student feedback, must not depend on a
+// sign-in session at all: a Clerk token that fails or expires would otherwise
+// block a request the database already accepts from the publishable key.
+const supabasePublic = !supabaseConfigurationError
+  ? createClient(supabaseUrl, supabaseAnonKey, { realtime: { params: { eventsPerSecond: 0 } } })
+  : null;
+
+export { supabase, supabasePublic };

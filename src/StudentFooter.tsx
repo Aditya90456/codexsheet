@@ -5,7 +5,7 @@
 // inside his mail.
 import { useState, type FormEvent } from "react";
 import { Mail, MessageSquareText, Send } from "lucide-react";
-import { supabase } from "./lib/supabase";
+import { supabasePublic } from "./lib/supabase";
 import { mentorEmail } from "./mentorship";
 import { useT } from "./i18n";
 
@@ -17,6 +17,7 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const [reason, setReason] = useState("");
 
   const mailtoHref = `mailto:${mentorEmail}?subject=${encodeURIComponent("CodexSheet student feedback")}&body=${encodeURIComponent(`${message}\n\n— ${name || "Anonymous"} (${email})`)}`;
 
@@ -25,19 +26,36 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
     const body = message.trim();
     const address = email.trim();
     if (body.length < 5 || !emailShape.test(address)) {
+      setReason(tr("footer.feedbackBadInput"));
       setState("failed");
       return;
     }
     setState("sending");
-    const { error } = supabase
-      ? await supabase.from("student_feedback").insert({ name: name.trim().slice(0, 80), email: address, message: body.slice(0, 2000) })
-      : { error: new Error("Supabase is not configured.") };
-    setState(error ? "failed" : "sent");
-    if (!error) {
-      setName("");
-      setEmail("");
-      setMessage("");
+    if (!supabasePublic) {
+      setReason(tr("footer.feedbackOffline"));
+      setState("failed");
+      return;
     }
+    let failure = "";
+    try {
+      const { error } = await supabasePublic.from("student_feedback").insert({
+        name: name.trim().slice(0, 80),
+        email: address,
+        message: body.slice(0, 2000),
+      });
+      if (error) failure = `${error.code ?? "error"} ${error.message}`;
+    } catch (caught) {
+      failure = caught instanceof Error ? caught.message : "The feedback request did not complete.";
+    }
+    if (failure) {
+      setReason(failure.slice(0, 160));
+      setState("failed");
+      return;
+    }
+    setName("");
+    setEmail("");
+    setMessage("");
+    setState("sent");
   }
 
   return (
@@ -67,6 +85,7 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
             <span className="site-footer-error">
               {tr("footer.feedbackError")}{" "}
               <a href={mailtoHref}>{tr("footer.feedbackMail")}</a>
+              {reason && <em className="site-footer-reason">{reason}</em>}
             </span>
           )}
         </div>
