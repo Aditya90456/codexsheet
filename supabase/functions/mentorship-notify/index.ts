@@ -1,8 +1,8 @@
-// Sends Aditya one digest email for mentorship payments, call requests and
-// mentee chat messages. Scheduled by pg_cron every few minutes; safe to call
-// by hand. It only ever reports counts, never student data.
+// Sends Aditya one digest email for mentorship payments, call requests, mentee
+// chat messages and student feedback. Scheduled by pg_cron every few minutes;
+// safe to call by hand. It only ever reports counts, never student data.
 
-type NotificationKind = "payment" | "call" | "chat";
+type NotificationKind = "payment" | "call" | "chat" | "feedback";
 
 type QueueItem = {
   kind: NotificationKind;
@@ -54,6 +54,7 @@ const kindLabels: Record<NotificationKind, string> = {
   payment: "Payment claim",
   call: "Call request",
   chat: "Mentee message",
+  feedback: "Student feedback",
 };
 
 function subjectLine(groups: Map<NotificationKind, QueueItem[]>) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowUp, Lightbulb, RotateCcw, Volume2, VolumeX, WandSparkles } from "lucide-react";
+import { ArrowUp, LifeBuoy, Lightbulb, RotateCcw, Volume2, VolumeX, WandSparkles } from "lucide-react";
 import DsaMentorStage from "./DsaMentorStage";
 import GuruFace from "./GuruFace";
 import {
@@ -7,6 +7,7 @@ import {
   detectLevel,
   detectPattern,
   lessonFor,
+  patternLessons,
   sceneFor,
   teachOffline,
   type MentorPatternId,
@@ -15,9 +16,22 @@ import {
 import { detectMood, moodProfiles, parseMoodCue, type MentorMood } from "./mentor-mood";
 import { hasNativeVoice, isSpeaking, onVoiceStateChange, speak, speechText, stopSpeaking, voiceSupported } from "./mentor-voice";
 import { languageOption, setUiLanguage, uiLanguages, useT, useUiLanguage, type MessageKey, type UiLanguage } from "./i18n";
+import { mentorEmail } from "./mentorship";
 import "./guru.css";
 
 type GuruMessage = { role: "user" | "assistant"; content: string };
+
+const seenKey = "codexsheet.guru.covered";
+
+function readCovered(): MentorPatternId[] {
+  try {
+    const raw = localStorage.getItem(seenKey);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((id): id is MentorPatternId => patternLessons.some((lesson) => lesson.id === id)) : [];
+  } catch {
+    return [];
+  }
+}
 
 const starters: Array<{ key: MessageKey; ask: string }> = [
   { key: "guru.s1", ask: "Two Sum — how do I even start?" },
@@ -48,14 +62,29 @@ export default function DsaGuru({ onOpenPass }: { onOpenPass: () => void }) {
   const [voiceOn, setVoiceOn] = useState(() => (typeof localStorage === "undefined" ? true : localStorage.getItem("codexsheet.guru.voice") !== "off"));
   const [speaking, setSpeaking] = useState(isSpeaking());
   const [notice, setNotice] = useState("");
+  const [covered, setCovered] = useState<MentorPatternId[]>(readCovered);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const scene = useMemo(() => sceneFor({ pattern, intent: "explain", level: "beginner" }), [pattern]);
   const stepCount = Math.max(1, scene.steps.length);
   const boardStep = scene.steps[Math.min(stepIndex, stepCount - 1)];
   const lesson = lessonFor(pattern);
+  const nextUp = patternLessons.map((entry) => entry.id).find((id) => id !== pattern && !covered.includes(id)) ?? null;
 
   useEffect(() => onVoiceStateChange(setSpeaking), []);
+
+  useEffect(() => {
+    if (stepIndex + 1 < stepCount) return;
+    setCovered((current) => (current.includes(pattern) ? current : [...current, pattern]));
+  }, [stepIndex, stepCount, pattern]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(seenKey, JSON.stringify(covered));
+    } catch {
+      // A private window just forgets the progress when it closes.
+    }
+  }, [covered]);
 
   useEffect(() => {
     if (!voiceOn) stopSpeaking();
@@ -142,6 +171,21 @@ export default function DsaGuru({ onOpenPass }: { onOpenPass: () => void }) {
     setNotice("");
   }
 
+  function chooseTopic(id: MentorPatternId) {
+    if (id === pattern) return;
+    stopSpeaking();
+    setPattern(id);
+    setStepIndex(0);
+    setHintStep(0);
+    const entry = lessonFor(id);
+    setMood("happy");
+    if (voiceOn) speak(`${entry.hook} ${entry.idea}`, { lang, mood: "happy" });
+  }
+
+  const mentorHref = `mailto:${mentorEmail}?subject=${encodeURIComponent(`CodexSheet Guru — stuck on ${lesson.label}`)}&body=${encodeURIComponent(
+    `I am on Guru's ${lesson.label} board and I am stuck.\n\nLast step I saw:\n${boardStep?.narration ?? lesson.idea}\n${boardStep?.code ? `\n${boardStep.code}\n` : ""}\nThe part I do not understand yet:\n`,
+  )}`;
+
   const voiceNote = !voiceSupported
     ? " · This browser has no voice."
     : voiceOn && !hasNativeVoice(lang)
@@ -198,6 +242,31 @@ export default function DsaGuru({ onOpenPass }: { onOpenPass: () => void }) {
           <div className="guru-quick">
             <button type="button" onClick={() => void ask(`Give me a hint on ${lesson.label}.`, "hint")}><Lightbulb size={14} /> {tr("guru.hint")}</button>
             <button type="button" onClick={() => void ask(`Show me the solution shape for ${lesson.label}.`, "code")}><WandSparkles size={14} /> {tr("guru.solve")}</button>
+          </div>
+          <div className="guru-rail">
+            <div className="guru-rail-head">
+              <span>{tr("guru.topics")}</span>
+              <strong>{tr("guru.covered", { count: String(covered.length), total: String(patternLessons.length) })}</strong>
+            </div>
+            <div className="guru-topics">
+              {patternLessons.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className={`guru-topic${entry.id === pattern ? " active" : ""}${covered.includes(entry.id) ? " covered" : ""}`}
+                  onClick={() => chooseTopic(entry.id)}
+                >
+                  {entry.label}
+                </button>
+              ))}
+            </div>
+            {nextUp && (
+              <button type="button" className="guru-next-up" onClick={() => chooseTopic(nextUp)}>
+                <span>{tr("guru.nextUp")}</span>
+                <strong>{lessonFor(nextUp).label}</strong>
+              </button>
+            )}
+            <a className="guru-mentor" href={mentorHref}><LifeBuoy size={14} /> {tr("guru.mentor")}</a>
           </div>
           <p className="guru-fineprint">{tr("guru.langNote", { language: languageOption(lang).native })}{voiceNote}</p>
         </div>

@@ -10,6 +10,7 @@ import "./roadmap-board.css";
 import "./mentorship.css";
 import "./guru.css";
 import "./mentees.css";
+import "./articleReader.css";
 
 // Keep the local assistant isolated from the signed-in workspace.
 if (window.location.pathname === "/assistant") {

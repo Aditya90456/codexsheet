@@ -88,6 +88,7 @@ try {
 
 request_times: dict[str, deque[float]] = defaultdict(deque)
 tutor_request_times: dict[str, deque[float]] = defaultdict(deque)
+research_request_times: dict[str, deque[float]] = defaultdict(deque)
 TUTOR_SYSTEM_PROMPT = """You are CodexSheet's patient DSA tutor for students preparing for coding interviews.
 Answer only questions about data structures, algorithms, coding interview problem solving, and JavaScript/Python implementations of those topics. If a question is unrelated, kindly steer the student back to DSA.
 Teach the reasoning step by step. Prefer a small hint before a complete solution when the student is solving a problem. When showing code, explain the key lines and state time and space complexity. Ask one focused follow-up question when it will help check understanding. Never claim code was executed unless it was actually executed.
@@ -497,6 +498,101 @@ def tutor():
             return jsonify({"error": "Google Gemini is temporarily at capacity. Please try again in a minute."}), 503
         app.logger.exception("Gemini DSA tutor request failed")
         return jsonify({"error": "The DSA tutor could not respond right now. Please try again shortly."}), 502
+
+
+RESEARCH_SYSTEM_PROMPT = """You are the CodexSheet research desk. A student gives you one DSA or interview-prep topic. Use live web search, then answer in exactly three short labelled paragraphs:
+WHAT INTERVIEWS EXPECT NOW — what the same topic looks like in 2026-2027 interview loops, including which companies still ask it and how the question has changed.
+HOW TO PRACTISE IT — the two or three drills that actually move the needle, tied to the free practice the student can do today.
+THE TRAP — the mistake candidates keep making on this topic and the one sentence that fixes it.
+Under 200 words total. Plain sentences, no markdown headings, no bullet lists. Name a source only when the search results support it. Never invent a URL, a salary, or a company's process. If the search says nothing useful, say so plainly instead of guessing."""
+
+
+def grounding_sources(response) -> list[dict[str, str]]:
+    """The URIs Gemini actually used, so the UI can show receipts rather than vibes."""
+    found: list[dict[str, str]] = []
+    try:
+        for candidate in response.candidates or []:
+            metadata = getattr(candidate, "grounding_metadata", None)
+            for chunk in getattr(metadata, "chunks", None) or []:
+                web = getattr(chunk, "web", None)
+                uri = (getattr(web, "uri", None) or getattr(chunk, "uri", None) or "").strip()
+                if not uri.startswith("http"):
+                    continue
+                if any(entry["url"] == uri for entry in found):
+                    continue
+                title = (getattr(web, "title", None) or "").strip()
+                found.append({"url": uri, "title": title or uri.split("/")[2]})
+                if len(found) >= 6:
+                    return found
+    except Exception:
+        return found
+    return found
+
+
+@app.post("/api/research")
+def research():
+    origin = request.headers.get("Origin")
+    if origin and not is_allowed_origin(origin):
+        return jsonify({"error": "The research desk only answers from the CodexSheet app."}), 403
+
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return jsonify({"error": "The research desk is not configured yet. Add GEMINI_API_KEY to the environment."}), 503
+
+    now = time.monotonic()
+    client_ip = request.remote_addr or "local"
+    recent = research_request_times[client_ip]
+    while recent and now - recent[0] > 60:
+        recent.popleft()
+    if len(recent) >= 6:
+        return jsonify({"error": "Six research briefs a minute is the limit. Wait a moment."}), 429
+
+    data = request.get_json(silent=True)
+    topic = str(data.get("topic", "") if isinstance(data, dict) else "").strip()
+    angle = str(data.get("angle", "") if isinstance(data, dict) else "").strip()
+    if not 2 <= len(topic) <= 160:
+        return jsonify({"error": "Send a topic between 2 and 160 characters."}), 400
+    if len(angle) > 160:
+        return jsonify({"error": "Keep the angle under 160 characters."}), 400
+    recent.append(now)
+
+    prompt = f"Topic: {topic}" + (f"\nWhat to focus on: {angle}" if angle else "")
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=api_key)
+        model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
+        fallback_model = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash").strip()
+        models = [model]
+        if fallback_model and fallback_model != model:
+            models.append(fallback_model)
+
+        search_tool = types.Tool(google_search=types.GoogleSearch())
+        response = None
+        for model_name in models:
+            for config in (
+                types.GenerateContentConfig(system_instruction=RESEARCH_SYSTEM_PROMPT, temperature=0.4, max_output_tokens=1_200, tools=[search_tool]),
+                types.GenerateContentConfig(system_instruction=RESEARCH_SYSTEM_PROMPT, temperature=0.4, max_output_tokens=1_200),
+            ):
+                try:
+                    response = client.models.generate_content(model=model_name, contents=[{"role": "user", "parts": [{"text": prompt}]}], config=config)
+                    break
+                except Exception as exc:
+                    app.logger.warning("research call failed on %s: %s", model_name, exc)
+                    continue
+            if response is not None:
+                break
+
+        if response is None:
+            return jsonify({"error": "Google Gemini is temporarily at capacity. Try again in a minute."}), 503
+        brief = (response.text or "").strip()
+        if not brief:
+            return jsonify({"error": "The desk came back empty. Try a different phrasing."}), 502
+        return jsonify({"brief": brief, "sources": grounding_sources(response)})
+    except Exception:
+        app.logger.exception("CodexSheet research request failed")
+        return jsonify({"error": "The research desk could not answer right now. The rest of CodexSheet still works."}), 502
 
 
 if __name__ == "__main__":

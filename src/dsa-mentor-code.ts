@@ -1,4 +1,24 @@
-// One real line of code per board step, so the picture and the narration always
+// The last board step always shows the finished shape of the answer, so the
+// student leaves the lesson holding one block of code they could type today.
+export const lessonFinal: Record<MentorPatternId, string> = {
+  hashing: "def two_sum(nums, target):\n    seen = {}\n    for i, x in enumerate(nums):\n        if target - x in seen: return [seen[target - x], i]\n        seen[x] = i",
+  "two-pointers": "while left < right:\n    if a[left] + a[right] == target: return [left, right]\n    left += 1 if a[left] + a[right] < target else 0\n    right -= 1 if a[left] + a[right] > target else 0",
+  "sliding-window": "best = 0\nfor right in range(n):\n    window[s[right]] += 1\n    while invalid(window):\n        window[s[left]] -= 1; left += 1\n    best = max(best, right - left + 1)",
+  stack: "for c in s:\n    if c in '([{': stack.append(c)\n    elif not stack or pairs[stack.pop()] != c: return False\nreturn not stack",
+  "monotonic-stack": "for i, x in enumerate(nums):\n    while stack and x > nums[stack[-1]]:\n        ans[stack.pop()] = x\n    stack.append(i)",
+  "binary-search": "while lo <= hi:\n    mid = lo + (hi - lo) // 2\n    if a[mid] == target: return mid\n    if a[mid] < target: lo = mid + 1\n    else: hi = mid - 1\nreturn lo",
+  "linked-list": "while curr:\n    nxt = curr.next\n    curr.next = prev\n    prev, curr = curr, nxt\nreturn prev",
+  trees: "def depth(node):\n    if not node: return 0\n    return 1 + max(depth(node.left), depth(node.right))",
+  graphs: "while q:\n    node = q.popleft()\n    for nxt in adj[node]:\n        if nxt not in seen:\n            seen.add(nxt); dist[nxt] = dist[node] + 1; q.append(nxt)",
+  backtracking: "for choice in choices:\n    if not valid(choice): continue\n    path.append(choice)\n    search(depth + 1)\n    path.pop()",
+  heaps: "for num in nums:\n    heappush(heap, num)\n    if len(heap) > k: heappop(heap)\nreturn heap[0]",
+  intervals: "for start, end in sorted(intervals):\n    if merged and start <= merged[-1][1]: merged[-1][1] = max(merged[-1][1], end)\n    else: merged.append([start, end])",
+  "dp-1d": "prev2 = prev = 0\nfor x in nums:\n    prev2, prev = prev, max(prev, prev2 + x)\nreturn prev",
+  "dp-2d": "for r in range(1, len(a) + 1):\n    for c in range(1, len(b) + 1):\n        dp[r][c] = dp[r-1][c-1] + 1 if a[r-1] == b[c-1] else max(dp[r-1][c], dp[r][c-1])",
+  greedy: "for i, x in enumerate(nums):\n    if i > reach: return False\n    reach = max(reach, i + x)\nreturn True",
+  bits: "acc = 0\nfor v in nums:\n    acc ^= v\nreturn acc",
+};
+
 // arrive with the syntax that implements them. Python, because it reads out loud.
 import type { MentorPatternId } from "./dsa-mentor-brain";
 

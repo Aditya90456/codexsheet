@@ -62,6 +62,8 @@ import {
   Trash2,
   Sparkles,
   GraduationCap,
+  Lightbulb,
+  X,
 } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
@@ -74,6 +76,8 @@ import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaTutor from "./DsaTutor";
 import DsaGuru from "./DsaGuru";
+import StudentFooter from "./StudentFooter";
+import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT } from "./i18n";
 
 type Status = "Todo" | "In progress" | "Solved";
@@ -719,7 +723,176 @@ function LldWhiteboardPage() {
   </main>;
 }
 
-function ArticlesPage() {
+const articleToc = [
+  { id: "art-intro", label: "Introduction" },
+  { id: "art-approach", label: "The approach" },
+  { id: "art-steps", label: "How it works, step by step" },
+  { id: "art-visual", label: "Watch the structure move" },
+  { id: "art-table", label: "Reference table" },
+  { id: "art-code", label: "Code example" },
+  { id: "art-complexity", label: "Complexity analysis" },
+  { id: "art-applications", label: "Applications" },
+  { id: "art-tradeoffs", label: "Advantages & limitations" },
+  { id: "art-faq", label: "Frequently asked questions" },
+];
+
+function ArticleReader({ article, detail, lesson, onClose, onOpenRelated, onOpenIde }: {
+  article: (typeof dsaArticles)[number];
+  detail: ArticleDetail;
+  lesson: (typeof articleLessons)[string];
+  onClose: () => void;
+  onOpenRelated: (concept: string) => void;
+  onOpenIde: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [activeSection, setActiveSection] = useState("art-intro");
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const previous = dsaArticles[Math.max(0, dsaArticles.indexOf(article) - 1)];
+  const next = dsaArticles[Math.min(dsaArticles.length - 1, dsaArticles.indexOf(article) + 1)];
+
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+    setActiveSection("art-intro");
+  }, [article.title]);
+
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root) return;
+    const watcher = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (visible) setActiveSection(visible.target.id);
+    }, { root, rootMargin: "-10% 0px -70% 0px" });
+    for (const section of articleToc) {
+      const node = root.querySelector(`#${section.id}`);
+      if (node) watcher.observe(node);
+    }
+    return () => watcher.disconnect();
+  }, [article.title]);
+
+  const copyCode = () => {
+    void navigator.clipboard?.writeText(article.code).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }).catch(() => setCopied(false));
+  };
+
+  const jumpTo = (id: string) => {
+    const node = bodyRef.current?.querySelector(`#${id}`);
+    node?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActiveSection(id);
+  };
+
+  return <div className="article-reader-backdrop" onMouseDown={onClose}>
+    <article className="article-reader gfg-reader" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="article-reader-title">
+      <header className="gfg-head">
+        <div className="gfg-crumb"><span>DSA</span><ChevronRight size={12}/><span>{article.category}</span><ChevronRight size={12}/><strong>{article.title}</strong></div>
+        <button type="button" onClick={onClose} aria-label="Close article">×</button>
+      </header>
+      <div className="gfg-title">
+        <h2 id="article-reader-title">{article.title}</h2>
+        <div className="gfg-meta">
+          <span>{detail.updated}</span><i/><span>{article.read}</span><i/><span className={`gfg-level gfg-level-${detail.difficulty.toLowerCase()}`}>{detail.difficulty}</span>
+          <span className="gfg-tags">{detail.tags.map((tag) => <em key={tag}>{tag}</em>)}</span>
+        </div>
+      </div>
+      <div className="gfg-layout">
+        <div className="gfg-body" ref={bodyRef}>
+          <section id="art-intro">
+            <h3>Introduction</h3>
+            <p>{article.body}</p>
+            <p className="gfg-summary">{article.summary}</p>
+          </section>
+          <section id="art-approach">
+            <h3>The approach</h3>
+            <p>{detail.approach}</p>
+            <div className="gfg-callout"><Lightbulb size={16}/><p><strong>Core idea: </strong>{article.concept} — {article.takeaway}</p></div>
+          </section>
+          <section id="art-steps">
+            <h3>How it works, step by step</h3>
+            <ol className="gfg-steps">{detail.algorithm.map((line, index) => <li key={line}><span>{String(index + 1).padStart(2, "0")}</span><p>{line}</p></li>)}</ol>
+          </section>
+          <section id="art-visual">
+            <h3>Watch the structure move</h3>
+            <p className="gfg-lead">{lesson.usefulWhen}</p>
+            <ConceptDiagram key={article.title} article={article} lesson={lesson}/>
+          </section>
+          <section id="art-table">
+            <h3>{detail.table.head.join(" vs ")}</h3>
+            <div className="gfg-table-wrap">
+              <table className="gfg-table">
+                <caption>{detail.table.caption}</caption>
+                <thead><tr>{detail.table.head.map((cell) => <th key={cell}>{cell}</th>)}</tr></thead>
+                <tbody>{detail.table.rows.map((row) => <tr key={row.join("|")}>{row.map((cell, cellIndex) => <td key={cell} className={cellIndex === 0 ? "gfg-key" : ""}>{cell}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+            <p className="gfg-note">Read the row you would defend in an interview, then say out loud why it moves the way it does.</p>
+          </section>
+          <section id="art-code">
+            <h3>Code example</h3>
+            <div className="gfg-code">
+              <div className="gfg-code-bar"><span>JAVASCRIPT</span><div><button type="button" onClick={copyCode}>{copied ? <Check size={13}/> : <Copy size={13}/>} {copied ? "Copied" : "Copy"}</button><button type="button" className="gfg-try" onClick={onOpenIde}><Code2 size={13}/> Try it in Deva</button></div></div>
+              <pre><code>{article.code}</code></pre>
+            </div>
+          </section>
+          <section id="art-complexity">
+            <h3>Complexity analysis</h3>
+            <ul className="gfg-cx">
+              <li><strong>Time</strong><span>{detail.complexity.time}</span></li>
+              <li><strong>Auxiliary space</strong><span>{detail.complexity.space}</span></li>
+              <li><strong>Lesson note</strong><span>{lesson.complexity}</span></li>
+            </ul>
+          </section>
+          <section id="art-applications">
+            <h3>Applications</h3>
+            <ul className="gfg-list">{detail.applications.map((line) => <li key={line}><ArrowRight size={13}/>{line}</li>)}</ul>
+          </section>
+          <section id="art-tradeoffs" className="gfg-cols">
+            <div>
+              <h3>Advantages</h3>
+              <ul className="gfg-list gfg-good">{detail.advantages.map((line) => <li key={line}><Check size={13}/>{line}</li>)}</ul>
+            </div>
+            <div>
+              <h3>Limitations</h3>
+              <ul className="gfg-list gfg-bad">{detail.limitations.map((line) => <li key={line}><X size={13}/>{line}</li>)}</ul>
+            </div>
+          </section>
+          <section id="art-faq">
+            <h3>Frequently asked questions</h3>
+            {detail.faq.map((item) => <details key={item.q}><summary>{item.q}</summary><p>{item.a}</p></details>)}
+          </section>
+          <nav className="gfg-pager">
+            <button type="button" disabled={previous === article} onClick={() => onOpenRelated(previous.concept)}><ChevronLeft size={14}/>{previous.title}</button>
+            <button type="button" className="gfg-next" disabled={next === article} onClick={() => onOpenRelated(next.concept)}>{next.title}<ArrowRight size={14}/></button>
+          </nav>
+        </div>
+        <aside className="gfg-rail">
+          <section>
+            <span className="gfg-rail-kicker">TABLE OF CONTENTS</span>
+            <ol>{articleToc.map((section) => <li key={section.id}><button type="button" className={activeSection === section.id ? "active" : ""} onClick={() => jumpTo(section.id)}>{section.label}</button></li>)}</ol>
+          </section>
+          <section>
+            <span className="gfg-rail-kicker">PREREQUISITES</span>
+            <ul className="gfg-chips">{detail.prerequisites.map((line) => <li key={line}>{line}</li>)}</ul>
+          </section>
+          <section>
+            <span className="gfg-rail-kicker">RELATED CONCEPTS</span>
+            <ul className="gfg-related">{detail.related.map((concept) => {
+              const target = dsaArticles.find((item) => item.concept === concept);
+              return <li key={concept}><button type="button" onClick={() => onOpenRelated(concept)}><BookOpen size={13}/>{target?.title ?? concept}<ArrowRight size={13}/></button></li>;
+            })}</ul>
+          </section>
+          <section className="gfg-practice">
+            <span className="gfg-rail-kicker">PRACTICE IT</span>
+            <p>Reading it once is not enough. Write it, break it, then fix it in the editor.</p>
+            <button type="button" onClick={onOpenIde}>Open Deva <ArrowRight size={14}/></button>
+          </section>
+        </aside>
+      </div>
+    </article>
+  </div>;
+}
+
+function ArticlesPage({ onOpenIde }: { onOpenIde: () => void }) {
   const [selected, setSelected] = useState("All concepts");
   const [searchTerm, setSearchTerm] = useState("");
   const [openArticle, setOpenArticle] = useState<(typeof dsaArticles)[number] | null>(null);
@@ -756,9 +929,9 @@ function ArticlesPage() {
     return () => { cancelled = true; revert?.(); };
   }, [selected]);
   return <main className="articles-page" ref={pageRef}>
-    <section className="articles-hero editorial-hero"><div className="articles-hero-copy"><span className="articles-kicker"><BookOpen size={14}/> THE CODEXSHEET JOURNAL</span><h2>Learn the patterns<br/><em>behind the problems.</em></h2><p>Clear explanations for the ideas that show up again and again in coding interviews.</p><div className="editorial-hero-meta"><span>DSA FIELD NOTES</span><i/><span>{String(dsaArticles.length).padStart(2,"0")} SHORT READS</span></div></div><div className="editorial-hero-index"><span>COLLECTION</span><strong>01<span> / </span>{String(dsaArticles.length).padStart(2,"0")}</strong><p>Foundations<br/>to problem solving</p><div className="editorial-index-line"/></div><DsaOverviewLoop /></section>
-    <section className="articles-library"><div className="editorial-library-head"><div><span className="articles-kicker">THE LIBRARY</span><h3>Read. Understand. <em>Apply.</em></h3></div><label className="article-search"><Search size={15}/><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Find a concept" aria-label="Search DSA articles"/>{searchTerm && <button type="button" onClick={() => setSearchTerm("")} aria-label="Clear search">×</button>}</label></div><div className="article-filters" aria-label="Filter articles by topic">{categories.map((category) => <button key={category} type="button" className={selected === category ? "active" : ""} onClick={() => setSelected(category)}>{category}</button>)}</div>{featuredArticle ? <div className="editorial-reading-layout"><div className="editorial-main-column"><button className="featured-article" type="button" onClick={() => setOpenArticle(featuredArticle)}><span className="featured-label">{selected === "All concepts" ? "EDITOR’S PICK" : "FROM THIS TOPIC"}<ArrowRight size={14}/></span><span className="featured-category">{featuredArticle.category} <i/> {featuredArticle.read.toUpperCase()}</span><strong>{featuredArticle.title}</strong><p>{featuredArticle.summary}</p><span className="featured-link">Read the article <ArrowRight size={15}/></span><span className="featured-mark">{String(dsaArticles.indexOf(featuredArticle) + 1).padStart(2,"0")}</span></button><div className="article-list-heading"><span>MORE TO EXPLORE</span><span>{String(otherArticles.length).padStart(2,"0")} ARTICLES</span></div><div className="editorial-article-list">{otherArticles.map((article) => <button className="article-row" type="button" key={article.title} onClick={() => setOpenArticle(article)}><span className="article-row-number">{String(dsaArticles.indexOf(article) + 1).padStart(2,"0")}</span><span className="article-row-copy"><small>{article.category}</small><strong>{article.title}</strong><span>{article.summary}</span></span><span className="article-row-time">{article.read}<ArrowRight size={15}/></span></button>)}</div></div><aside className="editorial-aside"><span className="aside-kicker">A GOOD WAY IN</span><h4>Build your<br/>mental model.</h4><p>Start with the shape of the problem. Then choose a structure or pattern that makes the work simpler.</p><div className="aside-steps"><span><i>01</i> Understand the input</span><span><i>02</i> Find the repeated work</span><span><i>03</i> Choose a pattern</span></div><div className="aside-note"><Code2 size={15}/> Concepts are easier to remember when you can explain the tradeoff.</div><span className="aside-count">{String(visible.length).padStart(2,"0")} MATCHING READS</span></aside></div> : <div className="articles-empty"><Search size={20}/><strong>No concepts found</strong><span>Try another phrase or choose a different topic.</span><button type="button" onClick={() => { setSearchTerm(""); setSelected("All concepts"); }}>Clear filters</button></div>}</section>
-    {openArticle && activeLesson && <div className="article-reader-backdrop" onMouseDown={() => setOpenArticle(null)}><article className="article-reader article-reader-deep" onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="article-reader-title"><div className="article-reader-top"><span className="articles-kicker"><BookOpen size={14}/>{openArticle.category}</span><button type="button" onClick={() => setOpenArticle(null)} aria-label="Close article">×</button></div><span className="article-reader-index">CONCEPT {String(dsaArticles.indexOf(openArticle) + 1).padStart(3,"0")} · {openArticle.read}</span><h2 id="article-reader-title">{openArticle.title}</h2><p className="article-reader-summary">{openArticle.summary}</p><div className="article-lesson-meta"><span><small>CORE IDEA</small><strong>{openArticle.concept}</strong></span><span><small>COMPLEXITY</small><strong>{activeLesson.complexity}</strong></span></div><div className="article-lesson-layout"><div className="article-lesson-copy"><section><span className="article-reader-label">BUILD THE MENTAL MODEL</span><h3>What’s really happening?</h3><p>{activeLesson.detail}</p></section><section><span className="article-reader-label">WHEN TO REACH FOR IT</span><h3>Recognize the signal</h3><p>{activeLesson.usefulWhen}</p></section><section className="article-lesson-takeaway"><span className="article-reader-label">A PRINCIPLE TO KEEP</span><p>{openArticle.takeaway}</p></section></div><ConceptDiagram key={openArticle.title} article={openArticle} lesson={activeLesson}/></div><section className="article-reader-example"><div><span className="article-reader-label">CODE IN CONTEXT</span><h3>One way to write it</h3></div><pre><code>{openArticle.code}</code></pre></section><div className="article-reader-bottom"><span><Clock3 size={14}/> {openArticle.read}</span><button type="button" onClick={() => { setOpenArticle(null); setSelected(openArticle.category); }}>Explore {openArticle.category} <ArrowRight size={14}/></button></div></article></div>}
+    <section className="articles-hero editorial-hero"><div className="articles-hero-copy"><span className="articles-kicker"><BookOpen size={14}/> THE CODEXSHEET JOURNAL</span><h2>Learn the patterns<br/><em>behind the problems.</em></h2><p>Every note is written the long way on purpose: approach, worked steps, a reference table, runnable code, complexity, applications, trade-offs and an FAQ.</p><div className="editorial-hero-meta"><span>DSA FIELD NOTES</span><i/><span>{String(dsaArticles.length).padStart(2,"0")} DEEP-DIVE NOTES</span><i/><span>10 SECTIONS EACH</span></div></div><div className="editorial-hero-index"><span>COLLECTION</span><strong>01<span> / </span>{String(dsaArticles.length).padStart(2,"0")}</strong><p>Foundations<br/>to problem solving</p><div className="editorial-index-line"/></div><DsaOverviewLoop /></section>
+    <section className="articles-library"><div className="editorial-library-head"><div><span className="articles-kicker">THE LIBRARY</span><h3>Read. Understand. <em>Apply.</em></h3></div><label className="article-search"><Search size={15}/><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Find a concept" aria-label="Search DSA articles"/>{searchTerm && <button type="button" onClick={() => setSearchTerm("")} aria-label="Clear search">×</button>}</label></div><div className="article-filters" aria-label="Filter articles by topic">{categories.map((category) => <button key={category} type="button" className={selected === category ? "active" : ""} onClick={() => setSelected(category)}>{category}</button>)}</div>{featuredArticle ? <div className="editorial-reading-layout"><div className="editorial-main-column"><button className="featured-article" type="button" onClick={() => setOpenArticle(featuredArticle)}><span className="featured-label">{selected === "All concepts" ? "EDITOR’S PICK" : "FROM THIS TOPIC"}<ArrowRight size={14}/></span><span className="featured-category">{featuredArticle.category} <i/> {featuredArticle.read.toUpperCase()}</span><strong>{featuredArticle.title}</strong><p>{featuredArticle.summary}</p><span className="featured-link">Read the article <ArrowRight size={15}/></span><span className="featured-mark">{String(dsaArticles.indexOf(featuredArticle) + 1).padStart(2,"0")}</span></button><div className="article-list-heading"><span>MORE TO EXPLORE</span><span>{String(otherArticles.length).padStart(2,"0")} ARTICLES</span></div><div className="editorial-article-list">{otherArticles.map((article) => <button className="article-row" type="button" key={article.title} onClick={() => setOpenArticle(article)}><span className="article-row-number">{String(dsaArticles.indexOf(article) + 1).padStart(2,"0")}</span><span className="article-row-copy"><small>{article.category} · {articleDetails[article.concept]?.difficulty ?? "Note"} · 10 sections</small><strong>{article.title}</strong><span>{article.summary}</span></span><span className="article-row-time">{article.read}<ArrowRight size={15}/></span></button>)}</div></div><aside className="editorial-aside"><span className="aside-kicker">A GOOD WAY IN</span><h4>Build your<br/>mental model.</h4><p>Start with the shape of the problem. Then choose a structure or pattern that makes the work simpler.</p><div className="aside-steps"><span><i>01</i> Understand the input</span><span><i>02</i> Find the repeated work</span><span><i>03</i> Choose a pattern</span></div><div className="aside-note"><Code2 size={15}/> Concepts are easier to remember when you can explain the tradeoff.</div><span className="aside-count">{String(visible.length).padStart(2,"0")} MATCHING READS</span></aside></div> : <div className="articles-empty"><Search size={20}/><strong>No concepts found</strong><span>Try another phrase or choose a different topic.</span><button type="button" onClick={() => { setSearchTerm(""); setSelected("All concepts"); }}>Clear filters</button></div>}</section>
+    {openArticle && activeLesson && articleDetails[openArticle.concept] && <ArticleReader article={openArticle} detail={articleDetails[openArticle.concept]} lesson={activeLesson} onClose={() => setOpenArticle(null)} onOpenRelated={(concept) => setOpenArticle(dsaArticles.find((item) => item.concept === concept) ?? openArticle)} onOpenIde={() => { setOpenArticle(null); onOpenIde(); }} />}
   </main>;
 }
 
@@ -2027,13 +2200,13 @@ function App() {
   const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru");
 
   if (!isSignedIn && !publicView) {
-    return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div></main>;
+    return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
   }
 
   if (publicView) {
     return activeView === "guru"
-      ? <main className="guru-public"><DsaGuru onOpenPass={() => navigateToView("mentorship")} /></main>
-      : <main className="mentorship-public"><MentorshipPayments /></main>;
+      ? <main className="guru-public"><DsaGuru onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>
+      : <main className="mentorship-public"><MentorshipPayments /><StudentFooter /></main>;
   }
 
   return (
@@ -2211,7 +2384,7 @@ function App() {
         patterns={patternStats}
         onNavigate={navigateToView}
       />}
-      {activeView === "articles" && !passLocked && <ArticlesPage />}
+      {activeView === "articles" && !passLocked && <ArticlesPage onOpenIde={() => navigateToView("dsa-ide")} />}
       {activeView === "jobs" && !passLocked && <JobsPage />}
       {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
       {activeView === "mentees" && !passLocked && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
@@ -2875,9 +3048,7 @@ function App() {
       </section>}
       {patternTestOpen && <PatternTest pattern={patternTestOpen} onClose={() => setPatternTestOpen(null)} />}
 
-      <footer className="footer-note">
-        Use the patterns, then make the problem yours.
-      </footer>
+      <StudentFooter compact />
     </main>
   );
 }

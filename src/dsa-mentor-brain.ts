@@ -3,7 +3,7 @@
 // without any network at all. The hosted model only ever writes the words — the
 // topic detection, the figure and the hint ladder stay deterministic here so a
 // student on a slow phone connection still gets a real lesson.
-import { lessonCode } from "./dsa-mentor-code";
+import { lessonCode, lessonFinal } from "./dsa-mentor-code";
 import type { MentorScene, SceneStep } from "./DsaMentorStage";
 
 export type MentorPatternId =
@@ -500,6 +500,7 @@ function hashKeys(lesson: PatternLesson): string[] {
 
 function sceneSteps(lesson: PatternLesson): SceneStep[] {
   const code = lessonCode[lesson.id] ?? [];
+  const final = lessonFinal[lesson.id];
   const steps: SceneStep[] = lesson.walkthrough.map((narration, index) => ({
     narration,
     code: code[index],
@@ -507,7 +508,10 @@ function sceneSteps(lesson: PatternLesson): SceneStep[] {
     span: [index, Math.min(index + 2, 5)] as [number, number],
     reveal: index + 1,
   }));
-  steps.push({ narration: lesson.mistake, code: code[lesson.walkthrough.length], active: [], reveal: lesson.walkthrough.length });
+  const full = lesson.figure === "hash" ? 8 : lesson.walkthrough.length;
+  steps.push({ narration: lesson.mistake, code: code[lesson.walkthrough.length], active: [], reveal: full });
+  steps.push({ narration: lesson.check, code: lesson.codeCue, active: [], reveal: full });
+  steps.push({ narration: `So the whole shape is this — and it costs ${lesson.complexity}`, code: final, active: [], reveal: full });
   return steps;
 }
 

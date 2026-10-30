@@ -294,6 +294,116 @@
   color: #fff;
 }
 
+.guru-rail {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed #24344b;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guru-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #7f93b1;
+}
+
+.guru-rail-head strong {
+  color: #9ecbff;
+  font-size: 11.5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.guru-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.guru-topic {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--guru-line);
+  background: rgba(19, 31, 51, 0.6);
+  color: #a9c1de;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: border-color 0.16s, color 0.16s, transform 0.16s;
+}
+
+.guru-topic:hover {
+  border-color: #60a5fa;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.guru-topic.active {
+  border-color: #3b82f6;
+  background: #1b2a41;
+  color: #fff;
+}
+
+.guru-topic.covered {
+  color: #34d399;
+  border-color: #21405c;
+}
+
+.guru-topic.covered::before {
+  content: "\2713 ";
+}
+
+.guru-next-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #21405c;
+  background: rgba(52, 211, 153, 0.07);
+  color: #cfe0f7;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.guru-next-up:hover {
+  border-color: #34d399;
+  color: #fff;
+}
+
+.guru-next-up span {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #34d399;
+}
+
+.guru-mentor {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px dashed #2f4763;
+  background: rgba(59, 130, 246, 0.06);
+  color: #cfe0f7;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.guru-mentor:hover {
+  border-color: #60a5fa;
+  color: #fff;
+}
+
 .guru-fineprint {
   margin: 10px 0 0;
   font-size: 11px;
