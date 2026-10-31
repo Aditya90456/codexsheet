@@ -63,8 +63,10 @@ import {
   Sparkles,
   GraduationCap,
   Lightbulb,
+  Activity,
   X,
 } from "lucide-react";
+import CsLabs from "./CsLabs";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import DsaIde from "./DsaIde";
@@ -109,7 +111,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -120,6 +122,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   "dsa-course": "/learn/dsa",
   tutor: "/tutor",
   guru: "/guru",
+  cslabs: "/cslabs",
   calendar: "/calendar",
   roadmap: "/roadmap",
   lld: "/roadmap/lld",
@@ -1442,7 +1445,7 @@ function App() {
   // Every other feature waits for a confirmed pass at whatever amount the
   // student could pay between ₹10 and ₹800.
   const tr = useT();
-  const passGate = !(["home", "mentorship", "guru"] as WorkspaceView[]).includes(activeView);
+  const passGate = !(["home", "mentorship", "guru", "cslabs"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -2196,17 +2199,22 @@ function App() {
   }
 
   // Students pay from a shared link, so the store stays public. Guru is the free
-  // teacher, so a student with no account and no money still gets taught.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru");
+  // teacher and CS Labs the free laboratory, so a student with no account and no
+  // money still gets taught and still gets to see the algorithms run.
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
   }
 
   if (publicView) {
-    return activeView === "guru"
-      ? <main className="guru-public"><DsaGuru onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>
-      : <main className="mentorship-public"><MentorshipPayments /><StudentFooter /></main>;
+    if (activeView === "guru") {
+      return <main className="guru-public"><DsaGuru onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+    }
+    if (activeView === "cslabs") {
+      return <main className="cslabs-public"><CsLabs onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+    }
+    return <main className="mentorship-public"><MentorshipPayments /><StudentFooter /></main>;
   }
 
   return (
@@ -2233,6 +2241,9 @@ function App() {
           </button>
           <button className={activeView === "guru" ? "active" : ""} aria-pressed={activeView === "guru"} onClick={() => navigateToView("guru")}>
             <Sparkles size={16} /> {tr("nav.guru")}
+          </button>
+          <button className={activeView === "cslabs" ? "active" : ""} aria-pressed={activeView === "cslabs"} onClick={() => navigateToView("cslabs")}>
+            <Activity size={16} /> CS Labs
           </button>
           <button className={activeView === "tutor" ? "active" : ""} aria-pressed={activeView === "tutor"} onClick={() => navigateToView("tutor")}>
             <BrainCircuit size={16} /> {tr("nav.tutor")}
@@ -2395,6 +2406,7 @@ function App() {
       {activeView === "dsa-course" && !passLocked && <DsaCourseStudio />}
       {activeView === "tutor" && !passLocked && <DsaTutor />}
       {activeView === "guru" && <DsaGuru onOpenPass={() => navigateToView("mentorship")} />}
+      {activeView === "cslabs" && <CsLabs onOpenPass={() => navigateToView("mentorship")} />}
       {activeView === "calls" && !passLocked && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && !passLocked && (
         <>

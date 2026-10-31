@@ -9,6 +9,7 @@ import "./deva-course.css";
 import "./roadmap-board.css";
 import "./mentorship.css";
 import "./guru.css";
+import "./cslabs.css";
 import "./mentees.css";
 import "./articleReader.css";
 
