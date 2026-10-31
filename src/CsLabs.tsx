@@ -7,6 +7,7 @@ import {
   Database,
   GitBranch,
   HardDrive,
+  Layers,
   Lightbulb,
   Network,
   Pause,
@@ -23,7 +24,6 @@ import {
   cpuAlgorithms,
   cpuMetrics,
   csSubjects,
-  csTopicById,
   csTopics,
   runCpu,
   type BankerFrame,
@@ -31,20 +31,75 @@ import {
   type CpuAlgorithmId,
   type CpuFrame,
   type CsFrame,
+  type CsReading,
   type CsSubject,
-  type CsTopicId,
   type GanttBlock,
   type PagingFrame,
   type TcpFrame,
   type TreeFrame,
   type TreeNode,
 } from "./cs-labs-kernels";
+import {
+  dsaMetrics,
+  dsaTopics,
+  hashAlgorithms,
+  hashSummary,
+  sortAlgorithms,
+  sortSummary,
+  type DsaAlgorithm,
+  type DsaFrame,
+} from "./dsa-labs-kernels";
+import { renderDsaFrame } from "./DsaLabViews";
 import { useT, useUiLanguage } from "./i18n";
 import { speak, stopSpeaking, voiceSupported } from "./mentor-voice";
 import "./cslabs.css";
 
 const palette = ["#3b82f6", "#34d399", "#fbbf24", "#a78bfa", "#60a5fa", "#f472b6", "#22d3ee", "#fb923c"];
-const subjectIcon = { os: Cpu, db: Database, network: Network, arch: HardDrive } as const;
+const subjectIcon = { os: Cpu, db: Database, network: Network, arch: HardDrive, dsa: Layers } as const;
+
+type LabFrame = CsFrame | DsaFrame;
+
+type LabTopic = {
+  id: string;
+  subject: CsSubject;
+  title: string;
+  blurb: string;
+  inputLabel: string;
+  defaultInput: string;
+  algorithms: DsaAlgorithm[];
+  run: (input: string, algorithm: string) => LabFrame[];
+  read: CsReading;
+};
+
+const labTopics: LabTopic[] = [
+  ...csTopics.map((entry): LabTopic => ({
+    id: entry.id,
+    subject: entry.subject,
+    title: entry.title,
+    blurb: entry.blurb,
+    inputLabel: entry.inputLabel,
+    defaultInput: entry.defaultInput,
+    algorithms: entry.hasAlgorithm ? cpuAlgorithms : [],
+    run: (input, algorithm) => entry.run(input, algorithm as CpuAlgorithmId),
+    read: entry.read,
+  })),
+  ...dsaTopics.map((entry): LabTopic => ({
+    id: entry.id,
+    subject: entry.subject,
+    title: entry.title,
+    blurb: entry.blurb,
+    inputLabel: entry.inputLabel,
+    defaultInput: entry.defaultInput,
+    algorithms: entry.algorithms ?? [],
+    run: (input, algorithm) => entry.run(input, algorithm),
+    read: entry.read,
+  })),
+];
+
+const labSubjects = [...csSubjects, { id: "dsa" as CsSubject, label: "Data structures & algorithms" }];
+
+const isDsaFrame = (frame: LabFrame): frame is DsaFrame =>
+  ["bars", "chain", "dsatree", "graph", "grid", "board", "interval"].includes(frame.kind);
 
 const colorFor = (key: string) => palette[[...key].reduce((sum, c) => sum + c.charCodeAt(0), 0) % palette.length];
 
@@ -426,7 +481,8 @@ function CacheView({ frame }: { frame: CacheFrame }) {
   );
 }
 
-function renderFrame(frame: CsFrame, history: CsFrame[]) {
+function renderFrame(frame: LabFrame, history: LabFrame[]) {
+  if (isDsaFrame(frame)) return renderDsaFrame(frame);
   switch (frame.kind) {
     case "cpu": return <GanttView frame={frame} />;
     case "paging": return <PagingView frame={frame} />;
@@ -437,10 +493,12 @@ function renderFrame(frame: CsFrame, history: CsFrame[]) {
   }
 }
 
-function metricsOf(frame: CsFrame, frames: CsFrame[]) {
+function metricsOf(frame: LabFrame, frames: LabFrame[]) {
+  if (isDsaFrame(frame)) return dsaMetrics(frame, frames as DsaFrame[]);
   const rows: { label: string; value: string; hint?: string }[] = [];
+  const cs = frames as CsFrame[];
   if (frame.kind === "cpu") {
-    const cpuFrames = frames as CpuFrame[];
+    const cpuFrames = cs as CpuFrame[];
     const m = cpuMetrics(cpuFrames);
     const last = cpuFrames[cpuFrames.length - 1];
     rows.push({ label: "average waiting time", value: `${pad(m.avgWait, 2)} units`, hint: "sum of (turnaround - burst) per process" });
@@ -489,17 +547,18 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
   const tr = useT();
   const lang = useUiLanguage();
   const [subject, setSubject] = useState<CsSubject | "all">("all");
-  const [topicId, setTopicId] = useState<CsTopicId>("cpu-scheduling");
-  const topic = csTopicById(topicId);
+  const [topicId, setTopicId] = useState<string>("cpu-scheduling");
+  const topic = labTopics.find((entry) => entry.id === topicId) ?? labTopics[0];
   const [input, setInput] = useState(topic.defaultInput);
-  const [algorithm, setAlgorithm] = useState<CpuAlgorithmId>("fcfs");
+  const [algorithm, setAlgorithm] = useState<string>("fcfs");
+  const activeAlgorithm = topic.algorithms.some((option) => option.id === algorithm) ? algorithm : topic.algorithms[0]?.id ?? "";
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [spoken, setSpoken] = useState(false);
   const [tab, setTab] = useState<"deep" | "traps" | "interview">("deep");
 
-  const frames = useMemo(() => topic.run(input, algorithm), [topic, input, algorithm]);
+  const frames = useMemo(() => topic.run(input, activeAlgorithm), [topic, input, activeAlgorithm]);
   const atEnd = index >= frames.length - 1;
   const frame = frames[Math.min(index, Math.max(0, frames.length - 1))];
 
@@ -536,29 +595,44 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [frames.length]);
 
-  const visibleTopics = subject === "all" ? csTopics : csTopics.filter((t) => t.subject === subject);
+  const visibleTopics = subject === "all" ? labTopics : labTopics.filter((entry) => entry.subject === subject);
   const compare = useMemo(() => {
-    if (topic.id !== "cpu-scheduling") return [];
-    return cpuAlgorithms.map((option) => {
-      const run = runCpu(option.id, input, 2);
-      const m = cpuMetrics(run);
-      return { ...option, avgWait: m.avgWait, avgTurnaround: m.avgTurnaround };
-    });
+    if (topic.id === "cpu-scheduling") {
+      return cpuAlgorithms.map((option) => {
+        const m = cpuMetrics(runCpu(option.id, input, 2));
+        return { ...option, cost: m.avgWait, value: pad(m.avgWait, 2) };
+      });
+    }
+    if (topic.id === "sorting") {
+      return sortSummary(input).map((option) => ({ ...option, cost: option.comparisons, value: `${option.comparisons}c / ${option.writes}w` }));
+    }
+    if (topic.id === "hashing") {
+      return hashSummary(input).map((option) => ({ ...option, cost: option.comparisons, value: String(option.comparisons) }));
+    }
+    return [];
   }, [topic.id, input]);
   const associativity = useMemo(() => (topic.id === "cache-lru" ? cacheSummary(input) : null), [topic.id, input]);
-  const worstWait = Math.max(0.001, ...compare.map((c) => c.avgWait));
+  const compareCopy =
+    topic.id === "cpu-scheduling"
+      ? { title: "Same workload, four policies", metric: "Average waiting time in units. Lower is better - SJF is the provable minimum for this set of jobs." }
+      : topic.id === "sorting"
+        ? { title: "Same array, five algorithms", metric: "Comparisons and writes on the identical array. Bubble pays exactly the inversion count; selection always pays n(n-1)/2 comparisons but barely writes." }
+        : topic.id === "hashing"
+          ? { title: "Same keys, three collision strategies", metric: "Table inspections needed to build this table and find the last key. Fewer is better, and clustering is what makes linear probing lose." }
+          : null;
+  const worstCost = Math.max(0.001, ...compare.map((row) => row.cost));
 
   return (
     <section className="cslabs">
       <header className="csl-top">
         <div>
-          <span className="csl-kicker"><Sparkles size={12} /> CORE COMPUTER SCIENCE · SIMULATED</span>
-          <h1>CS Labs</h1>
+          <span className="csl-kicker"><Sparkles size={12} /> CORE CS + DSA · SIMULATED</span>
+          <h1>Algorithm Labs</h1>
           <p>{tr("cslabs.sub")}</p>
         </div>
         <div className="csl-subjects" role="group" aria-label="Subjects">
           <button className={subject === "all" ? "active" : ""} onClick={() => setSubject("all")}>All</button>
-          {csSubjects.map((entry) => {
+          {labSubjects.map((entry) => {
             const Icon = subjectIcon[entry.id];
             return (
               <button key={entry.id} className={subject === entry.id ? "active" : ""} onClick={() => setSubject(entry.id)}>
@@ -593,30 +667,35 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
             <span>{frames.length} {tr("cslabs.steps")}</span>
           </div>
 
-          {topic.hasAlgorithm && (
+          {topic.algorithms.length > 0 && (
             <>
               <h3 className="spaced">{tr("cslabs.algorithm")}</h3>
               <div className="csl-algos">
-                {cpuAlgorithms.map((option) => (
-                  <button key={option.id} className={option.id === algorithm ? "active" : ""} onClick={() => { setAlgorithm(option.id); setIndex(0); setPlaying(false); }} title={option.note}>
+                {topic.algorithms.map((option) => (
+                  <button key={option.id} className={option.id === activeAlgorithm ? "active" : ""} onClick={() => { setAlgorithm(option.id); setIndex(0); setPlaying(false); }} title={option.note}>
                     {option.label}
                   </button>
                 ))}
               </div>
-              <p className="csl-note">{cpuAlgorithms.find((o) => o.id === algorithm)?.note}</p>
-              <h3 className="spaced">Same workload, four policies</h3>
+              <p className="csl-note">{topic.algorithms.find((option) => option.id === activeAlgorithm)?.note}</p>
+            </>
+          )}
+
+          {compareCopy && compare.length > 1 && (
+            <>
+              <h3 className="spaced">{compareCopy.title}</h3>
               <ul className="csl-compare">
                 {compare.map((row) => (
                   <li key={row.id}>
-                    <button onClick={() => { setAlgorithm(row.id); setIndex(0); }} className={row.id === algorithm ? "active" : ""}>
+                    <button onClick={() => { setAlgorithm(row.id); setIndex(0); setPlaying(false); }} className={row.id === activeAlgorithm ? "active" : ""} title={row.note}>
                       <span className="csl-compare-label">{row.label}</span>
-                      <span className="csl-compare-bar" style={{ width: `${(row.avgWait / worstWait) * 100}%`, background: colorFor(row.id) }} />
-                      <b>{pad(row.avgWait, 2)}</b>
+                      <span className="csl-compare-bar" style={{ width: `${(row.cost / worstCost) * 100}%`, background: colorFor(row.id) }} />
+                      <b>{row.value}</b>
                     </button>
                   </li>
                 ))}
               </ul>
-              <p className="csl-note">Average waiting time in units. Lower is better - SJF is the provable minimum for this set of jobs.</p>
+              <p className="csl-note">{compareCopy.metric}</p>
             </>
           )}
 

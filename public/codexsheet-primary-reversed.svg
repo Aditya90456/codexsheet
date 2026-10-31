@@ -1,19 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 338 88" fill="none">
-  <rect width="88" height="88" rx="20" fill="#1F5552"/>
+  <defs>
+    <linearGradient id="cs-tile-r" x1="10" y1="6" x2="78" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <rect width="88" height="88" rx="20" fill="url(#cs-tile-r)"/>
   <rect x="21" y="15" width="46" height="58" rx="7" fill="#FFFFFF"/>
-  <rect x="52" y="15" width="15" height="15" rx="4" fill="#78EBAD"/>
-  <g fill="#78EBAD">
+  <rect x="52" y="15" width="15" height="15" rx="4" fill="#34D399"/>
+  <g fill="#3B82F6">
     <rect x="29" y="36" width="7" height="7" rx="2"/>
     <rect x="51" y="36" width="7" height="7" rx="2"/>
     <rect x="40" y="47" width="7" height="7" rx="2"/>
     <rect x="29" y="58" width="7" height="7" rx="2"/>
     <rect x="51" y="58" width="7" height="7" rx="2"/>
   </g>
-  <g fill="#40C78F">
+  <g fill="#1D4ED8">
     <rect x="40" y="36" width="7" height="7" rx="2"/>
     <rect x="29" y="47" width="7" height="7" rx="2"/>
     <rect x="51" y="47" width="7" height="7" rx="2"/>
     <rect x="40" y="58" width="7" height="7" rx="2"/>
   </g>
-  <text x="111" y="62" font-family="Inter, Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="-1.2" fill="#FFFFFF">Codex<tspan fill="#78EBAD">Sheet</tspan></text>
+  <text x="111" y="62" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="-1.2" fill="#E8EFF9">Codex<tspan fill="#60A5FA">Sheet</tspan></text>
 </svg>

@@ -136,6 +136,43 @@ const viewPaths: Record<WorkspaceView, string> = {
   mentees: "/mentees",
 };
 
+const siteOrigin = "https://www.codexsheet.in";
+
+const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
+  home: {
+    title: "CodexSheet — DSA Practice Sheet, Algorithm Labs & Mentorship",
+    description: "CodexSheet is an interview-prep platform for Indian students: a curated DSA sheet, 22 free animated algorithm simulations, a real code judge and 1-on-1 mentorship.",
+  },
+  dashboard: { title: "Your DSA dashboard — CodexSheet", description: "Track streaks, weak patterns and the next problem worth your time." },
+  problems: {
+    title: "The CodexSheet DSA problem sheet — by pattern and company",
+    description: "A curated DSA problem sheet organised by pattern, difficulty and hiring company, with the solution approach for every problem.",
+  },
+  companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
+  "dsa-ide": { title: "DSA code editor with real test judging — CodexSheet", description: "Write Python, Java, C++ or JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
+  "dsa-course": { title: "Animated DSA course — CodexSheet", description: "A lesson-by-lesson DSA course where every data structure is shown moving, not described." },
+  tutor: { title: "AI DSA tutor that answers in your language — CodexSheet", description: "Ask about any algorithm and get the exact step you are stuck on, in English, Hindi, Bengali, Tamil, Telugu, Marathi or Gujarati." },
+  guru: { title: "Guru — the free AI DSA teacher — CodexSheet", description: "Guru teaches one DSA topic at a time, checks your reasoning and hands you the problem that follows." },
+  cslabs: {
+    title: "Free algorithm labs — 22 animated DSA and CS simulations",
+    description: "22 free, no-sign-in simulations of the algorithms interviewers ask about - sorting, two pointers, sliding window, hashing, trees, graphs, DP, recursion and greedy - running on numbers you type yourself.",
+  },
+  calendar: { title: "Study calendar — CodexSheet", description: "Plan the week you will actually study, and see the gap between plan and practice." },
+  roadmap: { title: "12-week DSA roadmap — CodexSheet", description: "A week-by-week DSA roadmap built around your target placement season." },
+  lld: { title: "Low-level design practice — CodexSheet", description: "Design the systems interviewers ask for: parking lot, elevator, splitwise, and the rest." },
+  whiteboard: { title: "LLD whiteboard — CodexSheet", description: "Sketch classes and interactions the way you would on a real interview whiteboard." },
+  chat: { title: "Mentor chat — CodexSheet", description: "Ask your mentor between sessions and get an answer the same day." },
+  notes: { title: "Your DSA notes — CodexSheet", description: "The notes you write while practising, kept next to the problem they belong to." },
+  calls: { title: "Mentorship session — CodexSheet", description: "Join the booked 1-on-1 DSA session." },
+  articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
+  jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
+  mentorship: {
+    title: "1-on-1 DSA mentorship — CodexSheet Family Pass",
+    description: "One ₹1,000 Family Pass: the full CodexSheet workspace plus 1-on-1 mentorship with calls, chat and a plan built around your target company.",
+  },
+  mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
+};
+
 function viewFromLocation(): WorkspaceView {
   const params = new URLSearchParams(window.location.search);
   if (params.has("room") || params.has("schedule")) return "calls";
@@ -1441,6 +1478,27 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    const seo = viewSeo[activeView];
+    const path = viewPaths[activeView];
+    document.title = seo.title;
+    const setMeta = (selector: string, attribute: "name" | "property", key: string, content: string) => {
+      const node = document.head.querySelector<HTMLMetaElement>(selector) ?? document.createElement("meta");
+      node.setAttribute(attribute, key);
+      node.setAttribute("content", content);
+      if (!node.parentNode) document.head.appendChild(node);
+    };
+    setMeta('meta[name="description"]', "name", "description", seo.description);
+    setMeta('meta[property="og:title"]', "property", "og:title", seo.title);
+    setMeta('meta[property="og:description"]', "property", "og:description", seo.description);
+    setMeta('meta[property="og:url"]', "property", "og:url", `${siteOrigin}${path}`);
+    setMeta('meta[name="twitter:title"]', "name", "twitter:title", seo.title);
+    setMeta('meta[name="twitter:description"]', "name", "twitter:description", seo.description);
+    const canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (canonical) canonical.href = `${siteOrigin}${path}`;
+  }, [activeView]);
+
   // Only the landing page, the store and Guru (the free AI teacher) are open.
   // Every other feature waits for a confirmed pass at whatever amount the
   // student could pay between ₹10 and ₹800.
@@ -2243,7 +2301,7 @@ function App() {
             <Sparkles size={16} /> {tr("nav.guru")}
           </button>
           <button className={activeView === "cslabs" ? "active" : ""} aria-pressed={activeView === "cslabs"} onClick={() => navigateToView("cslabs")}>
-            <Activity size={16} /> CS Labs
+            <Activity size={16} /> Algorithm Labs
           </button>
           <button className={activeView === "tutor" ? "active" : ""} aria-pressed={activeView === "tutor"} onClick={() => navigateToView("tutor")}>
             <BrainCircuit size={16} /> {tr("nav.tutor")}

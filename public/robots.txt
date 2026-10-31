@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /notes
+Disallow: /calls
+Disallow: /chat
+Disallow: /mentees
+Disallow: /calendar
+
+Sitemap: https://www.codexsheet.in/sitemap.xml

@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1020" viewBox="0 0 1440 1020" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="10" y1="6" x2="78" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="tile-wide" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <g id="mark">
+      <rect width="88" height="88" rx="20" fill="url(#tile)"/>
+      <rect x="21" y="15" width="46" height="58" rx="7" fill="#FFFFFF"/>
+      <rect x="52" y="15" width="15" height="15" rx="4" fill="#34D399"/>
+      <g fill="#3B82F6">
+        <rect x="29" y="36" width="7" height="7" rx="2"/>
+        <rect x="51" y="36" width="7" height="7" rx="2"/>
+        <rect x="40" y="47" width="7" height="7" rx="2"/>
+        <rect x="29" y="58" width="7" height="7" rx="2"/>
+        <rect x="51" y="58" width="7" height="7" rx="2"/>
+      </g>
+      <g fill="#1D4ED8">
+        <rect x="40" y="36" width="7" height="7" rx="2"/>
+        <rect x="29" y="47" width="7" height="7" rx="2"/>
+        <rect x="51" y="47" width="7" height="7" rx="2"/>
+        <rect x="40" y="58" width="7" height="7" rx="2"/>
+      </g>
+    </g>
+    <g id="mark-mono">
+      <rect width="88" height="88" rx="20" fill="#0A1220"/>
+      <rect x="21" y="15" width="46" height="58" rx="7" fill="#0A1220" stroke="#E8EFF9" stroke-width="4"/>
+      <g fill="#E8EFF9">
+        <rect x="29" y="36" width="7" height="7" rx="2"/>
+        <rect x="51" y="36" width="7" height="7" rx="2"/>
+        <rect x="40" y="47" width="7" height="7" rx="2"/>
+        <rect x="29" y="58" width="7" height="7" rx="2"/>
+        <rect x="51" y="58" width="7" height="7" rx="2"/>
+      </g>
+      <g fill="#E8EFF9" opacity="0.45">
+        <rect x="40" y="36" width="7" height="7" rx="2"/>
+        <rect x="29" y="47" width="7" height="7" rx="2"/>
+        <rect x="51" y="47" width="7" height="7" rx="2"/>
+        <rect x="40" y="58" width="7" height="7" rx="2"/>
+      </g>
+      <rect x="52" y="15" width="15" height="15" rx="4" fill="#E8EFF9"/>
+    </g>
+  </defs>
+
+  <rect width="1440" height="1020" fill="#0A1220"/>
+  <rect width="1440" height="1020" fill="url(#tile)" opacity="0.04"/>
+
+  <text x="64" y="72" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="-1" fill="#E8EFF9">CodexSheet <tspan fill="#60A5FA">brand sheet</tspan></text>
+  <text x="64" y="100" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14" fill="#7F9BBD">v2 · single blue dark theme · import this file into Figma, every group stays editable</text>
+  <line x1="64" y1="124" x2="1376" y2="124" stroke="#243449"/>
+
+  <text x="64" y="164" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.6" fill="#60A5FA">01 · PRIMARY LOCKUP — DARK SURFACES</text>
+  <g transform="translate(64, 190) scale(1.35)">
+    <use href="#mark"/>
+    <text x="111" y="62" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="-1.2" fill="#E8EFF9">Codex<tspan fill="#60A5FA">Sheet</tspan></text>
+  </g>
+
+  <text x="64" y="352" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.6" fill="#60A5FA">02 — LIGHT SURFACES</text>
+  <rect x="64" y="374" width="600" height="150" rx="16" fill="#F3F7FC"/>
+  <g transform="translate(104, 404) scale(1.05)">
+    <use href="#mark"/>
+    <text x="111" y="62" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="37" font-weight="700" letter-spacing="-1.2" fill="#0B212B">Codex<tspan fill="#1D4ED8">Sheet</tspan></text>
+  </g>
+
+  <text x="744" y="352" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.6" fill="#60A5FA">03 · MARK, MONO MARK, WORDMARK</text>
+  <g transform="translate(744, 374)">
+    <use href="#mark" transform="scale(1.02)"/>
+    <use href="#mark-mono" transform="translate(120, 0) scale(1.02)"/>
+    <rect x="256" y="0" width="376" height="90" rx="14" fill="#101C2D" stroke="#243449"/>
+    <text x="278" y="59" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" letter-spacing="-1.3" fill="#E8EFF9">Codex<tspan fill="#60A5FA">Sheet</tspan></text>
+  </g>
+
+  <text x="64" y="576" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.6" fill="#60A5FA">04 · CLEAR SPACE = 1 DOT (7u AT 88) · MINIMUM SIZES 16 / 24 / 32 PX</text>
+  <g transform="translate(64, 596)">
+    <rect x="0" y="0" width="128" height="128" rx="18" fill="#101C2D" stroke="#243449" stroke-dasharray="4 4"/>
+    <use href="#mark" transform="translate(20, 20) scale(1)"/>
+    <rect x="152" y="48" width="80" height="80" rx="18" fill="#101C2D" stroke="#243449" stroke-dasharray="4 4"/>
+    <use href="#mark" transform="translate(164, 60) scale(0.75)"/>
+    <rect x="248" y="68" width="60" height="60" rx="14" fill="#101C2D" stroke="#243449" stroke-dasharray="4 4"/>
+    <use href="#mark" transform="translate(256, 76) scale(0.5)"/>
+    <rect x="324" y="84" width="44" height="44" rx="10" fill="#101C2D" stroke="#243449" stroke-dasharray="4 4"/>
+    <use href="#mark" transform="translate(330, 90) scale(0.32)"/>
+    <text x="0" y="150" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" fill="#7F9BBD">88 · 66 · 44 · 28 — below 28 use the favicon cut (fewer dots)</text>
+  </g>
+
+  <text x="640" y="576" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.6" fill="#60A5FA">05 · PALETTE</text>
+  <g transform="translate(640, 596)" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">
+    <g transform="translate(0, 0)">
+      <rect width="112" height="66" rx="10" fill="#0A1220" stroke="#243449"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">canvas</text>
+      <text x="10" y="96" fill="#7F9BBD">#0A1220</text>
+    </g>
+    <g transform="translate(122, 0)">
+      <rect width="112" height="66" rx="10" fill="#3B82F6"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">primary</text>
+      <text x="10" y="96" fill="#7F9BBD">#3B82F6</text>
+    </g>
+    <g transform="translate(244, 0)">
+      <rect width="112" height="66" rx="10" fill="#60A5FA"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">hover</text>
+      <text x="10" y="96" fill="#7F9BBD">#60A5FA</text>
+    </g>
+    <g transform="translate(366, 0)">
+      <rect width="112" height="66" rx="10" fill="#1D4ED8"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">deep</text>
+      <text x="10" y="96" fill="#7F9BBD">#1D4ED8</text>
+    </g>
+    <g transform="translate(488, 0)">
+      <rect width="112" height="66" rx="10" fill="#34D399"/>
+      <text x="10" y="82" fill="#062018" font-weight="700">solved</text>
+      <text x="10" y="96" fill="#0B3F2E">#34D399</text>
+    </g>
+    <g transform="translate(0, 118)">
+      <rect width="112" height="66" rx="10" fill="#131F33" stroke="#243449"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">surface</text>
+      <text x="10" y="96" fill="#7F9BBD">#131F33</text>
+    </g>
+    <g transform="translate(122, 118)">
+      <rect width="112" height="66" rx="10" fill="#243449"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">line</text>
+      <text x="10" y="96" fill="#7F9BBD">#243449</text>
+    </g>
+    <g transform="translate(244, 118)">
+      <rect width="112" height="66" rx="10" fill="#A9C1DE"/>
+      <text x="10" y="82" fill="#E8EFF9" font-weight="700">muted</text>
+      <text x="10" y="96" fill="#7F9BBD">#A9C1DE</text>
+    </g>
+    <g transform="translate(366, 118)">
+      <rect width="112" height="66" rx="10" fill="#E8EFF9"/>
+      <text x="10" y="82" fill="#0B212B" font-weight="700">ink</text>
+      <text x="10" y="96" fill="#3A4A61">#E8EFF9</text>
+    </g>
+    <g transform="translate(488, 118)">
+      <rect width="112" height="66" rx="10" fill="#F87171"/>
+      <text x="10" y="82" fill="#2A0708" font-weight="700">danger</text>
+      <text x="10" y="96" fill="#5A1A1E">#F87171</text>
+    </g>
+  </g>
+
+  <text x="64" y="836" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.6" fill="#60A5FA">06 · TYPE + VOICE</text>
+  <text x="64" y="872" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.6" fill="#E8EFF9">Inter — tight tracking, never below 11px</text>
+  <text x="64" y="902" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="16" fill="#60A5FA">ui-monospace for every number a simulation produces · 17 comparisons · 8 writes</text>
+  <text x="64" y="936" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14" fill="#A9C1DE">Voice: show the algorithm thinking, never the answer appearing. Say what moved and why it had to.</text>
+
+  <rect x="64" y="964" width="1312" height="1" fill="#243449"/>
+  <text x="64" y="992" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" fill="#7F9BBD">Files: /codexsheet-mark.svg · /codexsheet-mark-mono.svg · /codexsheet-primary.svg · /codexsheet-primary-reversed.svg · /codexsheet-wordmark.svg · /favicon.svg · /og-image.png</text>
+</svg>

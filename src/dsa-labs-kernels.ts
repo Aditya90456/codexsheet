@@ -142,7 +142,7 @@ function barsFrame(
   return {
     kind: "bars",
     step,
-    values: cells(values),
+    values: values.map((v) => String(v)),
     marks: [],
     band: null,
     pair: null,
@@ -313,7 +313,7 @@ export function runSort(algorithm: string, input: string): BarsFrame[] {
   const partition = (lo: number, hi: number) => {
     const pivot = a[hi];
     let i = lo;
-    push(a, `partition ${lo}..${hi} · pivot ${pivot}`, `Invariant: a[${lo}..${i - 1}] are all <= pivot, a[${i}..${j - 1}] are all > pivot. One scan closes the gap.`,
+    push(a, `partition ${lo}..${hi} · pivot ${pivot}`, `Invariant: a[${lo}..${i - 1}] are all <= pivot and everything the scan has passed since then is > pivot. One left-to-right sweep closes the gap.`,
       { band: [lo, hi], marks: [{ index: hi, label: "pivot", tone: "active" }, { index: i, label: "border", tone: "done" }] });
     for (let j = lo; j < hi; j++) {
       tally.comparisons++;
@@ -488,7 +488,9 @@ export function runPrefixSum(input: string): BarsFrame[] {
   const fields = fieldMap(input);
   const values = numList(fields.get("arr"), [3, 2, 0, 6, 7, 1, -2, 4]);
   const raw = (fields.get("queries") ?? "").split(/[;/]+/).map((q) => q.trim()).filter(Boolean);
-  const queries = (raw.length ? raw : ["1:4", "0:2", "5:7"]).map((q) => q.split(/[\s,]+/).map((n) => intOf(n, 0)));
+  const queries = (raw.length ? raw : ["1:4", "0:2", "5:7"])
+    .map((q) => q.split(/[^0-9]+/).filter(Boolean).map((n) => intOf(n, 0)))
+    .map((pair): [number, number] => [pair[0] ?? 0, pair.length > 1 ? pair[1] : pair[0]]);
   const frames: BarsFrame[] = [];
   const prefix: number[] = [0];
   for (let i = 0; i < values.length; i++) prefix.push(prefix[i] + values[i]);
@@ -587,11 +589,13 @@ export function runStack(input: string, algorithm = "brackets"): BarsFrame[] {
   const fields = fieldMap(input);
   const frames: BarsFrame[] = [];
   const tally = emptyTally();
+  let barValues: string[] = [];
   const push = (caption: string, detail: string, extra: Partial<BarsFrame> = {}) =>
-    frames.push(barsFrame(frames.length, [], caption, detail, { tally: { ...tally }, ...extra }));
+    frames.push(barsFrame(frames.length, barValues, caption, detail, { tally: { ...tally }, ...extra }));
 
   if (algorithm === "postfix") {
     const tokens = (fields.get("expr") ?? "5 1 2 + 4 * 3 -").split(/\s+/).filter(Boolean);
+    barValues = tokens;
     const stack: number[] = [];
     push(`${tokens.join(" ")} · read left to right`,
       `Postfix needs no precedence rules and no parentheses because the position of each operator already encodes the tree. The stack holds the sub-expressions whose operator has not been read yet.`,
@@ -627,12 +631,14 @@ export function runStack(input: string, algorithm = "brackets"): BarsFrame[] {
 
   if (algorithm === "minstack") {
     const ops = (fields.get("ops") ?? "push 5, push 3, min, push 7, min, pop, min").split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+    barValues = ops;
     const stack: number[] = [];
     const mins: number[] = [];
     push(`${ops.length} operations on a stack that also answers "what is the smallest thing on me?"`,
       `A plain stack cannot do that without rescanning. Keeping a parallel history of minimums costs one extra push per element and makes min O(1) - the standard trade of space for time on a real interview question.`,
       { lanes: [{ label: "stack", items: [], hot: null, tone: "idle", note: "empty" }, { label: "min history", items: [], hot: null, tone: "idle", note: "empty" }] });
-    for (const op of ops) {
+    for (let oi = 0; oi < ops.length; oi++) {
+      const op = ops[oi];
       const parts = op.split(/\s+/);
       const verb = parts[0].toLowerCase();
       if (verb === "push") {
@@ -640,24 +646,24 @@ export function runStack(input: string, algorithm = "brackets"): BarsFrame[] {
         stack.push(value);
         mins.push(Math.min(value, mins.length ? mins[mins.length - 1] : value));
         push(`push ${value}`, `The new minimum is min(${value}, ${mins.length > 1 ? mins[mins.length - 2] : "+inf"}) = ${mins[mins.length - 1]}. Storing the minimum *at that moment* rather than only a running scalar is what lets pop restore the previous answer for free.`,
-          { lanes: [{ label: "stack (top right)", items: stack.map(String), hot: stack.length - 1, tone: "active", note: `${stack.length} deep` }, { label: "min history", items: mins.map(String), hot: mins.length - 1, tone: "done", note: `min = ${mins[mins.length - 1]}` }] });
+          { marks: [{ index: oi, label: "op", tone: "active" }], settled: range(0, oi - 1), lanes: [{ label: "stack (top right)", items: stack.map(String), hot: stack.length - 1, tone: "active", note: `${stack.length} deep` }, { label: "min history", items: mins.map(String), hot: mins.length - 1, tone: "done", note: `min = ${mins[mins.length - 1]}` }] });
       } else if (verb === "pop") {
         if (!stack.length) {
           push(`pop on an empty stack - nothing to remove`, `Underflow is the error path. Any stack simulation that skips it silently gets out of sync with the real data structure.`,
-            { lanes: [{ label: "stack", items: [], hot: null, tone: "danger", note: "empty" }, { label: "min history", items: [], hot: null, tone: "idle", note: "empty" }] });
+            { marks: [{ index: oi, label: "op", tone: "danger" }], lanes: [{ label: "stack", items: [], hot: null, tone: "danger", note: "empty" }, { label: "min history", items: [], hot: null, tone: "idle", note: "empty" }] });
           continue;
         }
         const value = stack.pop() as number;
         mins.pop();
         tally.writes++;
         push(`pop ${value}`, `Both arrays shrink together, so the minimum reverts to whatever it was before ${value} arrived: ${mins.length ? mins[mins.length - 1] : "no elements left"}. That is why the whole operation stays O(1).`,
-          { lanes: [{ label: "stack (top right)", items: stack.map(String), hot: stack.length ? stack.length - 1 : null, tone: "done", note: `${stack.length} deep` }, { label: "min history", items: mins.map(String), hot: mins.length ? mins.length - 1 : null, tone: "done", note: mins.length ? `min = ${mins[mins.length - 1]}` : "empty" }] });
+          { marks: [{ index: oi, label: "op", tone: "done" }], settled: range(0, oi - 1), lanes: [{ label: "stack (top right)", items: stack.map(String), hot: stack.length ? stack.length - 1 : null, tone: "done", note: `${stack.length} deep` }, { label: "min history", items: mins.map(String), hot: mins.length ? mins.length - 1 : null, tone: "done", note: mins.length ? `min = ${mins[mins.length - 1]}` : "empty" }] });
       } else {
         tally.comparisons++;
         push(`min() = ${mins.length ? mins[mins.length - 1] : "undefined"}`, mins.length
           ? `Read straight off the top of the history - no scan. A naive min() would compare ${stack.length} values; this one compares zero.`
           : `Empty stack, so there is no minimum. Real implementations throw or return a sentinel here.`,
-          { lanes: [{ label: "stack (top right)", items: stack.map(String), hot: stack.length ? stack.length - 1 : null, tone: mins.length ? "good" : "danger", note: `${stack.length} deep` }, { label: "min history", items: mins.map(String), hot: mins.length ? mins.length - 1 : null, tone: "good", note: mins.length ? `top = ${mins[mins.length - 1]}` : "empty" }] });
+          { marks: [{ index: oi, label: "query", tone: "good" }], settled: range(0, oi - 1), lanes: [{ label: "stack (top right)", items: stack.map(String), hot: stack.length ? stack.length - 1 : null, tone: mins.length ? "good" : "danger", note: `${stack.length} deep` }, { label: "min history", items: mins.map(String), hot: mins.length ? mins.length - 1 : null, tone: "good", note: mins.length ? `top = ${mins[mins.length - 1]}` : "empty" }] });
       }
     }
     push(`final stack [${stack.join(", ")}] · min ${mins.length ? mins[mins.length - 1] : "n/a"}`,
@@ -668,6 +674,7 @@ export function runStack(input: string, algorithm = "brackets"): BarsFrame[] {
 
   const text = fields.get("seq") ?? "{[()]}";
   const chars = [...text].filter((c) => "()[]{}".includes(c));
+  barValues = chars;
   const raw = (fields.get("seq") ?? "").trim() || "{[()]}";
   const stack: string[] = [];
   push(`${raw} · ${chars.length} bracket characters`,
@@ -773,20 +780,23 @@ export function runQueue(input: string, algorithm = "circular"): BarsFrame[] {
   let seq = 0;
   const log: string[] = [];
   const pushQ = (caption: string, detail: string, tone: LabTone, hot: number | null) => {
+    const tailSlot = (head + count - 1) % capacity;
+    const live: number[] = [];
+    for (let k = 0; k < count; k++) live.push((head + k) % capacity);
     frames.push(barsFrame(frames.length, slots.map((s) => s || "·"), caption, detail, {
       tally: { ...tally },
-      band: count ? [head, (head + count - 1) % capacity] : null,
+      band: count && tailSlot >= head ? [head, tailSlot] : null,
       marks: [
         ...(count ? [{ index: head, label: "head", tone: "done" as LabTone }] : []),
-        ...(count ? [{ index: (head + count - 1) % capacity, label: "tail", tone: "active" as LabTone }] : []),
+        ...(count ? [{ index: tailSlot, label: tailSlot < head ? "tail (wrapped)" : "tail", tone: "active" as LabTone }] : []),
         ...(hot !== null ? [{ index: hot, label: "touched", tone }] : []),
       ],
-      settled: slots.map((s, i) => (s ? i : -1)).filter((i) => i >= 0),
-      lanes: [{ label: "operations", items: [...log], hot: log.length - 1, tone: "idle", note: `${count}/${capacity} full` }],
+      settled: live,
+      lanes: [{ label: "operations", items: [...log], hot: log.length ? log.length - 1 : null, tone: "idle", note: `${count}/${capacity} full` }],
     }));
   };
   pushQ(`capacity ${capacity} · head and tail are indices that wrap`,
-    `A plain array queue wastes the slots it dequeues from unless you shift everything left, which is O(n). The fix is to treat the array as a ring: head and tail advance modulo capacity, so slot 0 is reused after the last slot.`, null, "idle");
+    `A plain array queue wastes the slots it dequeues from unless you shift everything left, which is O(n). The fix is to treat the array as a ring: head and tail advance modulo capacity, so slot 0 is reused after the last slot.`, "idle", null);
   for (const op of ops) {
     const verb = op[0].toLowerCase();
     if (verb === "e") {
@@ -862,20 +872,27 @@ export function runList(input: string, algorithm = "reverse"): ChainFrame[] {
   const rowHead = nodesOf(values);
   const note = (i: number, total: number) => (i === 0 ? "head" : i === total - 1 ? "tail -> null" : "");
 
+  if (!values.length) {
+    return [chainFrame(0, [{ label: "list", nodes: [], note: "no nodes" }], [], "empty list · head is null",
+      `Type at least one value, for example list=17,2,35,1,48,63. Every list algorithm has to answer the empty case before it touches a pointer - head is null, so there is no node to read, no middle and no cycle.`, "")];
+  }
+
   if (algorithm === "cycle") {
-    const entry = Math.max(0, Math.min(values.length - 1, intOf(fields.get("entry") ?? "", 2)));
+    const entryRaw = (fields.get("entry") ?? "2").trim().toLowerCase();
+    const entry = entryRaw === "none" || entryRaw === "null" || entryRaw === "-1" ? -1 : Math.max(0, Math.min(values.length - 1, intOf(entryRaw, 2)));
     const ids = values.map((_, i) => `n${i}`);
-    const walk = (n: number) => ids[n % values.length];
-    frames.push(chainFrame(0, [{ label: "list", nodes: rowHead.map((n) => ({ ...n, tone: "active" as LabTone })), note: `tail links back to node ${entry}` }], [{ id: ids[0], label: "head", tone: "active" }],
-      `${values.length} nodes, and the last one points back to node ${entry}`,
+    const next = (n: number) => (n < 0 ? -1 : n + 1 < values.length ? n + 1 : entry);
+    frames.push(chainFrame(0, [{ label: "list", nodes: rowHead.map((n) => ({ ...n, tone: "active" as LabTone })), note: entry < 0 ? "tail -> null, no back link" : `tail links back to node ${entry}` }], [{ id: ids[0], label: "head", tone: "active" }],
+      entry < 0 ? `${values.length} nodes, tail points at null - nothing loops back` : `${values.length} nodes, and the last one points back to node ${entry}`,
       `A cycle means no node ever has next === null, so "walk to the end" never terminates. Floyd's trick uses the fact that two runners moving at different speeds must meet inside the loop - and it costs no extra memory, unlike a visited set.`, ""));
     let slow = 0;
     let fast = 0;
     let met = -1;
     for (let step = 0; step < values.length * 3; step++) {
-      slow = (slow + 1) % values.length;
-      fast = (fast + 2) % values.length;
+      slow = next(slow);
+      fast = next(next(fast));
       tally.comparisons++;
+      if (slow < 0 || fast < 0) break;
       if (slow === fast) {
         met = slow;
         frames.push(chainFrame(frames.length, [{ label: "list", nodes: rowHead.map((n) => ({ ...n, tone: (ids.indexOf(n.id) === slow ? "danger" : "ghost") as LabTone })), note: `meet at node ${slow}` }],
@@ -896,10 +913,10 @@ export function runList(input: string, algorithm = "reverse"): ChainFrame[] {
     }
     let finder = 0;
     let guard = 0;
-    while (walk(finder) !== walk(met) && guard++ < values.length) {
+    while (finder !== met && guard++ < values.length + 1) {
       tally.writes++;
-      finder = (finder + 1) % values.length;
-      met = (met + 1) % values.length;
+      finder = next(finder);
+      met = next(met);
       frames.push(chainFrame(frames.length, [{ label: "list", nodes: rowHead.map((n) => ({ ...n, tone: (ids.indexOf(n.id) === finder ? "active" : ids.indexOf(n.id) === met ? "done" : "ghost") as LabTone })), note: `entry probe ${finder} · ring probe ${met}` }],
         [{ id: ids[finder], label: "from head", tone: "active" }, { id: ids[met], label: "from meet", tone: "done" }],
         `step ${guard}: head-side ${finder} vs meet-side ${met}`,
@@ -924,8 +941,8 @@ export function runList(input: string, algorithm = "reverse"): ChainFrame[] {
       tally.writes += 2;
       slow++;
       fast += 2;
-      frames.push(chainFrame(frames.length, [{ label: "list", nodes: rowHead.map((n) => ({ ...n, tone: (Number(n.id.slice(1)) === slow ? "active" : Number(n.id.slice(1)) === fast ? "danger" : "idle") as LabTone })), note: `slow ${slow} · fast ${fast}` }],
-        [{ id: `n${slow}`, label: "slow", tone: "active" }, { id: `n${fast}`, label: "fast", tone: "danger" }],
+      frames.push(chainFrame(frames.length, [{ label: "list", nodes: rowHead.map((n) => ({ ...n, tone: (Number(n.id.slice(1)) === slow ? "active" : Number(n.id.slice(1)) === fast ? "danger" : "idle") as LabTone })), note: fast < values.length ? `slow ${slow} · fast ${fast}` : `slow ${slow} · fast stepped off the end` }],
+        [{ id: `n${slow}`, label: "slow", tone: "active" }, ...(fast < values.length ? [{ id: `n${fast}`, label: "fast", tone: "danger" as LabTone }] : [])],
         `slow -> index ${slow} · fast -> index ${fast}`,
         fast >= values.length - 1
           ? `Fast is at or past the last node, so slow has covered exactly half the links. On an even-length list this is the second middle - move fast two at a time instead of checking fast.next to get the first one.`
@@ -948,13 +965,13 @@ export function runList(input: string, algorithm = "reverse"): ChainFrame[] {
   let before: number | null = null;
   let step = 0;
   while (cur !== null) {
-    const next = cur + 1 < values.length ? cur + 1 : null;
+    const next: number | null = cur + 1 < values.length ? cur + 1 : null;
     const nodes = values.map((text, i) => {
       const tone: LabTone = i === cur ? "active" : i < (cur ?? 0) ? "done" : "idle";
       return { id: `n${i}`, text, tone };
     });
     frames.push(chainFrame(frames.length, [{ label: "reversed part", nodes, note: `${next === null ? "tail" : `link to ${next}`}` }],
-      [{ id: `n${cur}`, label: "cur", tone: "active" }, ...(next !== null ? [{ id: `n${next}`, label: "next", tone: "danger" }] : []), ...(before !== null ? [{ id: `n${before}`, label: "prev", tone: "done" }] : [])],
+      [{ id: `n${cur}`, label: "cur", tone: "active" }, ...(next !== null ? [{ id: `n${next}`, label: "next", tone: "danger" as LabTone }] : []), ...(before !== null ? [{ id: `n${before}`, label: "prev", tone: "done" as LabTone }] : [])],
       `flip node ${cur} (${values[cur]}): its next becomes ${before === null ? "null" : before}`,
       `The link we are about to write is the one we need for the next iteration, which is why next was captured first. After this step the segment 0..${cur} points backwards and the rest still points forwards - the boundary walks right.`, "cur.next = prev", { ...tally }));
     prev[cur] = before;
@@ -1034,8 +1051,10 @@ export function runHash(input: string, algorithm = "chaining"): ChainFrame[] {
       }
       if (probes >= size) {
         frames.push(chainFrame(frames.length, rowsOf(table, buckets, h, "danger"), [],
-          `insert ${key} FAILED: table full after ${size} probes`,
-          `Open addressing cannot chain. When every slot has been tried the only options are rehash into a bigger table (standard: grow when load factor passes ~0.7) or fail. This is why load factor matters far more here than for chaining.`, hline(key), { ...tally }));
+          `insert ${key} FAILED: ${size} probes without a free slot`,
+        table.every((t) => t !== null)
+          ? `Open addressing cannot chain and every slot is taken, so the only moves left are rehash into a bigger table (standard: grow when load factor passes ~0.7) or fail. That is why load factor matters far more here than for chaining.`
+          : `Look at the table: slot ${table.findIndex((t) => t === null)} is empty and this insert still failed. h + i² mod ${size} only lands on about half the residues when the size is prime, so quadratic probing can circle past a free slot forever. The rule it implies - prime size AND load factor under 0.5 - is not folklore, it is what makes the probe sequence exhaustive.`, hline(key), { ...tally }));
         return;
       }
       table[slot] = key;
@@ -1064,9 +1083,10 @@ export function runHash(input: string, algorithm = "chaining"): ChainFrame[] {
   if (strategy === "chain") {
     const h = ((find % size) + size) % size;
     const chain = buckets[h];
-    foundAt = h;
+    foundAt = chain.includes(find) ? h : null;
     chain.forEach((v, idx) => {
       probeLog++;
+      tally.comparisons++;
       const hit = v === find;
       frames.push(chainFrame(frames.length, buckets.map((bucket, b) => ({
         label: `${b}`,
@@ -1077,7 +1097,7 @@ export function runHash(input: string, algorithm = "chaining"): ChainFrame[] {
         hit
           ? `Match after ${probeLog} comparison(s) inside bucket ${h}. This is exactly the moment a hash table degenerates into "hash, then linear scan of a short list" - and why a bad hash function that dumps everything into one bucket makes the whole table O(n).`
           : `Not this one, keep walking the chain. Comparisons so far: ${probeLog}.`,
-        hline(find), { ...tally, comparisons: tally.comparisons + 1 }));
+        hline(find), { ...tally }));
     });
     if (!chain.includes(find)) {
       frames.push(chainFrame(frames.length, buckets.map((bucket, b) => ({ label: `${b}`, nodes: bucket.map((x, i) => ({ id: `${x}-${i}`, text: String(x), tone: "idle" as LabTone })), note: b === h ? `${chain.length} checked, absent` : bucket.length ? `${bucket.length}` : "empty" })), [],
@@ -1115,8 +1135,10 @@ export function runHash(input: string, algorithm = "chaining"): ChainFrame[] {
     }
   }
 
-  frames.push(chainFrame(frames.length, rowsOf(table, buckets, foundAt, "done"), foundAt === null ? [] : [{ id: `s${foundAt}`, label: "result", tone: "good" }],
-    `${find} ${foundAt === null ? "is not in the table" : `lives in slot ${foundAt}`} · ${probeLog} probe(s), ${tally.comparisons} comparison(s)`,
+  const chainPos = strategy === "chain" && foundAt !== null ? buckets[foundAt].indexOf(find) : -1;
+  frames.push(chainFrame(frames.length, rowsOf(table, buckets, foundAt, "done"),
+    foundAt === null || (strategy === "chain" && chainPos < 0) ? [] : [{ id: strategy === "chain" ? `${find}-${chainPos}` : `s${foundAt}`, label: "result", tone: "good" }],
+    `${find} ${foundAt === null ? "is not in the table" : strategy === "chain" ? `lives in bucket ${foundAt}, entry ${chainPos + 1}` : `lives in slot ${foundAt}`} · ${probeLog} ${strategy === "chain" ? "bucket comparison(s)" : "probe(s)"}`,
     `Read the number sideways: a perfectly uniform hash on ${size} slots costs about ${strategy === "chain" ? "1 + load/2" : "1/(1-load)"} probes at this load factor. If it were an ordered array you would have needed ${Math.ceil(Math.log2(Math.max(2, total)))} comparisons - similar! The hash table's win is that the cost does not grow with n at all.`,
     "", { ...tally }));
   return frames;
@@ -1466,7 +1488,7 @@ export function runUnionFind(input: string): DsaTreeFrame[] {
       [{ label: `union ${a}-${b}`, items: [`root ${ra}`, `root ${rb}`], hot: 1, tone: "active", note: ra === rb ? "already together" : "different sets" }]);
     if (ra === rb) {
       tally.comparisons++;
-      draw([String(ra)], (i) => (i === ra ? "danger" : "idle"), `${a} and ${b} are already in the same set`,
+      draw([ra], (i) => (i === ra ? "danger" : "idle"), `${a} and ${b} are already in the same set`,
         `No union performed. This exact test - "does this edge connect two vertices that are already reachable?" - is the cycle check inside Kruskal's minimum spanning tree, which is why union-find and MST are always taught together.`);
       continue;
     }
@@ -1476,7 +1498,7 @@ export function runUnionFind(input: string): DsaTreeFrame[] {
     parent[small] = big;
     if (rank[ra] === rank[rb]) rank[big]++;
     tally.writes++;
-    draw([String(small), String(big)], (i) => (i === small ? "active" : i === big ? "good" : "idle"),
+    draw([small, big], (i) => (i === small ? "active" : i === big ? "good" : "idle"),
       `link ${small} under ${big} · now ${a} and ${b} share root ${rootOf(a, false)}`,
       `Union by rank always hangs the shorter tree under the taller one, so the merged depth grows only when the two depths are equal. That single rule bounds height at log n before any path compression.`);
   }
@@ -1491,7 +1513,7 @@ export function runUnionFind(input: string): DsaTreeFrame[] {
     if (chain.length <= 1) continue;
     for (const node of chain) parent[node] = cur;
     compress += chain.length;
-    draw([String(i), ...chain], (x) => (x === cur ? "good" : chain.includes(x) ? "active" : "idle"),
+    draw([i, ...chain], (x) => (x === cur ? "good" : chain.includes(x) ? "active" : "idle"),
       `path compression on ${i}: ${chain.join(" -> ")} -> ${cur}`,
       `Every node on the walked path is re-parented straight to the root, so the next query on any of them costs one hop. Compression alone gives near-O(1) amortised performance; with rank the bound is the inverse Ackermann function, which is a constant for all practical n.`);
   }
@@ -1554,7 +1576,7 @@ export function runDp(input: string, algorithm = "knapsack"): GridFrame[] {
     for (let j = 0; j < cols; j++) settled.push([0, j]);
     for (let i = 0; i < rows; i++) settled.push([i, 0]);
     show([0, 0], [], `row 0 and column 0 are all zeros`,
-      `An empty prefix of either string shares nothing. Seeding the border is what lets the recurrence run without special cases - the same trick as prefix[0] = 0 in a prefix-sum array.`);
+      `An empty prefix of either string shares nothing. Seeding the border is what lets the recurrence run without special cases - the same trick as prefix[0] = 0 in a prefix-sum array.`, settled);
     for (let i = 1; i < rows; i++) {
       for (let j = 1; j < cols; j++) {
         tally.comparisons++;
@@ -1562,20 +1584,20 @@ export function runDp(input: string, algorithm = "knapsack"): GridFrame[] {
           dp[i][j] = dp[i - 1][j - 1] + 1;
           tally.writes++;
           show([i, j], [[i - 1, j - 1]], `"${a[i - 1]}" matches "${b[j - 1]}" · diagonal + 1 = ${dp[i][j]}`,
-            `When the characters agree, both strings advance together, so the answer inherits the diagonal and adds one. This is the only place the matched characters are actually recorded, which is why reconstruction walks the same diagonal backwards.`);
+            `When the characters agree, both strings advance together, so the answer inherits the diagonal and adds one. This is the only place the matched characters are actually recorded, which is why reconstruction walks the same diagonal backwards.`, settled);
         } else {
           dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
           tally.writes++;
           const from: [number, number][] = dp[i - 1][j] >= dp[i][j - 1] ? [[i - 1, j]] : [[i, j - 1]];
           show([i, j], from, `no match at row ${i} / col ${j} · take the better neighbour = ${dp[i][j]}`,
-            `Mismatching tails cannot both be used, so the answer is whichever prefix pair was already better. Note which neighbour wins here: ${from[0][0] === i - 1 ? "above (drop a's character)" : "left (drop b's character)"}. diff and git use this exact table.`);
+            `Mismatching tails cannot both be used, so the answer is whichever prefix pair was already better. Note which neighbour wins here: ${from[0][0] === i - 1 ? "above (drop a's character)" : "left (drop b's character)"}. diff and git use this exact table.`, settled);
         }
         settled.push([i, j]);
       }
     }
     const lcsText = backTrackLcs(a, b, dp);
     show([rows - 1, cols - 1], [], `LCS length ${dp[rows - 1][cols - 1]}${lcsText ? ` · "${lcsText}"` : ""}`,
-      `O(n*m) time and space for the table. Space drops to O(min(n,m)) if you only need the length, but not if you need to print the sequence - that is the trade the interview question actually probes.`);
+      `O(n*m) time and space for the table. Space drops to O(min(n,m)) if you only need the length, but not if you need to print the sequence - that is the trade the interview question actually probes.`, settled);
     return frames;
   }
 
@@ -1699,6 +1721,7 @@ export function runRecursion(input: string, algorithm = "naive"): DsaTreeFrame[]
   const target = Math.max(1, Math.min(10, intOf(fieldMap(input).get("n") ?? "", 5)));
   const frames: DsaTreeFrame[] = [];
   const tally = emptyTally();
+  const useMemo = algorithm === "memo";
   const memo = new Map<number, number>();
   const nodes: LabNode[] = [];
   const edges: LabEdge[] = [];
@@ -1713,7 +1736,6 @@ export function runRecursion(input: string, algorithm = "naive"): DsaTreeFrame[]
     stack.push(myId);
     tally.writes++;
     if (n <= 1) {
-      const hit = memo.has(n);
       draw([myId], (id) => (id === myId ? "good" : "idle"), `fib(${n}) = ${n}`,
         n === 0
           ? `Base case zero. A recursion without a base case is an infinite one - and the base case being correct matters more than it being fast: fib(0)=0, fib(1)=1.`
@@ -1722,7 +1744,7 @@ export function runRecursion(input: string, algorithm = "naive"): DsaTreeFrame[]
       stack.pop();
       return n;
     }
-    if (memo.has(n)) {
+    if (useMemo && memo.has(n)) {
       tally.probes++;
       draw([myId], (id) => (id === myId ? "done" : "idle"), `fib(${n}) already known = ${memo.get(n)} · no descent`,
         `This call would have recomputed a sub-problem, and the memo turns it into one table read. Every pruned branch is a whole subtree that never happens - that is the entire difference between exponential and linear.`);
@@ -1735,12 +1757,12 @@ export function runRecursion(input: string, algorithm = "naive"): DsaTreeFrame[]
     const left = solve(n - 1);
     const right = solve(n - 2);
     const value = left + right;
-    memo.set(n, value);
+    if (useMemo) memo.set(n, value);
     tally.comparisons++;
     stack.pop();
     draw([myId], (id) => (id === myId ? "good" : "idle"), `fib(${n}) returns fib(${n - 1})+fib(${n - 2}) = ${left}+${right} = ${value}`,
       `The frame pops and hands ${value} back to its caller. Watch the repeated arguments in the naive version - fib(${Math.max(0, n - 2)}) is computed twice and fib(${Math.max(0, n - 3)}) three times; the count of leaves is itself a Fibonacci number.`,
-      [{ label: "memo", items: [...memo.entries()].sort((x, y) => x[0] - y[0]).map(([k, v]) => `fib(${k})=${v}`), hot: null, tone: "done", note: `${memo.size} stored` }]);
+      [{ label: "memo", items: [...memo.entries()].sort((x, y) => x[0] - y[0]).map(([k, v]) => `fib(${k})=${v}`), hot: null, tone: "done", note: useMemo ? `${memo.size} stored` : "empty - plain recursion caches nothing" }]);
     return value;
   };
   draw([], () => "idle", `fib(${target}) · ${algorithm === "memo" ? "with a memo table" : "no memo, every sub-problem recomputed"}`,
@@ -1898,9 +1920,17 @@ export function runGreedy(input: string): IntervalFrame[] {
 
 // ---- the catalogue ----------------------------------------------------------*******
 
+export const treeAlgorithms: DsaAlgorithm[] = [
+  { id: "bst", label: "Binary search tree", note: "ordered - shape depends on insertion order" },
+  { id: "avl", label: "AVL tree", note: "rotations keep every subtree within one level" },
+  { id: "heap", label: "Binary heap", note: "Floyd's build-heap in O(n), not O(n log n)" },
+  { id: "trie", label: "Trie", note: "branching on characters - prefix queries in O(length)" },
+];
+
 export const dsaTopics: DsaTopic[] = [
   {
     id: "two-pointers",
+    subject: "dsa",
     title: "Two pointers",
     blurb: "One pass from both ends replaces the nested loop.",
     inputLabel: "arr / target",
@@ -1932,6 +1962,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "sliding-window",
+    subject: "dsa",
     title: "Sliding window",
     blurb: "Reuse the previous sum instead of re-adding the same k elements.",
     inputLabel: "arr / k",
@@ -1963,6 +1994,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "prefix-sum",
+    subject: "dsa",
     title: "Prefix sums",
     blurb: "Pay n additions once, then answer every range query with one subtraction.",
     inputLabel: "arr / queries=a:b",
@@ -1994,6 +2026,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "binary-search",
+    subject: "dsa",
     title: "Binary search",
     blurb: "Watch the candidate interval halve, one comparison at a time.",
     inputLabel: "arr / target",
@@ -2025,6 +2058,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "sorting",
+    subject: "dsa",
     title: "Sorting algorithms",
     blurb: "Five algorithms, one array - count the comparisons and writes.",
     inputLabel: "arr",
@@ -2058,6 +2092,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "stack",
+    subject: "dsa",
     title: "Stacks",
     blurb: "Bracket matching, postfix maths and an O(1) minimum.",
     inputLabel: "seq / expr / ops",
@@ -2090,6 +2125,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "queue",
+    subject: "dsa",
     title: "Queues",
     blurb: "Wrap-around indices, and two stacks pretending to be a FIFO.",
     inputLabel: "ops (e/d/f) / cap",
@@ -2122,6 +2158,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "linked-list",
+    subject: "dsa",
     title: "Linked lists",
     blurb: "Reverse in place, find the middle, detect a cycle with two pointers.",
     inputLabel: "list / entry",
@@ -2155,6 +2192,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "hashing",
+    subject: "dsa",
     title: "Hash tables",
     blurb: "Same keys, three collision strategies - watch the probe counts diverge.",
     inputLabel: "keys / size / find",
@@ -2189,6 +2227,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "trees",
+    subject: "dsa",
     title: "Trees: BST, AVL, heap, trie",
     blurb: "Four ways to store a set - and each one buys a different guarantee.",
     inputLabel: "keys / find / words",
@@ -2224,6 +2263,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "graphs",
+    subject: "dsa",
     title: "Graph traversal: BFS, DFS, Dijkstra",
     blurb: "The same graph, three containers - and three different answers.",
     inputLabel: "edges=A-B:4 / start / find",
@@ -2258,6 +2298,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "union-find",
+    subject: "dsa",
     title: "Union-find",
     blurb: "Merging groups with path compression - almost O(1) per query.",
     inputLabel: "n / unions=a-b",
@@ -2290,6 +2331,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "dp",
+    subject: "dsa",
     title: "Dynamic programming",
     blurb: "Watch the table fill: the same answer, three state definitions.",
     inputLabel: "w / v / cap, or a / b, or coins / amount",
@@ -2324,6 +2366,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "recursion",
+    subject: "dsa",
     title: "Recursion and memoisation",
     blurb: "The call tree for fib(n) - and the same tree with a memo.",
     inputLabel: "n",
@@ -2356,6 +2399,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "backtracking",
+    subject: "dsa",
     title: "Backtracking: N-Queens",
     blurb: "Prune a whole subtree by checking legality at the node.",
     inputLabel: "n",
@@ -2388,6 +2432,7 @@ export const dsaTopics: DsaTopic[] = [
   },
   {
     id: "greedy",
+    subject: "dsa",
     title: "Greedy: activity selection",
     blurb: "Sort by finish time, then never look back - and see why.",
     inputLabel: "acts=start-end",
@@ -2468,13 +2513,6 @@ export function dsaMetrics(frame: DsaFrame, frames: DsaFrame[]): { label: string
 }
 
 // ---- trees: BST, AVL, heap, trie ------------------------------------------*******
-
-export const treeAlgorithms: DsaAlgorithm[] = [
-  { id: "bst", label: "Binary search tree", note: "ordered - shape depends on insertion order" },
-  { id: "avl", label: "AVL tree", note: "rotations keep every subtree within one level" },
-  { id: "heap", label: "Binary heap", note: "Floyd's build-heap in O(n), not O(n log n)" },
-  { id: "trie", label: "Trie", note: "branching on characters - prefix queries in O(length)" },
-];
 
 type LabNode = { id: string; text: string; tone: LabTone; note?: string };
 type LabEdge = { from: string; to: string; tone: LabTone };
@@ -2618,7 +2656,7 @@ export function runTree(input: string, algorithm = "bst"): DsaTreeFrame[] {
         a[biggest] = t;
         tally.writes += 2;
         frames.push(treeFrame(frames.length, drawn.nodes, drawn.edges, [String(biggest)],
-          `sift-down: ${a[biggest]} was bigger than ${a[cur]} · swap index ${cur} with ${biggest}`,
+          `sift-down: child ${a[biggest]} outweighs parent ${a[cur]} · swap index ${cur} with ${biggest}`,
           `The value that just moved down may now violate its own children, so the sift continues from ${biggest}. Cost per node is proportional to how far it falls - and most nodes are leaves that barely move, which is why the whole build is O(n) not O(n log n).`,
           lanesOf(a, biggest, `sift-down ${i}`), { ...tally }));
         cur = biggest;
@@ -2753,7 +2791,7 @@ export function runTree(input: string, algorithm = "bst"): DsaTreeFrame[] {
       `A search walks at most height(root) nodes and discards half the remainder at each level - the same log n behaviour as binary search, but the array never has to stay sorted, so inserting costs a rotation instead of a memmove.`);
     snapshot(root, [], () => "done", `AVL tree of ${keys.length} keys · height ${height(root)} · in-order [${inOrderAvl(root).join(", ")}]`,
       `${tally.comparisons} comparisons and ${tally.writes} writes to build it, and the in-order walk reads the keys back sorted with no comparisons at all. AVL keeps height near 1.44*log2(n) - tighter than a red-black tree, so it reads faster and rotates more on writes.`,
-      [{ label: "in-order", items: inOrderAvl(root).map(String), hot: null, tone: "good", note: "sorted" }], { ...tally });
+      [{ label: "in-order", items: inOrderAvl(root).map(String), hot: null, tone: "good", note: "sorted" }]);
     return frames;
   }
 
@@ -2771,26 +2809,27 @@ export function runTree(input: string, algorithm = "bst"): DsaTreeFrame[] {
       tally.writes++;
     } else {
       for (;;) {
+        if (!node) break;
+        const at = node;
         tally.comparisons++;
         const drawn: LabNode[] = [];
         const edges: LabEdge[] = [];
-        drawBin(root, (k) => (k === node?.key ? "active" : k === key ? "active" : "idle"), () => "", drawn, edges);
-        if (key < node.key) {
-          frames.push(treeFrame(frames.length, drawn, edges, [String(node.key)], `${key} < ${node.key} · go left`,
+        drawBin(root, (k) => (k === at.key ? "active" : k === key ? "active" : "idle"), () => "", drawn, edges);
+        if (key < at.key) {
+          frames.push(treeFrame(frames.length, drawn, edges, [String(at.key)], `${key} < ${at.key} · go left`,
             `Half the tree is eliminated by one comparison, exactly like binary search - except the discarded half is a subtree, not an index range, which is why the same guarantee needs the tree to stay short.`,
-            [{ label: "path", items: [parent ? String(parent.key) : "", String(node.key)].filter(Boolean), hot: 1, tone: "active", note: "descend" }], { ...tally }));
-          parent = node;
+            [{ label: "path", items: [parent ? String(parent.key) : "", String(at.key)].filter(Boolean), hot: parent ? 1 : 0, tone: "active", note: "descend" }], { ...tally }));
+          parent = at;
           goLeft = true;
-          node = node.left;
+          node = at.left;
         } else {
-          frames.push(treeFrame(frames.length, drawn, edges, [String(node.key)], `${key} >= ${node.key} · go right`,
-            `Everything in the left subtree is smaller than ${node.key} and therefore smaller than ${key}, so it can be ignored for the rest of the search.`,
-            [{ label: "path", items: [parent ? String(parent.key) : "", String(node.key)].filter(Boolean), hot: 1, tone: "active", note: "descend" }], { ...tally }));
-          parent = node;
+          frames.push(treeFrame(frames.length, drawn, edges, [String(at.key)], `${key} >= ${at.key} · go right`,
+            `Everything in the left subtree is smaller than ${at.key} and therefore smaller than ${key}, so it can be ignored for the rest of the search.`,
+            [{ label: "path", items: [parent ? String(parent.key) : "", String(at.key)].filter(Boolean), hot: parent ? 1 : 0, tone: "active", note: "descend" }], { ...tally }));
+          parent = at;
           goLeft = false;
-          node = node.right;
+          node = at.right;
         }
-        if (!node) break;
       }
       const child: Bin = { key, left: null, right: null };
       if (parent) {
@@ -2814,7 +2853,7 @@ export function runTree(input: string, algorithm = "bst"): DsaTreeFrame[] {
     searchPath.push(String(cursor.key));
     const drawn: LabNode[] = [];
     const edges: LabEdge[] = [];
-    drawBin(cursor, (k) => (searchPath.includes(String(k)) ? "active" : "ghost"), () => "", drawn, edges);
+    drawBin(root, (k) => (searchPath.includes(String(k)) ? "active" : "ghost"), () => "", drawn, edges);
     if (cursor.key === find) {
       hit = true;
       frames.push(treeFrame(frames.length, drawn.map((n) => (n.id === String(find) ? { ...n, tone: "good" as LabTone } : n)), edges, [String(find)],
@@ -2823,10 +2862,11 @@ export function runTree(input: string, algorithm = "bst"): DsaTreeFrame[] {
         [{ label: "search path", items: searchPath, hot: searchPath.length - 1, tone: "good", note: `${searchPath.length} nodes visited` }], { ...tally }));
       break;
     }
-    cursor = find < cursor.key ? cursor.left : cursor.right;
-    frames.push(treeFrame(frames.length, drawn, edges, searchPath, `${find} vs ${searchPath[searchPath.length - 1]} · ${find < (Number(searchPath[searchPath.length - 1]) ?? 0) ? "left" : "right"}`,
+    const goLeft = find < cursor.key;
+    frames.push(treeFrame(frames.length, drawn, edges, searchPath, `${find} vs ${cursor.key} · go ${goLeft ? "left" : "right"}`,
       `One comparison per level. Insert order matters: feeding keys in sorted order gives a chain of height n, and this exact tree degenerates to a linked list - hence AVL, red-black, and treaps.`,
       [{ label: "search path", items: searchPath, hot: searchPath.length - 1, tone: "active", note: `${searchPath.length} visited` }], { ...tally }));
+    cursor = goLeft ? cursor.left : cursor.right;
   }
   if (!hit) {
     const missNodes: LabNode[] = [];
