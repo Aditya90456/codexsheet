@@ -115,9 +115,13 @@
 .mentorship-primary:hover, .mentorship-secondary:hover { filter: brightness(1.06); }
 
 .mentorship-qr { display: flex; align-items: center; gap: 16px; padding: 14px; border: 1px dashed var(--ms-line); border-radius: 14px; }
-.mentorship-qr img { width: 176px; height: 176px; border-radius: 10px; background: #fff; }
+.mentorship-qr img { width: 248px; max-width: 100%; height: auto; border-radius: 10px; background: #fff; }
 .mentorship-qr-label { display: flex; align-items: center; gap: 6px; font: 700 11px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .1em; color: var(--ms-accent); }
 .mentorship-qr p { margin: 6px 0 0; color: var(--ms-muted); font-size: 13px; }
+.mentorship-manual { border-left: 2px solid var(--ms-line); padding-left: 10px; }
+.mentorship-manual strong { color: var(--ms-ink); }
+.mentorship-handle { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--ms-line); border-radius: 7px; background: transparent; color: var(--ms-ink); font: 700 12px/1 "DM Mono", ui-monospace, monospace; padding: 3px 6px; cursor: pointer; }
+.mentorship-handle:hover { border-color: var(--ms-accent); color: var(--ms-accent); }
 
 .mentorship-ref { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--ms-line); border-radius: 12px; background: var(--ms-canvas); }
 .mentorship-ref span { color: var(--ms-muted); font-size: 12px; }
@@ -307,9 +311,25 @@
 
 @media (max-width: 700px) {
   .mentorship-qr { flex-direction: column; align-items: stretch; }
-  .mentorship-qr img { width: 152px; height: 152px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mentorship-spin { animation: none; }
 }
+
+/* The payment QR tile is shared by the Family Pass and every mentor checkout, so
+   it reads --ms-* where those exist and falls back to the live blue palette
+   inside the marketplace tree. */
+.payqr { display: grid; gap: 8px; justify-items: start; }
+.payqr-img { border-radius: 12px; background: #fff; max-width: 100%; height: auto; }
+.payqr-meter { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ms-muted, #8ea5c3); font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .06em; }
+.payqr-meter em { color: var(--ms-flag, #7dd3fc); font-style: normal; }
+.payqr-dead .payqr-meter span { color: #f6b26b; }
+.payqr-dead-panel { display: grid; gap: 8px; min-width: 168px; max-width: 220px; padding: 14px; border: 1px dashed var(--ms-warn, #c2622c); border-radius: 12px; background: #c2622c1f; color: var(--ms-ink, #e6eefb); font-size: 12px; line-height: 1.45; }
+.payqr-dead-panel strong { font-size: 13px; }
+.payqr-refresh { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 8px 12px; border: 0; border-radius: 999px; background: var(--ms-paytm, #8fb4ff); color: #131f33; font-size: 12px; font-weight: 700; cursor: pointer; }
+.payqr-refresh:hover { filter: brightness(1.08); }
+
+.mentorship-pay-buttons-dead a { opacity: .45; }
+.mentorship-qr-restore { font-size: 12px; }
+.mentorship-qr-restore button { border: 0; padding: 0; background: none; color: var(--ms-accent, #7cb3fb); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }

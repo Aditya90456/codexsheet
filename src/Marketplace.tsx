@@ -25,7 +25,6 @@ import {
   marketKindLabel,
   marketReference,
   marketStatusBadge,
-  qrImageUrl,
   queuedMarketOrders,
   payeeOf,
   recordMarketOrder,
@@ -36,6 +35,7 @@ import {
   type MarketOrderRow,
 } from "./mentorMarket";
 import { paytmAppUriFor, paytmIntentUriFor } from "./mentorship";
+import PaymentQr from "./PaymentQr";
 
 type Filter = "all" | "service" | "digital" | "webinar";
 
@@ -72,6 +72,9 @@ export default function Marketplace({
   const [selected, setSelected] = useState<CatalogItem | null>(null);
   const [claim, setClaim] = useState<MarketClaim | null>(null);
   const [reference, setReference] = useState("");
+  const [issuedAt, setIssuedAt] = useState(0);
+  const [qrDead, setQrDead] = useState(false);
+  const [superseded, setSuperseded] = useState("");
   const [upiReference, setUpiReference] = useState("");
   const [buyerName, setBuyerName] = useState(userName);
   const [buyerContact, setBuyerContact] = useState(userEmail);
@@ -85,6 +88,7 @@ export default function Marketplace({
   const [purchases, setPurchases] = useState<MarketOrderRow[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
   const device = useMemo(platform, []);
+  const ticket = useMemo(() => ({ reference, issuedAt }), [reference, issuedAt]);
 
   async function refresh() {
     setLoading(true);
@@ -124,11 +128,40 @@ export default function Marketplace({
       note: "",
     });
     setReference(code);
+    setIssuedAt(Date.now());
+    setQrDead(false);
+    setSuperseded("");
     setUpiReference("");
     setNote("");
     setSaved(null);
     setWatch(null);
     setWatchNote("");
+  }
+
+  // Same one-sitting rule as the Family Pass: an expired code is retired, and
+  // the reference a buyer may already have paid against stays restorable.
+  function regenerateQr() {
+    if (!selected) return;
+    const code = marketReference(selected);
+    setSuperseded(reference);
+    setReference(code);
+    setClaim((current) => (current ? { ...current, reference: code } : current));
+    setIssuedAt(Date.now());
+    setQrDead(false);
+  }
+
+  function restoreSuperseded() {
+    setReference(superseded);
+    setClaim((current) => (current ? { ...current, reference: superseded } : current));
+    setSuperseded("");
+    setIssuedAt(Date.now());
+    setQrDead(false);
+  }
+
+  function guardExpiredPayment(event: { preventDefault(): void }) {
+    if (!qrDead) return;
+    event.preventDefault();
+    regenerateQr();
   }
 
   async function refreshWatch(code: string) {
@@ -270,18 +303,45 @@ export default function Marketplace({
               )}
               <p className="mkt-small">The payee, the amount and your reference are locked inside this code. It is <strong>their</strong> handle, not CodexSheet&apos;s - so the QR is theirs too.</p>
               <div className="mkt-qr">
-                <img src={qrImageUrl(sellerUri)} alt={`Pay ${rupees(Number(selected.price))} to ${selected.mentor_name} on UPI, reference ${reference}`} width={220} height={220} loading="lazy" />
+                <PaymentQr
+                  ticket={ticket}
+                  uri={sellerUri}
+                  alt={`Pay ${rupees(Number(selected.price))} to ${selected.mentor_name} on UPI, reference ${reference}`}
+                  size={256}
+                  onRegenerate={regenerateQr}
+                  onExpire={() => setQrDead(true)}
+                />
                 <div>
                   <span className="mkt-mono">{selected.upi_id}</span>
                   <span>{selected.payee_name}</span>
                   <button type="button" className="mkt-ghost" onClick={() => void copy("uri", sellerUri)}>
                     {copied === "uri" ? <Check size={14} /> : <Copy size={14} />} Copy UPI link
                   </button>
+                  <button type="button" className="mkt-ghost" onClick={() => void copy("handle", selected.upi_id)}>
+                    {copied === "handle" ? <Check size={14} /> : <Copy size={14} />} Copy their UPI id
+                  </button>
+                  <p className="mkt-small mkt-manual">
+                    Scan refused? Choose <strong>Pay to UPI ID</strong>, send {rupees(Number(selected.price))} to that id and type <strong>{reference}</strong> as the note.
+                  </p>
+                  {superseded && (
+                    <p className="mkt-qr-restore">
+                      Already paid against <strong>{superseded}</strong>?{" "}
+                      <button type="button" onClick={restoreSuperseded}>Use that code again</button>
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="mkt-pay-buttons">
-                <a className="mkt-primary" href={payUri}><QrCode size={15} /> Open in a UPI app</a>
-                <a className="mkt-secondary" href={sellerUri}><Wallet size={15} /> {rupees(Number(selected.price))} · {selected.mentor_name}</a>
+              <div className={`mkt-pay-buttons${qrDead ? " mkt-pay-buttons-dead" : ""}`}>
+                {device.android || device.ios ? (
+                  <>
+                    <a className="mkt-primary" href={payUri} onClick={guardExpiredPayment}><QrCode size={15} /> Open in a UPI app</a>
+                    <a className="mkt-secondary" href={sellerUri} onClick={guardExpiredPayment}><Wallet size={15} /> {rupees(Number(selected.price))} · {selected.mentor_name}</a>
+                  </>
+                ) : (
+                  <button type="button" className="mkt-primary" onClick={() => void copy("uri", sellerUri)}>
+                    {copied === "uri" ? <Check size={15} /> : <Wallet size={15} />} {copied === "uri" ? "UPI link copied" : "Copy the UPI link"}
+                  </button>
+                )}
               </div>
               <div className="mkt-ref">
                 <span>Your reference</span>

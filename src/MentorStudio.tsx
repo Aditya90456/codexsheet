@@ -396,7 +396,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
             <p className="mkt-price-note">{rupees(draft.price)} · your QR below is built from <span className="mkt-mono">{profile.upi_id || "your UPI id"}</span>. Buyers pay you, not CodexSheet.</p>
             {draft.kind === "webinar" && <p className="mkt-price-note">Sold for {istWhen(draft.starts_at) || "the time you picked"} · buyers see the date on the listing and get the room link from you.</p>}
             <div className="mkt-editor-foot">
-              <img src={qrImageUrl(sellerUpiUri(profile, draft.slug || "your-product", draft.price))} alt="Your UPI QR for this product" width={116} height={116} />
+              <img src={qrImageUrl(sellerUpiUri(profile, draft.slug || "your-product", draft.price), 336)} alt="Your UPI QR for this product" width={168} height={168} />
               <button type="button" className="mkt-primary" onClick={() => void saveDraft()} disabled={busy === "product"}>
                 {busy === "product" ? <LoaderCircle size={16} className="mkt-spin" /> : <Check size={16} />} {busy === "product" ? "Saving…" : draft.id ? "Save changes" : "Publish product"}
               </button>

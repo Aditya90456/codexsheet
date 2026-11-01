@@ -163,8 +163,12 @@ export function upiUriFor(payee: UpiPayee, reference: string, amount: number): s
     `am=${(Number.isFinite(amount) ? amount : 0).toFixed(2)}`,
     "cu=INR",
     `tn=${encode(reference)}`,
-    `tr=${encode(reference)}`,
   ].join("&");
+  // `tr` is optional and carried the same string as `tn`, so it was pure payload
+  // weight. Measured against a real encoder, a mentor with a long payee name went
+  // from QR version 5 to 6 the moment `tr` was added, and a higher version means
+  // thinner modules a phone camera will not read off a laptop screen. `tn` is the
+  // one that reaches the statement, so that is the one that stays.
   return `upi://pay?${params}`;
 }
 
@@ -193,8 +197,52 @@ export function paytmAppUri(plan: MentorshipPlan, reference: string, amount: num
   return paytmAppUriFor(payee, reference, clampAmount(amount));
 }
 
+/**
+ * Both encoders stretch the symbol into whatever box they are handed, so the
+ * raster is asked for at twice the on-screen size (a phone camera reading a
+ * laptop screen wants each module to survive the downscale as an integer number
+ * of device pixels) and the quiet zone is asked for in modules, because that is
+ * what the spec counts. A code drawn edge to edge with no white border is the
+ * one a UPI app refuses, so `qzone=4` is not decoration.
+ */
 export function qrImageUrl(uri: string, size = 240): string {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=8&data=${encodeURIComponent(uri)}`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=4&qzone=4&data=${encodeURIComponent(uri)}`;
+}
+
+/** A second live encoder for the same payload, so one service rate-limiting us
+ *  does not leave a student staring at a broken payment code. QuickChart counts
+ *  its margin in modules, which is the same four-module quiet zone the primary
+ *  encoder is asked for. */
+export function qrImageFallbackUrl(uri: string, size = 240): string {
+  return `https://quickchart.io/qr?size=${size}x${size}&margin=4&format=png&text=${encodeURIComponent(uri)}`;
+}
+
+/**
+ * A payment code is good for one sitting. The reference is only ever matched by
+ * hand against a statement, so a QR left open overnight is an invitation to pay
+ * against a code nobody is watching. Twenty minutes covers finding the UPI app,
+ * typing the PIN and coming back to record the claim.
+ */
+export const qrLifetimeMs = 20 * 60 * 1000;
+
+export type QrTicket = { reference: string; issuedAt: number };
+
+export function issueQrTicket(reference: string, issuedAt = Date.now()): QrTicket {
+  return { reference, issuedAt };
+}
+
+export function qrMillisLeft(ticket: QrTicket, now = Date.now()): number {
+  return Math.max(0, ticket.issuedAt + qrLifetimeMs - now);
+}
+
+export function qrExpired(ticket: QrTicket, now = Date.now()): boolean {
+  return qrMillisLeft(ticket, now) === 0;
+}
+
+/** mm:ss left on the clock, so the code being scanned is visibly still live. */
+export function qrCountdown(ticket: QrTicket, now = Date.now()): string {
+  const seconds = Math.floor(qrMillisLeft(ticket, now) / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 export type MentorshipOrder = {
