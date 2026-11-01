@@ -78,6 +78,10 @@ export function BarsView({ frame }: { frame: BarsFrame }) {
   return (
     <div className="csl-viz">
       <div className="lab-strip">
+        {n === 0 && (
+          <p className="lab-legend lab-empty">nothing to plot as bars at this step · the structure lives in the lanes below</p>
+        )}
+        {n > 0 && (
         <svg viewBox={`0 0 ${width} ${height}`} className="csl-svg" role="img" aria-label="Array state at this step">
           <line x1={8} y1={base} x2={width - 8} y2={base} className="csl-axis" />
           {frame.band && (
@@ -133,7 +137,8 @@ export function BarsView({ frame }: { frame: BarsFrame }) {
             />
           )}
         </svg>
-        {!numeric && <p className="lab-legend">tokens left to right · {n} items</p>}
+        )}
+        {!numeric && n > 0 && <p className="lab-legend">tokens left to right · {n} items</p>}
       </div>
       <LabLanes lanes={frame.lanes} />
       <LabTally tally={frame.tally} />
@@ -264,7 +269,14 @@ export function DsaTreeView({ frame }: { frame: DsaTreeFrame }) {
             </g>
           );
         })}
+        {!frame.nodes.length && (
+          <>
+            <rect x={155} y={19} width={110} height={30} rx={8} className="lab-tnode t-ghost" />
+            <text x={210} y={38} className="lab-ttext t-ghost" textAnchor="middle">no nodes</text>
+          </>
+        )}
       </svg>
+      {!frame.nodes.length && <p className="lab-legend">empty structure · add keys to the input to build it</p>}
       {layout.roots.length > 1 && <p className="lab-legend">a forest, not one tree · {layout.roots.length} roots: {layout.roots.map((r) => textOf.get(r)?.text || r).join(", ")}</p>}
       <LabLanes lanes={frame.lanes} />
       <LabTally tally={frame.tally} />

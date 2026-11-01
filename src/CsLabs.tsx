@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ChevronLeft,
@@ -50,8 +50,10 @@ import {
   type DsaFrame,
 } from "./dsa-labs-kernels";
 import { renderDsaFrame } from "./DsaLabViews";
-import { useT, useUiLanguage } from "./i18n";
+import GuruFace from "./GuruFace";
+import { translate, uiLanguages, useT, useUiLanguage, type UiLanguage } from "./i18n";
 import { speak, stopSpeaking, voiceSupported } from "./mentor-voice";
+import type { MentorMood } from "./mentor-mood";
 import "./cslabs.css";
 
 const palette = ["#3b82f6", "#34d399", "#fbbf24", "#a78bfa", "#60a5fa", "#f472b6", "#22d3ee", "#fb923c"];
@@ -547,7 +549,7 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
   const tr = useT();
   const lang = useUiLanguage();
   const [subject, setSubject] = useState<CsSubject | "all">("all");
-  const [topicId, setTopicId] = useState<string>("cpu-scheduling");
+  const [topicId, setTopicId] = useState<string>(() => new URLSearchParams(window.location.search).get("topic") ?? "cpu-scheduling");
   const topic = labTopics.find((entry) => entry.id === topicId) ?? labTopics[0];
   const [input, setInput] = useState(topic.defaultInput);
   const [algorithm, setAlgorithm] = useState<string>("fcfs");
@@ -582,6 +584,60 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
   }, [spoken, frame, lang]);
 
   useEffect(() => () => stopSpeaking(), []);
+
+  // Voice lesson: narrate every step in order and let the speech engine decide
+  // when the animation is allowed to move on, so the pacing is the teacher's.
+  const [teaching, setTeaching] = useState(false);
+  const [teacherLang, setTeacherLang] = useState<UiLanguage>(lang);
+  const [teacherMood, setTeacherMood] = useState<MentorMood>("think");
+  const teacherLangRef = useRef<UiLanguage>(lang);
+  const teachToken = useRef(0);
+  const framesRef = useRef(frames);
+  framesRef.current = frames;
+  const topicRef = useRef(topic);
+  topicRef.current = topic;
+
+  const narrateStep = (at: number, token: number) => {
+    const item = framesRef.current[at];
+    if (!item) { setTeaching(false); return; }
+    setIndex(at);
+    const mood: MentorMood = at === framesRef.current.length - 1 ? "proud" : "think";
+    setTeacherMood(mood);
+    const opening = at === 0 ? `${topicRef.current.title}. ${topicRef.current.blurb}. ` : "";
+    const started = speak(`${opening}${item.caption}. ${item.detail}`, {
+      lang: teacherLangRef.current,
+      mood,
+      onEnd: () => { if (token === teachToken.current) narrateStep(at + 1, token); },
+    });
+    if (!started) setTeaching(false);
+  };
+
+  const stopTeaching = () => { teachToken.current += 1; setTeaching(false); stopSpeaking(); };
+
+  const startTeaching = () => {
+    teachToken.current += 1;
+    const token = teachToken.current;
+    setPlaying(false);
+    setSpoken(false);
+    setIndex(0);
+    setTeaching(true);
+    narrateStep(0, token);
+  };
+
+  const chooseTeacherLang = (next: UiLanguage) => {
+    teacherLangRef.current = next;
+    setTeacherLang(next);
+    if (!teaching) return;
+    teachToken.current += 1;
+    stopSpeaking();
+    narrateStep(index, teachToken.current);
+  };
+
+  useEffect(() => {
+    teachToken.current += 1;
+    setTeaching(false);
+    stopSpeaking();
+  }, [topicId, activeAlgorithm, input]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -652,6 +708,18 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
         ))}
       </nav>
 
+      <div className="csl-teacher" role="group" aria-label="Voice lesson">
+        <button type="button" className={`csl-teacher-play${teaching ? " on" : ""}`} onClick={() => (teaching ? stopTeaching() : startTeaching())} disabled={!voiceSupported} aria-pressed={teaching}>
+          {teaching ? <VolumeX size={13} /> : <Volume2 size={13} />}
+          {teaching ? "Stop lesson" : "Play lesson in voice"}
+        </button>
+        <select value={teacherLang} onChange={(event) => chooseTeacherLang(event.target.value as UiLanguage)} aria-label="Lesson language">
+          {uiLanguages.map((entry) => <option key={entry.id} value={entry.id}>{entry.native}</option>)}
+        </select>
+        <span className="csl-teacher-state">{teaching ? `step ${index + 1} / ${frames.length}` : voiceSupported ? `${frames.length} steps · speaks ${uiLanguages.find((entry) => entry.id === teacherLang)?.english ?? ""}` : "no voice on this browser"}</span>
+        {teaching && <span className="csl-teacher-wave" aria-hidden="true"><i /><i /><i /><i /></span>}
+      </div>
+
       <div className="csl-board">
         <aside className="csl-panel csl-side">
           <h3>{tr("cslabs.workload")} <em>{topic.inputLabel}</em></h3>
@@ -719,15 +787,19 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
         <div className="csl-stage">
           <div className="csl-canvas">
             {frame ? renderFrame(frame, frames) : <div className="csl-empty">Type a workload above to run the simulation.</div>}
+            {teaching && frame && <div className="csl-teacher-figure" aria-label="AI teacher">
+              <GuruFace mood={teacherMood} speaking moodLabel={translate(teacherMood === "proud" ? "mood.proud" : "mood.think", teacherLang)} className="csl-teacher-face" />
+              <p>{frame.caption}</p>
+            </div>}
           </div>
 
           <div className="csl-transport">
-            <button onClick={() => { setPlaying(false); setIndex(0); }} title={tr("cslabs.reset")} aria-label={tr("cslabs.reset")}><RotateCcw size={15} /></button>
-            <button onClick={() => { setPlaying(false); setIndex((i) => Math.max(0, i - 1)); }} disabled={index === 0} title={tr("cslabs.prev")} aria-label={tr("cslabs.prev")}><ChevronLeft size={16} /></button>
-            <button className="csl-play" onClick={() => { if (atEnd) setIndex(0); setPlaying((p) => !p); }}>
+            <button onClick={() => { if (teaching) stopTeaching(); setPlaying(false); setIndex(0); }} title={tr("cslabs.reset")} aria-label={tr("cslabs.reset")}><RotateCcw size={15} /></button>
+            <button onClick={() => { if (teaching) stopTeaching(); setPlaying(false); setIndex((i) => Math.max(0, i - 1)); }} disabled={index === 0} title={tr("cslabs.prev")} aria-label={tr("cslabs.prev")}><ChevronLeft size={16} /></button>
+            <button className="csl-play" onClick={() => { if (teaching) stopTeaching(); if (atEnd) setIndex(0); setPlaying((p) => !p); }}>
               {playing ? <Pause size={15} /> : <Play size={15} />} {playing ? tr("cslabs.pause") : tr("cslabs.play")}
             </button>
-            <button onClick={() => { setPlaying(false); setIndex((i) => Math.min(frames.length - 1, i + 1)); }} disabled={atEnd} title={tr("cslabs.next")} aria-label={tr("cslabs.next")}><ChevronRight size={16} /></button>
+            <button onClick={() => { if (teaching) stopTeaching(); setPlaying(false); setIndex((i) => Math.min(frames.length - 1, i + 1)); }} disabled={atEnd} title={tr("cslabs.next")} aria-label={tr("cslabs.next")}><ChevronRight size={16} /></button>
             <input
               type="range"
               min={0}

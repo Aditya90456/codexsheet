@@ -11,6 +11,7 @@ import "./mentorship.css";
 import "./guru.css";
 import "./cslabs.css";
 import "./mentees.css";
+import "./marketplace.css";
 import "./articleReader.css";
 
 // Keep the local assistant isolated from the signed-in workspace.

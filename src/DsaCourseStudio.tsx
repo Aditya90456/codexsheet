@@ -4,10 +4,15 @@ import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
 import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
-import { ArrowRight, BookOpen, Braces, ChevronLeft, CirclePlay, Lightbulb, LoaderCircle, Pause, Repeat, RotateCcw, Send, Sparkles, Target, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookOpen, Braces, ChevronLeft, CirclePlay, Lightbulb, LoaderCircle, Pause, Repeat, RotateCcw, Send, Sparkles, Target, TriangleAlert, Volume2 } from "lucide-react";
 import DevaStage from "./DevaStage";
-import { courseLessons, lessonDemoStdin, type CourseLesson } from "./deva-course-lessons";
-import { judgeCases, judgedStarter, outputsMatch, type JudgeCase, type Language } from "./deva-judge";
+import GuruFace from "./GuruFace";
+import { uiLanguages, translate, useUiLanguage, type UiLanguage } from "./i18n";
+import { speak, stopSpeaking, voiceSupported } from "./mentor-voice";
+import type { MentorMood } from "./mentor-mood";
+import { hindiStep, hindiTitle } from "./dsa-course-hindi";
+import { courseLessons, courseUnits, lessonsForUnit, lessonDemoStdin, starterFor, type CourseLesson, type LessonStep } from "./deva-course-lessons";
+import { judgeCases, outputsMatch, type JudgeCase, type Language } from "./deva-judge";
 
 type CourseLanguage = Extract<Language, "JavaScript" | "Python">;
 type CaseResult = { index: number; stdin: string; expected: string; actual: string; verdict: "Passed" | "Failed" | "Error" | "Running" | "Output"; note?: string };
@@ -22,32 +27,15 @@ const editorTheme = EditorView.theme({
   ".cm-selectionBackground, ::selection": { backgroundColor: "#805336aa" },
 }, { dark: true });
 
-/** Drops the lesson's self-invoking last line so the submitted program has one entry point. */
-function lessonBody(lesson: CourseLesson, language: CourseLanguage): string[] {
-  const lines = [...lesson.code[language]];
-  while (lines.length && new RegExp(`^\\s*${lesson.entry}\\s*\\(`).test(lines[lines.length - 1] ?? "")) lines.pop();
-  return lines;
-}
-
-function starterFor(lesson: CourseLesson, language: CourseLanguage): string {
-  if (language === "Python" && lesson.problemNumber) {
-    const judged = judgedStarter("Python", lesson.problemNumber);
-    if (judged) return judged;
-  }
-  const body = lessonBody(lesson, language).join("\n");
-  if (language === "Python") {
-    return `# Lesson practice: line 1 is the array, later lines are extra arguments.\n${body}\n\nimport sys\nlines = sys.stdin.read().splitlines()\n\ndef numbers(line):\n    return [int(token) for token in line.split()] if line.strip() else []\n\nvalues = numbers(lines[0]) if lines else []\nextra = [token for line in lines[1:] for token in numbers(line)]\nanswer = ${lesson.entry}(values, *extra)\nprint(" ".join(str(item) for item in answer) if isinstance(answer, (list, tuple)) else answer)\n`;
-  }
-  return `// Lesson practice: line 1 is the array, later lines are extra arguments.\n${body}\n\nconst lines = require("fs").readFileSync(0, "utf8").replace(/(\\r?\\n)+$/, "").split(/\\r?\\n/);\nconst numbers = (line) => (line || "").trim() ? line.trim().split(/\\s+/).map(Number) : [];\nconst values = numbers(lines[0]);\nconst extra = lines.slice(1).flatMap(numbers);\nconst answer = ${lesson.entry}(values, ...extra);\nconsole.log(Array.isArray(answer) ? answer.join(" ") : answer);\n`;
-}
-
-function practiceCases(lesson: CourseLesson): { cases: JudgeCase[]; judged: boolean } {
+/** Judged fixtures when the lesson binds a real problem, otherwise one run-only demo case. */
+function practiceCases(lesson: CourseLesson) {
   const judged = lesson.problemNumber ? judgeCases(lesson.problemNumber) : null;
   if (judged?.length) return { cases: judged, judged: true };
   return { cases: [{ stdin: lessonDemoStdin(lesson), expected: "" }], judged: false };
 }
 
 export default function DsaCourseStudio() {
+  const uiLang = useUiLanguage();
   const [lessonId, setLessonId] = useState(courseLessons[0]?.id ?? "");
   const [language, setLanguage] = useState<CourseLanguage>("JavaScript");
   const [stepIndex, setStepIndex] = useState(0);
@@ -61,12 +49,30 @@ export default function DsaCourseStudio() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
+  const [done, setDone] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("deva-course:done") ?? "[]") as string[]; } catch { return []; }
+  });
+  const [teaching, setTeaching] = useState(false);
+  const [teacherLang, setTeacherLang] = useState<UiLanguage>(uiLang);
+  const [teacherMood, setTeacherMood] = useState<MentorMood>("think");
+  const teachToken = useRef(0);
   const askRef = useRef<HTMLTextAreaElement>(null);
+
+  const completed = new Set(done);
+  const markDone = (id: string) => setDone((current) => (current.includes(id) ? current : [...current, id]));
+
+  useEffect(() => {
+    try { localStorage.setItem("deva-course:done", JSON.stringify(done)); } catch { /* storage is optional */ }
+  }, [done]);
 
   const lesson = courseLessons.find((item) => item.id === lessonId) ?? courseLessons[0]!;
   const steps = lesson.steps;
   const step = steps[Math.min(stepIndex, steps.length - 1)] ?? steps[0]!;
   const practice = useMemo(() => practiceCases(lesson), [lesson]);
+  const unit = courseUnits.find((entry) => entry.id === lesson.unit) ?? courseUnits[0]!;
+  const unitIndex = Math.max(0, courseUnits.findIndex((entry) => entry.id === unit.id));
+  const siblings = lessonsForUnit(unit.id);
+  const lessonIndex = Math.max(0, siblings.findIndex((item) => item.id === lesson.id));
 
   useEffect(() => {
     const saved = localStorage.getItem(`deva-course:${lesson.id}:${language}`);
@@ -89,6 +95,58 @@ export default function DsaCourseStudio() {
     }), 3600 / speed);
     return () => window.clearInterval(timer);
   }, [playing, speed, loop, steps.length]);
+
+  const stepsRef = useRef(steps); stepsRef.current = steps;
+  const lessonRef = useRef(lesson); lessonRef.current = lesson;
+  const teacherLangRef = useRef<UiLanguage>(teacherLang); teacherLangRef.current = teacherLang;
+
+  /** One step, in the language the student chose. Hindi narration is authored; the rest speak the English track. */
+  const spokenLine = (lessonIdValue: string, item: LessonStep, at: number, languageValue: UiLanguage) => {
+    const hindi = languageValue === "hi" ? hindiStep(lessonIdValue, at) : null;
+    return hindi ? `${hindi.title}. ${hindi.narration}` : `${item.title}. ${item.narration}`;
+  };
+
+  const narrateStep = (at: number, token: number) => {
+    const item = stepsRef.current[at];
+    const current = lessonRef.current;
+    if (!item) { markDone(current.id); setTeaching(false); return; }
+    setStepIndex(at);
+    setTeacherMood(at === stepsRef.current.length - 1 ? "proud" : "think");
+    const opening = at === 0 ? `${(teacherLangRef.current === "hi" ? hindiTitle(current.id) : null) ?? current.title}. ` : "";
+    const started = speak(`${opening}${spokenLine(current.id, item, at, teacherLangRef.current)}`, {
+      lang: teacherLangRef.current,
+      mood: at === stepsRef.current.length - 1 ? "proud" : "think",
+      onEnd: () => { if (token === teachToken.current) narrateStep(at + 1, token); },
+    });
+    if (!started) setTeaching(false);
+  };
+
+  const stopTeaching = () => { teachToken.current += 1; setTeaching(false); stopSpeaking(); };
+
+  const startTeaching = () => {
+    teachToken.current += 1;
+    const token = teachToken.current;
+    setPlaying(false);
+    setTeaching(true);
+    narrateStep(0, token);
+  };
+
+  const chooseTeacherLang = (next: UiLanguage) => {
+    setTeacherLang(next);
+    if (!teaching) return;
+    teachToken.current += 1;
+    stopSpeaking();
+    narrateStep(stepIndex, teachToken.current);
+  };
+
+  const scrubTo = (next: number) => {
+    if (teaching) stopTeaching();
+    setPlaying(false);
+    setStepIndex(next);
+  };
+
+  useEffect(() => { teachToken.current += 1; setTeaching(false); stopSpeaking(); }, [lessonId]);
+  useEffect(() => () => stopSpeaking(), []);
 
   const practiceRef = useRef<(mode: "run" | "submit") => Promise<void>>(async () => {});
   const extensions = useMemo<Extension[]>(() => [
@@ -134,6 +192,7 @@ export default function DsaCourseStudio() {
         setResults([...collected]);
       }
       setSummary(`${passed}/${practice.cases.length} cases ${practice.judged ? "judged" : "executed"}${passed === practice.cases.length && practice.judged ? " · Accepted" : ""}`);
+      if (practice.judged && passed === practice.cases.length) markDone(lesson.id);
     } finally {
       setBusy(null);
     }
@@ -169,27 +228,46 @@ export default function DsaCourseStudio() {
 
   return <section className="deva-course" aria-label="DSA course studio">
     <header className="deva-course-head">
-      <div><span className="deva-course-kicker">DEVA COURSE · ANIMATED LESSON LAB</span><h2>{lesson.title} <em>{lesson.pattern}</em></h2><p>{lesson.goal}</p></div>
-      <label className="deva-course-picker"><span>TOPIC {String(courseLessons.findIndex((item) => item.id === lesson.id) + 1).padStart(2, "0")} / {String(courseLessons.length).padStart(2, "0")}</span>
-        <select value={lesson.id} onChange={(event) => setLessonId(event.target.value)}>{courseLessons.map((item, index) => <option key={item.id} value={item.id}>{String(index + 1).padStart(2, "0")} · {item.title}</option>)}</select>
-      </label>
+      <div><span className="deva-course-kicker">DSA COURSE · UNIT {String(unitIndex + 1).padStart(2, "0")} — {unit.title.toUpperCase()}</span><h2>{lesson.title} <em>{lesson.pattern}</em></h2><p>{lesson.goal}</p></div>
+      <div className="deva-course-headside">
+        <label className="deva-course-picker"><span>LESSON {String(lessonIndex + 1).padStart(2, "0")} / {String(siblings.length).padStart(2, "0")} · {String(completed.size)} of {String(courseLessons.length).padStart(2, "0")} COURSE DONE</span>
+          <select value={lesson.id} onChange={(event) => setLessonId(event.target.value)}>{courseUnits.map((entry) => <optgroup key={entry.id} label={entry.title}>{lessonsForUnit(entry.id).map((item) => <option key={item.id} value={item.id}>{completed.has(item.id) ? "✓ " : ""}{item.title}</option>)}</optgroup>)}</select>
+        </label>
+        {lesson.labTopic && <button type="button" className="deva-course-lab" onClick={() => window.dispatchEvent(new CustomEvent("codexsheet:goto", { detail: { view: "cslabs", topic: lesson.labTopic } }))}><CirclePlay size={13}/> Run it live in the lab</button>}
+      </div>
     </header>
-    <div className="deva-course-outline" aria-label="Course topics">{courseLessons.map((item, index) => <button type="button" key={item.id} className={item.id === lesson.id ? "active" : index < courseLessons.findIndex((entry) => entry.id === lesson.id) ? "complete" : ""} onClick={() => setLessonId(item.id)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small></button>)}</div>
+    <div className="deva-course-units" aria-label="Course units">{courseUnits.map((entry, index) => {
+      const items = lessonsForUnit(entry.id);
+      const finished = items.filter((item) => completed.has(item.id)).length;
+      return <section key={entry.id} className={`deva-course-unit${entry.id === lesson.unit ? " open" : ""}`}>
+        <h3><span>UNIT {String(index + 1).padStart(2, "0")}</span><strong>{entry.title}</strong><small>{finished}/{items.length}</small><i>{entry.blurb}</i></h3>
+        <div className="deva-course-outline">{items.map((item, position) => <button type="button" key={item.id} className={item.id === lesson.id ? "active" : completed.has(item.id) ? "complete" : ""} onClick={() => setLessonId(item.id)}><span>{completed.has(item.id) ? "✓" : String(position + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small></button>)}</div>
+      </section>;
+    })}</div>
     <div className="deva-course-split">
       <section className="deva-course-stage-panel" aria-label="Animation panel">
         <div className="deva-course-panel-head"><span><CirclePlay size={13}/> {lesson.stage === "stack" ? "STACK VIEW" : "ARRAY STAGE"}</span><span>{lesson.complexity}</span></div>
         <DevaStage lesson={lesson} step={step} stepIndex={stepIndex} playing={playing} />
+        {teaching && <div className="deva-course-teacher" aria-label="AI teacher">
+          <GuruFace mood={teacherMood} speaking={teaching} moodLabel={translate(teacherMood === "proud" ? "mood.proud" : "mood.think", teacherLang)} className="deva-course-teacher-face" />
+          <p className="deva-course-teacher-line">{spokenLine(lesson.id, step, stepIndex, teacherLang)}</p>
+        </div>}
         <div className="deva-course-transport">
-          <button type="button" onClick={() => { setPlaying(false); setStepIndex(0); }} aria-label="Restart"><RotateCcw size={15}/></button>
-          <button type="button" onClick={() => { setPlaying(false); setStepIndex((index) => Math.max(0, index - 1)); }} disabled={stepIndex === 0} aria-label="Previous step"><ChevronLeft size={16}/></button>
-          <button type="button" className="deva-course-play" onClick={() => setPlaying((value) => !value)}>{playing ? <Pause size={15}/> : <CirclePlay size={15}/>} {playing ? "Pause" : "Play"}</button>
-          <button type="button" onClick={() => { setPlaying(false); setStepIndex((index) => Math.min(steps.length - 1, index + 1)); }} disabled={stepIndex >= steps.length - 1} aria-label="Next step"><ArrowRight size={16}/></button>
-          <input type="range" min={0} max={Math.max(0, steps.length - 1)} value={stepIndex} onChange={(event) => { setPlaying(false); setStepIndex(Number(event.target.value)); }} aria-label="Timeline" />
+          <button type="button" onClick={() => scrubTo(0)} aria-label="Restart"><RotateCcw size={15}/></button>
+          <button type="button" onClick={() => scrubTo(Math.max(0, stepIndex - 1))} disabled={stepIndex === 0} aria-label="Previous step"><ChevronLeft size={16}/></button>
+          <button type="button" className="deva-course-play" onClick={() => { if (teaching) stopTeaching(); setPlaying((value) => !value); }}>{playing ? <Pause size={15}/> : <CirclePlay size={15}/>} {playing ? "Pause" : "Play"}</button>
+          <button type="button" onClick={() => scrubTo(Math.min(steps.length - 1, stepIndex + 1))} disabled={stepIndex >= steps.length - 1} aria-label="Next step"><ArrowRight size={16}/></button>
+          <input type="range" min={0} max={Math.max(0, steps.length - 1)} value={stepIndex} onChange={(event) => scrubTo(Number(event.target.value))} aria-label="Timeline" />
           <span className="deva-course-count">{String(stepIndex + 1).padStart(2, "0")}<i>/{String(steps.length).padStart(2, "0")}</i></span>
           <label className="deva-course-speed"><span>SPEED</span><select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}><option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option></select></label>
           <button type="button" className={`deva-course-loop${loop ? " on" : ""}`} onClick={() => setLoop((value) => !value)} aria-pressed={loop}><Repeat size={14}/> Loop</button>
+          <button type="button" className={`deva-course-voice${teaching ? " on" : ""}`} onClick={() => (teaching ? stopTeaching() : startTeaching())} disabled={!voiceSupported} aria-pressed={teaching}>
+            <Volume2 size={14}/> {teaching ? "Stop voice lesson" : "Voice lesson"}
+          </button>
+          <label className="deva-course-voice-lang"><span>VOICE</span><select value={teacherLang} onChange={(event) => chooseTeacherLang(event.target.value as UiLanguage)} aria-label="Lesson voice language">{uiLanguages.map((entry) => <option key={entry.id} value={entry.id}>{entry.native}</option>)}</select></label>
+          <span className="deva-course-voice-state">{teaching ? `${String(stepIndex + 1).padStart(2, "0")} / ${String(steps.length).padStart(2, "0")} spoken` : voiceSupported ? `${steps.length} steps narrated` : "no voice in this browser"}</span>
         </div>
-        <div className="deva-course-ticks">{steps.map((item, index) => <button type="button" key={`${item.title}-${index}`} className={index === stepIndex ? "active" : index < stepIndex ? "complete" : ""} aria-label={`Step ${index + 1}: ${item.title}`} title={item.title} onClick={() => { setPlaying(false); setStepIndex(index); }} />)}</div>
+        <div className="deva-course-ticks">{steps.map((item, index) => <button type="button" key={`${item.title}-${index}`} className={index === stepIndex ? "active" : index < stepIndex ? "complete" : ""} aria-label={`Step ${index + 1}: ${item.title}`} title={item.title} onClick={() => scrubTo(index)} />)}</div>
       </section>
 
       <section className="deva-course-editor-panel" aria-label="Code editor panel">
@@ -212,6 +290,8 @@ export default function DsaCourseStudio() {
           <button type="button" className="deva-course-run" onClick={() => void runPractice("run")} disabled={busy !== null}>{busy === "run" ? <LoaderCircle size={14} className="spin" /> : <CirclePlay size={14}/>} Run this step</button>
           <button type="button" className="deva-course-submit" onClick={() => void runPractice("submit")} disabled={busy !== null || !practice.judged}>{busy === "submit" ? <LoaderCircle size={14} className="spin"/> : <Target size={14}/>} Submit {practice.judged ? `(${practice.cases.length})` : ""}</button>
           <button type="button" className="deva-course-reset" onClick={() => { localStorage.removeItem(`deva-course:${lesson.id}:${language}`); setCode(starterFor(lesson, language)); setResults([]); setSummary(null); }}>Reset starter</button>
+          <button type="button" className={`deva-course-done${completed.has(lesson.id) ? " on" : ""}`} onClick={() => markDone(lesson.id)}>{completed.has(lesson.id) ? "Completed" : "Mark complete"}</button>
+          {lessonIndex < siblings.length - 1 && <button type="button" className="deva-course-next" onClick={() => setLessonId(siblings[lessonIndex + 1]!.id)}>Next lesson <ArrowRight size={13}/></button>}
         </div>
         {(results.length > 0 || summary) && <div className="deva-course-results" aria-live="polite">
           {summary && <strong className={summary.includes("Accepted") ? "ok" : ""}>{summary}</strong>}

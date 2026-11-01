@@ -613,3 +613,45 @@
 .lab-ibar.cursor { stroke-width: 2.4; }
 .lab-ilabel { fill: var(--tone, #e8eff9); font: 700 10px ui-monospace, Menlo, monospace; }
 .lab-cursor-line { stroke: #fbbf24; stroke-width: 1.5; stroke-dasharray: 4 3; }
+
+/* ---- voice lesson bar ---- */
+.csl-teacher{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:2px 0 10px;padding:8px 10px;border:1px solid #243449;border-radius:10px;background:#101c2d}
+.csl-teacher-play{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid #1d4ed8;border-radius:8px;color:#e8eff9;background:#1d4ed8;font:700 11px/1 'DM Mono',monospace;letter-spacing:.04em;cursor:pointer;transition:background .16s,border-color .16s}
+.csl-teacher-play:hover:not(:disabled){background:#3b82f6;border-color:#60a5fa}
+.csl-teacher-play.on{background:#131f33;border-color:#34d399;color:#34d399}
+.csl-teacher-play:disabled{opacity:.45;cursor:not-allowed}
+.csl-teacher select{padding:6px 8px;border:1px solid #243449;border-radius:7px;color:#e8eff9;background:#131f33;font:650 11px 'DM Mono',monospace;outline:none}
+.csl-teacher-state{color:#7f9bbd;font:600 10px 'DM Mono',monospace;letter-spacing:.05em}
+.csl-teacher-wave{display:inline-flex;align-items:flex-end;gap:2px;height:14px}
+.csl-teacher-wave i{width:3px;height:40%;border-radius:2px;background:#34d399;animation:csl-wave .9s ease-in-out infinite}
+.csl-teacher-wave i:nth-child(2){animation-delay:.12s}
+.csl-teacher-wave i:nth-child(3){animation-delay:.26s}
+.csl-teacher-wave i:nth-child(4){animation-delay:.4s}
+@keyframes csl-wave{0%,100%{height:25%}50%{height:100%}}
+@media(prefers-reduced-motion:reduce){.csl-teacher-wave i{animation:none;height:70%}}
+
+/* ---- speaking teacher over the simulation ---- */
+.csl-canvas { position: relative; }
+.csl-teacher-figure {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: min(58%, 420px);
+  padding: 8px 12px 8px 8px;
+  border: 1px solid #243449;
+  border-radius: 14px;
+  background: rgba(8, 15, 26, 0.82);
+  backdrop-filter: blur(3px);
+}
+.csl-teacher-face.guru-face { width: 84px; height: 96px; }
+.csl-teacher-figure .guru-face-svg { width: 84px; height: 96px; }
+.csl-teacher-figure .guru-mood-chip { font-size: 8px; }
+.csl-teacher-figure p {
+  margin: 0;
+  color: #dbe7f7;
+  font: 500 11px/1.45 "DM Sans", system-ui, sans-serif;
+}

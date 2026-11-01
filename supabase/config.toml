@@ -4,3 +4,8 @@ project_id = "ljotsavgkuluokfvlhdb"
 # function trusts its claims; without this, any forged token is accepted.
 [functions.call-ice]
 verify_jwt = true
+
+# pg_cron calls this through net.http_post with no Authorization header, so the
+# gateway must not require a JWT or the scheduler stops being able to reach it.
+[functions.mentorship-notify]
+verify_jwt = false

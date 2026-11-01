@@ -1342,6 +1342,7 @@ export function runGraph(input: string, algorithm = "bfs"): GraphFrame[] {
   if (algorithm === "dfs") {
     const stack: string[] = [start];
     const seen = new Set<string>();
+    level.set(start, 0);
     const snapD = (caption: string, detail: string, current: string | null, frontier: string[], on: string[][] = []) =>
       frames.push(graphSnapshot(graph, frames.length, visited, frontier, current, on, caption, detail,
         graph.ids.map((id) => ({ id, dist: seen.has(id) ? `depth ${level.get(id)}` : "unseen", via: parent.get(id) ?? "-", tone: (current === id ? "active" : visited.includes(id) ? "done" : "idle") as LabTone })),

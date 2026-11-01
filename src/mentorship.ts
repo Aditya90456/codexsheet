@@ -135,25 +135,32 @@ export function paymentBadge(order: { status: string }): { cls: "due" | "done" |
 
 const referenceAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-/** Short, human-safe code that travels in the UPI note so a Paytm entry maps back to one student. */
-export function orderReference(plan: MentorshipPlan): string {
+/** A collection handle. Aditya's Paytm id is one; every approved mentor brings their own. */
+export type UpiPayee = { upiId: string; displayName: string };
+
+/** Short, human-safe code that travels in the UPI note so a statement entry maps back to one student. */
+export function referenceCode(tag: string): string {
   let random = "";
   const values = new Uint32Array(8);
   if (typeof crypto !== "undefined" && "getRandomValues" in crypto) crypto.getRandomValues(values);
   else for (let index = 0; index < values.length; index++) values[index] = Math.floor(Math.random() * 0xffffffff);
   for (const value of values) random += referenceAlphabet[value % referenceAlphabet.length];
-  return `CS-${plan.tag}-${random}`;
+  return `CS-${tag}-${random}`;
+}
+
+export function orderReference(plan: MentorshipPlan): string {
+  return referenceCode(plan.tag);
 }
 
 /** NPCI UPI intent URI — every UPI app (Paytm, PhonePe, GPay, BHIM) resolves this. */
-export function upiUri(plan: MentorshipPlan, reference: string, amount: number): string {
+export function upiUriFor(payee: UpiPayee, reference: string, amount: number): string {
   // UPI apps decode query values percent-style only, so `+` must never appear
   // for a space and the `@` in a VPA stays literal.
   const encode = (value: string) => encodeURIComponent(value).replace(/%40/g, "@");
   const params = [
     `pa=${encode(payee.upiId)}`,
     `pn=${encode(payee.displayName)}`,
-    `am=${clampAmount(amount).toFixed(2)}`,
+    `am=${(Number.isFinite(amount) ? amount : 0).toFixed(2)}`,
     "cu=INR",
     `tn=${encode(reference)}`,
     `tr=${encode(reference)}`,
@@ -162,15 +169,28 @@ export function upiUri(plan: MentorshipPlan, reference: string, amount: number):
 }
 
 /** Android intent URL that opens the Paytm app directly instead of the picker. */
-export function paytmIntentUri(plan: MentorshipPlan, reference: string, amount: number): string {
-  const query = upiUri(plan, reference, amount).slice("upi://pay?".length);
+export function paytmIntentUriFor(payee: UpiPayee, reference: string, amount: number): string {
+  const query = upiUriFor(payee, reference, amount).slice("upi://pay?".length);
   return `intent://pay?${query}#Intent;scheme=upi;package=net.one97.paytm;end`;
 }
 
 /** iOS Paytm scheme, for students on an iPhone where `upi://` has no handler. */
-export function paytmAppUri(plan: MentorshipPlan, reference: string, amount: number): string {
-  const query = upiUri(plan, reference, amount).slice("upi://pay?".length);
+export function paytmAppUriFor(payee: UpiPayee, reference: string, amount: number): string {
+  const query = upiUriFor(payee, reference, amount).slice("upi://pay?".length);
   return `paytmmp://pay?${query}`;
+}
+
+/** The Family Pass is capped by its band; a mentor's own price is whatever they set. */
+export function upiUri(plan: MentorshipPlan, reference: string, amount: number): string {
+  return upiUriFor(payee, reference, clampAmount(amount));
+}
+
+export function paytmIntentUri(plan: MentorshipPlan, reference: string, amount: number): string {
+  return paytmIntentUriFor(payee, reference, clampAmount(amount));
+}
+
+export function paytmAppUri(plan: MentorshipPlan, reference: string, amount: number): string {
+  return paytmAppUriFor(payee, reference, clampAmount(amount));
 }
 
 export function qrImageUrl(uri: string, size = 240): string {

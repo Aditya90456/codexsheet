@@ -59,6 +59,8 @@ import {
   Layers3,
   Lock,
   MousePointer2,
+  Store,
+  Package,
   Trash2,
   Sparkles,
   GraduationCap,
@@ -74,6 +76,8 @@ import DsaCourseStudio from "./DsaCourseStudio";
 import RoadmapBoard from "./RoadmapBoard";
 import MentorshipPayments from "./MentorshipPayments";
 import MenteeSpace from "./MenteeSpace";
+import Marketplace from "./Marketplace";
+import MentorStudio from "./MentorStudio";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaTutor from "./DsaTutor";
@@ -111,7 +115,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -134,6 +138,8 @@ const viewPaths: Record<WorkspaceView, string> = {
   jobs: "/jobs",
   mentorship: "/mentorship",
   mentees: "/mentees",
+  marketplace: "/marketplace",
+  studio: "/mentor-studio",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -171,6 +177,11 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     description: "One ₹1,000 Family Pass: the full CodexSheet workspace plus 1-on-1 mentorship with calls, chat and a plan built around your target company.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
+  marketplace: {
+    title: "Mentor marketplace — services and digital products from real mentors",
+    description: "Approved mentors publish their own sessions, workbooks and courses at their own prices, and are paid straight to their own UPI id.",
+  },
+  studio: { title: "Mentor studio — open a storefront on CodexSheet", description: "Apply for a mentor account, publish services and digital products, set your own prices, and confirm your own payments." },
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -209,6 +220,43 @@ function WorkspacePassLock({ checking, onOpenStore, onRecheck, onOpenGuru }: { c
           <li key={feature}><i>{String(index + 1).padStart(2, "0")}</i>{feature}</li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+
+// Signed out, Google and students see the shape of the sheet before the paywall:
+// every pattern, its problem count and the named problems inside it.
+function SheetProblemIndex({ onOpenStore }: { onOpenStore: () => void }) {
+  const byPattern = patterns.map((name) => ({
+    name,
+    total: problems.filter((problem) => problem.pattern === name).length,
+    seeds: seeds.filter((seed) => seed[1] === name),
+  }));
+  return (
+    <section className="sheet-index" aria-labelledby="sheet-index-title">
+      <div className="sheet-index-head">
+        <span className="sheet-index-eyebrow">THE SHEET, IN FULL</span>
+        <h2 id="sheet-index-title">250 DSA problems, 16 interview patterns</h2>
+        <p>Every problem carries the pattern it teaches, its difficulty and the LeetCode link to solve it on. Working through the sheet tracks solved status, notes, XP and your day streak.</p>
+      </div>
+      <div className="sheet-index-patterns">
+        {byPattern.map((group) => (
+          <article className="sheet-index-pattern" key={group.name}>
+            <h3>{group.name}<small>{group.total} problems</small></h3>
+            {group.seeds.length ? (
+              <ul className="sheet-index-problems">
+                {group.seeds.map(([title, , level]) => (
+                  <li key={title}><span>{title}</span><em className={`difficulty ${level.toLowerCase()}`}>{level}</em></li>
+                ))}
+              </ul>
+            ) : (
+              <p className="sheet-index-empty">More reps of this pattern appear inside the sheet.</p>
+            )}
+          </article>
+        ))}
+      </div>
+      <button type="button" className="sheet-index-cta" onClick={onOpenStore}>Open the sheet with the Family Pass <ArrowRight size={15} /></button>
     </section>
   );
 }
@@ -1029,7 +1077,7 @@ const seeds: Array<[string, string, Problem["difficulty"]]> = [
   ["Unique Paths", "2-D DP", "Medium"],
   ["Longest Common Subsequence", "2-D DP", "Medium"],
   ["Best Time to Buy and Sell Stock with Cooldown", "2-D DP", "Medium"],
-  ["Burst Balloons", "Intervals DP", "Hard"],
+  ["Burst Balloons", "2-D DP", "Hard"],
   ["Regular Expression Matching", "2-D DP", "Hard"],
 ];
 const patterns = [
@@ -1097,6 +1145,107 @@ function getPracticeStreak(practiceDays: string[]) {
     previous = date;
   }
   return { current, best };
+}
+
+// Everything a student types or solves in the sheet pays out in XP, so the
+// streak, the rank and the toast all read from the same progress map.
+const sheetXp: Record<Problem["difficulty"], number> = { Easy: 10, Medium: 20, Hard: 35 };
+const problemByNumber = new Map(problems.map((item) => [item.number, item]));
+
+const sheetRanks: Array<{ at: number; title: string }> = [
+  { at: 0, title: "Warming up" },
+  { at: 100, title: "Pattern spotter" },
+  { at: 300, title: "Recursion runner" },
+  { at: 600, title: "Dynamic programmer" },
+  { at: 1000, title: "Complexity slayer" },
+  { at: 1600, title: "Interview ready" },
+  { at: 2400, title: "Sheet legend" },
+];
+
+function sheetXpTotal(map: ProgressMap) {
+  let xp = 0;
+  for (const [number, entry] of Object.entries(map)) {
+    if (entry.status !== "Solved") continue;
+    const problem = problemByNumber.get(Number(number));
+    xp += problem ? sheetXp[problem.difficulty] : 10;
+  }
+  return xp;
+}
+
+function getSheetRank(xp: number) {
+  let index = 0;
+  for (let i = 0; i < sheetRanks.length; i += 1) if (xp >= sheetRanks[i].at) index = i;
+  const tier = sheetRanks[index];
+  const next = sheetRanks[index + 1] ?? null;
+  return {
+    title: tier.title,
+    level: index + 1,
+    xp,
+    toNext: next ? next.at - xp : 0,
+    percent: next ? Math.round(((xp - tier.at) / (next.at - tier.at)) * 100) : 100,
+  };
+}
+
+const solveMilestones: Record<number, string> = {
+  1: "First problem solved. Every strong candidate starts exactly here.",
+  10: "10 solved - the patterns are starting to repeat for you.",
+  25: "25 solved. That is enough range to talk confidently in a real round.",
+  50: "50 solved. Half the sheet, and the habits are forming.",
+  100: "100 solved. You now out-practice most applicants you will be ranked against.",
+  150: "150 solved. The hard ones are yours to pick from.",
+  200: "200 solved. Fifty left and the sheet is finished.",
+  250: "250 solved. Whole sheet done. Nothing left to hide behind.",
+};
+
+type SheetReward = { id: number; xp: number; headline: string; detail: string; milestone: boolean };
+
+const patternAliases: Array<{ pattern: string; words: string[] }> = [
+  { pattern: "Arrays & Hashing", words: ["array", "arrays", "hash", "hashing", "map", "set", "anagram", "two sum", "topk"] },
+  { pattern: "Two Pointers", words: ["two pointer", "2 pointer", "pointer", "pointers", "trapping rain"] },
+  { pattern: "Sliding Window", words: ["slide", "sliding", "window", "substring", "k length"] },
+  { pattern: "Stack", words: ["stack", "parenthes", "bracket", "valid"] },
+  { pattern: "Monotonic Stack", words: ["monotonic", "next greater", "histogram", "span"] },
+  { pattern: "Binary Search", words: ["binary", "search", "log n", "rotated", "mid", "bs"] },
+  { pattern: "Linked List", words: ["linked", "list", "cycle", "reverse", "ll", "fast slow"] },
+  { pattern: "Trees", words: ["tree", "bst", "binary tree", "lca", "traversal", "depth"] },
+  { pattern: "Backtracking", words: ["backtrack", "permutation", "subset", "n queen", "sudoku", "comb"] },
+  { pattern: "Graphs", words: ["graph", "bfs", "dfs", "dijkstra", "island", "union find", "topo", "shortest path", "cycle detection"] },
+  { pattern: "1-D DP", words: ["1d dp", "1-d", "memo", "climbing", "robber", "fib", "coin change", "increasing subsequence", "word break"] },
+  { pattern: "2-D DP", words: ["2d dp", "2-d", "grid dp", "lcs", "longest common", "edit distance", "unique paths", "cooldown", "burst balloons"] },
+  { pattern: "Greedy", words: ["greedy", "jump", "gas station", "sort first"] },
+  { pattern: "Intervals", words: ["interval", "merge", "meeting room", "schedule", "calendar"] },
+  { pattern: "Heaps", words: ["heap", "priority queue", "kth", "top k", "median"] },
+  { pattern: "Bit Manipulation", words: ["bit", "xor", "mask", "manipulation", "single number"] },
+];
+
+/** What the sheet thinks the student meant while they are still typing. */
+function recognizeSheetQuery(raw: string) {
+  const text = raw.trim().toLowerCase();
+  if (text.length < 2) return null;
+  const found: string[] = [];
+  for (const alias of patternAliases) {
+    if (alias.words.some((word) => text.includes(word))) found.push(alias.pattern);
+  }
+  // A bare "dp" means every dynamic programming problem; "1-d" or "2-d" narrows it to one.
+  if (/\b(dp|dynamic programming)\b/.test(text)) {
+    const oneD = /\b1-?d\b/.test(text);
+    const twoD = /\b2-?d\b/.test(text);
+    if (oneD || twoD) {
+      const drop = oneD ? "2-D DP" : "1-D DP";
+      const index = found.indexOf(drop);
+      if (index >= 0) found.splice(index, 1);
+    } else {
+      for (const name of ["1-D DP", "2-D DP"]) if (!found.includes(name)) found.push(name);
+    }
+  }
+  const difficultyWord = /\b(easy|hard|medium)\b/.exec(text)?.[1] ?? null;
+  const difficulty = difficultyWord ? difficultyWord.replace(/^./, (letter) => letter.toUpperCase()) : null;
+  const status =
+    /\b(solved|done|complete|completed)\b/.test(text) ? "Solved"
+      : /\b(in progress|progress|doing|ongoing)\b/.test(text) ? "In progress"
+        : /\b(todo|pending|unsolved|not started|remaining)\b/.test(text) ? "Todo"
+          : null;
+  return { patterns: found, difficulty, status, matched: found.length > 0 || Boolean(difficulty) || Boolean(status) };
 }
 
 type CallSignal = {
@@ -1442,6 +1591,11 @@ function App() {
   });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [sheetReward, setSheetReward] = useState<SheetReward | null>(null);
+  const [noteFor, setNoteFor] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSavedAt, setNoteSavedAt] = useState(0);
+  const rewardTimer = useRef<number | null>(null);
   const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
   const navigateToView = (view: WorkspaceView) => {
@@ -1478,6 +1632,22 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+  useEffect(() => {
+    const goto = (event: Event) => {
+      const detail = (event as CustomEvent<{ view?: string; topic?: string }>).detail;
+      const view = detail?.view as WorkspaceView | undefined;
+      const route = view ? viewPaths[view] : undefined;
+      if (!view || !route) return;
+      const url = new URL(window.location.href);
+      url.pathname = route;
+      if (detail?.topic) url.searchParams.set("topic", detail.topic);
+      else url.searchParams.delete("topic");
+      window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      setActiveView(view);
+    };
+    window.addEventListener("codexsheet:goto", goto);
+    return () => window.removeEventListener("codexsheet:goto", goto);
+  }, []);
 
   useEffect(() => {
     const seo = viewSeo[activeView];
@@ -1503,7 +1673,7 @@ function App() {
   // Every other feature waits for a confirmed pass at whatever amount the
   // student could pay between ₹10 and ₹800.
   const tr = useT();
-  const passGate = !(["home", "mentorship", "guru", "cslabs"] as WorkspaceView[]).includes(activeView);
+  const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -1558,22 +1728,39 @@ function App() {
   const todayDateKey = localDateKey(new Date());
   const isCurrentCalendarMonth = calendarMonthKey === todayDateKey.slice(0, 7);
 
-  const visibleProblems = useMemo(
-    () =>
-      problems.filter((problem) => {
-        const current = progress[problem.number]?.status ?? "Todo";
-        return (
-          (!query ||
-            `${problem.title} ${problem.pattern}`
-              .toLowerCase()
-              .includes(query.toLowerCase())) &&
-          (pattern === "All patterns" || problem.pattern === pattern) &&
-          (difficulty === "All levels" || problem.difficulty === difficulty) &&
-          (status === "All status" || current === status)
-        );
-      }),
-    [difficulty, pattern, progress, query, status],
-  );
+  // What the student types is read as intent first: pattern words, difficulty
+  // and status steer the filters even when no problem title contains them.
+  const sheetSearch = useMemo(() => {
+    const raw = query.trim().toLowerCase();
+    if (raw.length < 2) return null;
+    const recognition = recognizeSheetQuery(raw);
+    const stripped = raw
+      .replace(/\b(easy|hard|medium)\b/g, " ")
+      .replace(/\b(in progress|not started|solved|done|completed|complete|doing|ongoing|todo|pending|unsolved|remaining)\b/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return { raw, recognition, stripped };
+  }, [query]);
+
+  const visibleProblems = useMemo(() => {
+    const recognition = sheetSearch?.recognition ?? null;
+    const aliasPatterns = recognition?.patterns ?? [];
+    const patternWanted = pattern !== "All patterns" ? [pattern] : aliasPatterns;
+    const difficultyWanted = difficulty !== "All levels" ? difficulty : (recognition?.difficulty ?? null);
+    const statusWanted = status !== "All status" ? status : (recognition?.status ?? null);
+    const text = sheetSearch?.stripped ?? "";
+    return problems.filter((problem) => {
+      const current = progress[problem.number]?.status ?? "Todo";
+      if (patternWanted.length && !patternWanted.includes(problem.pattern)) return false;
+      if (difficultyWanted && problem.difficulty !== difficultyWanted) return false;
+      if (statusWanted && current !== statusWanted) return false;
+      if (text) {
+        const haystack = `${problem.title} ${problem.pattern} ${problem.difficulty}`.toLowerCase();
+        if (!haystack.includes(text) && !aliasPatterns.includes(problem.pattern)) return false;
+      }
+      return true;
+    });
+  }, [difficulty, pattern, progress, sheetSearch, status]);
   useEffect(() => {
     if (activeView !== "problems" || !problemLibraryRef.current) return;
     let cancelled = false;
@@ -1602,6 +1789,9 @@ function App() {
       revert?.();
     };
   }, [activeView, difficulty, pattern, query, status, visibleProblems.length]);
+  const recognition = sheetSearch?.recognition ?? null;
+  const visibleSolved = visibleProblems.filter((problem) => progress[problem.number]?.status === "Solved").length;
+  const noteWordCount = noteDraft.trim() ? noteDraft.trim().split(/\s+/).length : 0;
   const solved = Object.values(progress).filter(
     (item) => item.status === "Solved",
   ).length;
@@ -2192,8 +2382,15 @@ function App() {
       );
   }, [isLoaded, progress, user]);
 
+  const sheetRank = useMemo(() => getSheetRank(sheetXpTotal(progress)), [progress]);
+
+  useEffect(() => () => {
+    if (rewardTimer.current) window.clearTimeout(rewardTimer.current);
+  }, []);
+
   function setProblemStatus(number: number, nextStatus: Status) {
-    if ((progress[number]?.status ?? "Todo") === nextStatus) return;
+    const previous = progress[number]?.status ?? "Todo";
+    if (previous === nextStatus) return;
     setProgress((current) => ({
       ...current,
       [number]: { status: nextStatus, notes: current[number]?.notes ?? "" },
@@ -2202,6 +2399,35 @@ function App() {
       const today = localDateKey(new Date());
       setPracticeDays((current) => current.includes(today) ? current : [...current, today]);
     }
+    if (nextStatus !== "Solved" || previous === "Solved") return;
+
+    const problem = problemByNumber.get(number);
+    const gained = problem ? sheetXp[problem.difficulty] : 10;
+    const solvedCount = Object.values(progress).filter((item) => item.status === "Solved").length + 1;
+    const milestone = solveMilestones[solvedCount] ?? null;
+    const startedToday = !practiceDays.includes(todayDateKey);
+    const nextStreak = practiceStreak.current + (startedToday ? 1 : 0);
+    const detail = milestone
+      ?? (startedToday
+        ? `Day streak ${nextStreak}. Solve tomorrow and it grows again.`
+        : problem
+          ? `${problem.pattern} · ${problem.difficulty}. ${sheetRank.toNext ? `${sheetRank.toNext} XP to ${sheetRanks[sheetRank.level]?.title ?? sheetRank.title}.` : "Top rank held."}`
+          : "Another one on the board.");
+    setSheetReward({ id: Date.now(), xp: gained, headline: milestone ? "Milestone reached" : `${problem?.title ?? "Problem"} solved`, detail, milestone: Boolean(milestone) });
+    if (rewardTimer.current) window.clearTimeout(rewardTimer.current);
+    rewardTimer.current = window.setTimeout(() => setSheetReward(null), 5200);
+  }
+
+  function setProblemNote(number: number, notes: string) {
+    setProgress((current) => {
+      const next = { ...current };
+      // Re-inserting keeps the edited problem last, which is the row the
+      // sync effect upserts.
+      delete next[number];
+      next[number] = { status: current[number]?.status ?? "Todo", notes };
+      return next;
+    });
+    setNoteSavedAt(Date.now());
   }
 
   async function sendGroupMessage(event: FormEvent<HTMLFormElement>) {
@@ -2259,7 +2485,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs");
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2271,6 +2497,9 @@ function App() {
     }
     if (activeView === "cslabs") {
       return <main className="cslabs-public"><CsLabs onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+    }
+    if (activeView === "marketplace") {
+      return <main className="mkt-public"><Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => { window.location.href = "/mentor-studio"; }} onNavigateHome={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
     return <main className="mentorship-public"><MentorshipPayments /><StudentFooter /></main>;
   }
@@ -2307,21 +2536,20 @@ function App() {
             <BrainCircuit size={16} /> {tr("nav.tutor")}
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={["dashboard", "calendar", "roadmap", "lld", "whiteboard", "chat", "calls", "notes", "articles", "mentorship", "mentees"].includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={["dashboard", "calendar", "roadmap", "lld", "whiteboard", "chat", "calls", "notes", "articles", "mentorship", "mentees", "marketplace", "studio"].includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
-              <span className="nav-more-label">Practice</span>
               <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}><LayoutDashboard size={16} /> Progress</button>
               <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
-              <button className={activeView === "calendar" ? "active" : ""} aria-pressed={activeView === "calendar"} onClick={() => navigateToView("calendar")}><CalendarDays size={16} /> Calendar</button>
-              <span className="nav-more-label">Study</span>
-              <button className={activeView === "lld" ? "active" : ""} aria-pressed={activeView === "lld"} onClick={() => navigateToView("lld")}><Layers3 size={16} /> Senior SDE · LLD</button>
               <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
               <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
               <span className="nav-more-label">Connect</span>
               <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
               <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-              <button className={activeView === "mentorship" ? "active" : ""} aria-pressed={activeView === "mentorship"} onClick={() => navigateToView("mentorship")}><GraduationCap size={16} /> 1:1 mentorship</button>
-              <button className={activeView === "mentees" ? "active" : ""} aria-pressed={activeView === "mentees"} onClick={() => navigateToView("mentees")}><Users size={16} /> Mentees</button>
+              <button className={activeView === "mentees" ? "active" : ""} aria-pressed={activeView === "mentees"} onClick={() => navigateToView("mentees")}><Users size={16} /> My mentees</button>
+              <span className="nav-more-label">Mentors</span>
+              <button className={activeView === "mentorship" ? "active" : ""} aria-pressed={activeView === "mentorship"} onClick={() => navigateToView("mentorship")}><GraduationCap size={16} /> CodexSheet pass</button>
+              <button className={activeView === "marketplace" ? "active" : ""} aria-pressed={activeView === "marketplace"} onClick={() => navigateToView("marketplace")}><Store size={16} /> Mentor marketplace</button>
+              <button className={activeView === "studio" ? "active" : ""} aria-pressed={activeView === "studio"} onClick={() => navigateToView("studio")}><Package size={16} /> Mentor studio</button>
             </div>
           </details>
         </nav>
@@ -2438,12 +2666,15 @@ function App() {
         </div>}
       </section>
       {passGate && passLocked && !passChecking && (
-        <WorkspacePassLock
+        <>
+          {activeView === "problems" && <SheetProblemIndex onOpenStore={() => navigateToView("mentorship")} />}
+          <WorkspacePassLock
           checking={passChecking}
           onOpenStore={() => navigateToView("mentorship")}
           onRecheck={() => void refreshPassAccess()}
           onOpenGuru={() => navigateToView("guru")}
         />
+        </>
       )}
       {activeView === "home" && <HomePage
         solved={solved}
@@ -2457,6 +2688,8 @@ function App() {
       {activeView === "jobs" && !passLocked && <JobsPage />}
       {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
       {activeView === "mentees" && !passLocked && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
+      {activeView === "marketplace" && <Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => navigateToView("studio")} onNavigateHome={() => navigateToView("mentorship")} />}
+      {activeView === "studio" && <MentorStudio userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
       {activeView === "lld" && !passLocked && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
       {activeView === "whiteboard" && !passLocked && <LldWhiteboardPage />}
       {activeView === "companies" && !passLocked && <CompanyProblems />}
@@ -3079,7 +3312,7 @@ function App() {
             <p>250 hand-picked interview problems, organized around the patterns great engineers use every day.</p>
             <div className="problem-hero-actions"><button type="button" onClick={() => { setStatus("All status"); setPattern("All patterns"); setDifficulty("All levels"); document.querySelector(".problem-library-controls input")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Explore the library <ArrowRight size={15}/></button><span><Check size={14}/> Progress saves as you go</span></div>
           </div>
-          <div className="problem-hero-progress"><div className="problem-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties}><div><strong>{percent}%</strong><span>COMPLETE</span></div></div><span className="problem-progress-caption"><strong>{solved} <small>/ 250</small></strong> problems solved</span><div className="problem-progress-track"><i style={{ width: `${percent}%` }}/></div><span className="problem-progress-foot">Every problem makes you sharper.</span><span className="problem-progress-spark">✳</span></div>
+          <div className="problem-hero-progress"><div className="problem-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties}><div><strong>{percent}%</strong><span>COMPLETE</span></div></div><span className="problem-progress-caption"><strong>{solved} <small>/ 250</small></strong> problems solved</span><div className="problem-progress-track"><i style={{ width: `${percent}%` }}/></div><span className="problem-progress-rank"><strong>LEVEL {sheetRank.level}</strong><span>{sheetRank.title}</span><i className="problem-rank-track"><b style={{ width: `${sheetRank.percent}%` }}/></i><em>{sheetRank.toNext ? `${sheetRank.toNext} XP to ${sheetRanks[sheetRank.level]?.title ?? sheetRank.title}` : `${sheetRank.xp} XP - top rank`}</em></span><span className="problem-progress-foot">Every problem makes you sharper.</span><span className="problem-progress-spark">✳</span></div>
         </div>
         <div className="problem-library-stats">
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-solved"><Check size={16}/></span><span className="problem-stat-label">SOLVED</span><strong>{solved}<small> / 250</small></strong><span className="problem-stat-note">One rep at a time</span></div>
@@ -3099,11 +3332,29 @@ function App() {
             <label className="problem-filter-select"><span>DIFFICULTY</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select><ChevronDown size={14}/></label>
             <label className="problem-filter-select"><span>STATUS</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>All status</option><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={14}/></label>
           </div>
+          {sheetSearch ? (
+            <div className="sheet-recognition" role="status" aria-live="polite">
+              <span className="sheet-recognition-lead"><Sparkles size={13}/> Reading “{sheetSearch.raw}”</span>
+              {recognition?.patterns.map((name) => <button key={name} type="button" className="sheet-chip" onClick={() => { setPattern(name); setStatus("All status"); }}>{name}<small>{problems.filter((problem) => problem.pattern === name).length}</small></button>)}
+              {recognition?.difficulty && <button type="button" className="sheet-chip sheet-chip-level" onClick={() => setDifficulty(recognition.difficulty ?? "All levels")}>{recognition.difficulty}<small>level</small></button>}
+              {recognition?.status && <button type="button" className="sheet-chip sheet-chip-state" onClick={() => setStatus(recognition.status ?? "All status")}>{recognition.status}<small>status</small></button>}
+              {recognition && !recognition.matched && <span className="sheet-recognition-plain">matched by title</span>}
+              <span className="sheet-recognition-tally"><strong>{visibleProblems.length}</strong> on screen · {visibleSolved} solved · {Math.max(visibleProblems.length - visibleSolved, 0)} still open</span>
+            </div>
+          ) : (
+            <div className="sheet-recognition sheet-recognition-hint">
+              <span className="sheet-recognition-lead"><Search size={13}/> Type what you feel weak in</span>
+              {["dp", "graph", "easy unsolved", "sliding window", "monotonic"].map((sample) => <button key={sample} type="button" className="sheet-chip sheet-chip-ghost" onClick={() => setQuery(sample)}>{sample}</button>)}
+              <span className="sheet-recognition-tally">the sheet reads patterns, level and status as you type - and every solve pays XP</span>
+            </div>
+          )}
           <div className="problem-list-toolbar"><span><strong>{visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
           <div className="problem-list">{visibleProblems.length ? visibleProblems.map((problem) => {
             const current = progress[problem.number]?.status ?? "Todo";
             const statusClass = current.toLowerCase().replace(" ", "-");
-            return <article className="problem-list-row" key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label></article>;
+            const savedNote = progress[problem.number]?.notes ?? "";
+            const noteOpen = noteFor === problem.number;
+            return <article className={`problem-list-row${savedNote ? " has-note" : ""}`} key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span><button type="button" className={`problem-note-toggle${savedNote ? " filled" : ""}${noteOpen ? " open" : ""}`} aria-expanded={noteOpen} aria-label={`${savedNote ? "Edit" : "Add"} your note for ${problem.title}`} onClick={() => { const next = noteOpen ? null : problem.number; setNoteFor(next); setNoteDraft(next === null ? "" : savedNote); setNoteSavedAt(0); }}>{savedNote ? "✎" : "+"}</button></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label>{noteOpen && <div className="problem-note-panel"><textarea className="problem-note-input" rows={3} placeholder={`The one line about ${problem.title} you want to remember under pressure.`} value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} onBlur={() => { if (savedNote !== noteDraft.trim()) setProblemNote(problem.number, noteDraft.trim()); }} aria-label={`Note for ${problem.title}`}/><div className="problem-note-foot"><span className="problem-note-count">{noteWordCount} {noteWordCount === 1 ? "word" : "words"}</span><span className="problem-note-praise">{noteWordCount >= 12 ? "Interview-ready note." : noteWordCount > 0 ? "Good - future you will read this fast." : "Type the trick, not the whole solution."}</span><span className="problem-note-saved">{noteSavedAt ? `Saved ${new Date(noteSavedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Saves when you leave the box"}</span><button type="button" onClick={() => setProblemNote(problem.number, noteDraft.trim())}>Save note</button><button type="button" className="problem-note-close" onClick={() => { setNoteFor(null); setNoteDraft(""); }}>Close</button></div></div>}</article>;
           }) : <div className="problem-library-empty"><Search size={21}/><strong>No problems found</strong><span>Try another search or adjust your filters.</span><button type="button" onClick={() => {setQuery("");setPattern("All patterns");setDifficulty("All levels");setStatus("All status");}}>Clear filters</button></div>}</div>
           <div className="problem-library-footer"><span><Target size={14}/> Showing {visibleProblems.length} matching problems</span><span><Check size={14}/>{user ? "Synced to your account" : "Sign in to sync across devices"}</span></div>
         </div>
@@ -3115,6 +3366,7 @@ function App() {
           <div className="free-dsa-course-note"><strong>Practice as you learn</strong><span>Watch a lesson, then solve a matching problem in the library.</span></div>
         </aside>
         </div>
+        {sheetReward && <div className={`sheet-reward${sheetReward.milestone ? " milestone" : ""}`} key={sheetReward.id} role="status" aria-live="polite"><span className="sheet-reward-icon"><Sparkles size={18}/></span><div className="sheet-reward-copy"><strong>{sheetReward.headline}</strong><span>{sheetReward.detail}</span></div><em className="sheet-reward-xp">+{sheetReward.xp} XP</em><button type="button" className="sheet-reward-close" onClick={() => setSheetReward(null)} aria-label="Dismiss"><X size={14}/></button></div>}
       </section>}
       {patternTestOpen && <PatternTest pattern={patternTestOpen} onClose={() => setPatternTestOpen(null)} />}
 

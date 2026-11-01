@@ -45,7 +45,7 @@ const examples: Record<number, [string, string][]> = {
   39: [["numCourses = 2, prerequisites = [[1,0]]", "true"], ["numCourses = 2, prerequisites = [[1,0],[0,1]]", "false"], ["numCourses = 1, prerequisites = []", "true"], ["numCourses = 3, prerequisites = [[1,0],[2,1]]", "true"], ["numCourses = 3, prerequisites = [[1,0],[0,1],[2,1]]", "false"]],
   40: [["n = 5, edges = [[0,1],[0,2],[0,3],[1,4]]", "true"], ["n = 5, edges = [[0,1],[1,2],[2,3],[1,3],[1,4]]", "false"], ["n = 1, edges = []", "true"], ["n = 4, edges = [[0,1],[2,3]]", "false"], ["n = 4, edges = [[0,1],[1,2],[2,3],[3,0]]", "false"]],
   41: [["n = 2", "2"], ["n = 3", "3"], ["n = 1", "1"], ["n = 5", "8"], ["n = 0", "1"]],
-  42: [["nums = [1,2,3,1]", "4"], ["nums = [2,7,9,3,1]", "12"], ["nums = [2,1,1,2]", "4"], ["nums = [0]", "0"], ["nums = [2,7,9,3,1,5]", "14"]],
+  42: [["nums = [1,2,3,1]", "4"], ["nums = [2,7,9,3,1]", "12"], ["nums = [2,1,1,2]", "4"], ["nums = [0]", "0"], ["nums = [2,7,9,3,1,5]", "16"]],
   43: [["coins = [1,2,5], amount = 11", "3"], ["coins = [2], amount = 3", "-1"], ["coins = [1], amount = 0", "0"], ["coins = [1,3,4], amount = 6", "2"], ["coins = [2,5,10,1], amount = 27", "4"]],
   44: [["nums = [10,9,2,5,3,7,101,18]", "4"], ["nums = [0,1,0,3,2,3]", "4"], ["nums = [7,7,7,7]", "1"], ["nums = [1,2,3,4]", "4"], ["nums = []", "0"]],
   45: [["s = \"leetcode\", wordDict = [\"leet\",\"code\"]", "true"], ["s = \"applepenapple\", wordDict = [\"apple\",\"pen\"]", "true"], ["s = \"catsandog\", wordDict = [\"cats\",\"dog\",\"sand\",\"and\",\"cat\"]", "false"], ["s = \"a\", wordDict = [\"a\"]", "true"], ["s = \"cars\", wordDict = [\"car\",\"ca\",\"rs\"]", "true"]],

@@ -1,8 +1,20 @@
 // Sends Aditya one digest email for mentorship payments, call requests, mentee
-// chat messages and student feedback. Scheduled by pg_cron every few minutes;
-// safe to call by hand. It only ever reports counts, never student data.
+// chat messages and student feedback, and drains the offer-letter outbox so a
+// approved mentor gets their own mail. Scheduled by pg_cron every few minutes;
+// safe to call by hand. The digest only ever reports counts, never student data.
 
 type NotificationKind = "payment" | "call" | "chat" | "feedback";
+
+type OutboxLetter = {
+  id: number;
+  to_address: string;
+  recipient_name: string | null;
+  subject: string;
+  body_html: string;
+  body_text: string;
+  kind: string;
+  ref: string | null;
+};
 
 type QueueItem = {
   kind: NotificationKind;
@@ -124,6 +136,75 @@ async function requeue(items: QueueItem[]) {
   }
 }
 
+async function rpc(supabaseUrl: string, serviceRoleKey: string, name: string, args: Record<string, unknown>, timeoutMs = 10000) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`${name} failed (${response.status}): ${(await response.text()).slice(0, 200)}`);
+  return response.json();
+}
+
+// One send per letter: an offer note goes to the mentor, not into Aditya's
+// digest. A 4xx from Resend is a bad address or an unverified sender, so the
+// row stops at failed; anything else is a blip, so it goes back to the queue.
+async function drainOutbox(supabaseUrl: string, serviceRoleKey: string, resendApiKey: string, from: string) {
+  const summary = { claimed: 0, sent: 0, failed: 0, requeued: 0, error: null as string | null };
+  let letters: OutboxLetter[];
+  try {
+    letters = await rpc(supabaseUrl, serviceRoleKey, "email_outbox_claim", { p_limit: 6 }) as OutboxLetter[];
+  } catch (error) {
+    summary.error = error instanceof Error ? error.message : "The email outbox is unavailable.";
+    return summary;
+  }
+  if (!letters?.length) return summary;
+  summary.claimed = letters.length;
+
+  const backToQueue: number[] = [];
+  for (const letter of letters) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from,
+          to: [letter.to_address],
+          subject: letter.subject,
+          html: letter.body_html,
+          text: letter.body_text,
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (response.ok) {
+        summary.sent += 1;
+        await rpc(supabaseUrl, serviceRoleKey, "email_outbox_result", { p_id: letter.id, p_sent: true, p_error: "" }).catch(() => null);
+        continue;
+      }
+      const detail = (await response.text()).slice(0, 300);
+      if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+        summary.failed += 1;
+        await rpc(supabaseUrl, serviceRoleKey, "email_outbox_result", { p_id: letter.id, p_sent: false, p_error: detail }).catch(() => null);
+      } else {
+        backToQueue.push(letter.id);
+      }
+    } catch {
+      backToQueue.push(letter.id);
+    }
+  }
+
+  if (backToQueue.length) {
+    summary.requeued = backToQueue.length;
+    try {
+      await rpc(supabaseUrl, serviceRoleKey, "email_outbox_retry", { p_ids: backToQueue });
+    } catch {
+      // Rows stay queued anyway, so the next run retries them.
+    }
+  }
+  return summary;
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return respond({ error: "Use POST to run the notifier." }, 405);
@@ -137,6 +218,11 @@ Deno.serve(async (request: Request) => {
   if (!supabaseUrl || !serviceRoleKey) return respond({ error: "Supabase credentials are missing on the server." }, 503);
   if (!resendApiKey) return respond({ error: "Set RESEND_API_KEY to deliver notification mail." }, 503);
 
+  // Offer letters go out before the digest: a selected mentor should not wait
+  // on how many payment claims are sitting in the queue.
+  const mentorFrom = Deno.env.get("MENTOR_MAIL_FROM")?.trim() || from;
+  const outbox = await drainOutbox(supabaseUrl, serviceRoleKey, resendApiKey, mentorFrom);
+
   let items: QueueItem[];
   try {
     const queueResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/mentorship_pending_notifications`, {
@@ -148,11 +234,11 @@ Deno.serve(async (request: Request) => {
     if (!queueResponse.ok) throw new Error(`The notification queue is unavailable (${queueResponse.status}).`);
     items = await queueResponse.json() as QueueItem[];
   } catch (error) {
-    return respond({ error: error instanceof Error ? error.message : "Could not read the notification queue." }, 502);
+    return respond({ error: error instanceof Error ? error.message : "Could not read the notification queue.", letters: outbox }, 502);
   }
 
   const groups = itemsByKind(items ?? []);
-  if (groups.size === 0) return respond({ queued: 0, sent: 0 });
+  if (groups.size === 0) return respond({ queued: 0, sent: 0, letters: outbox });
 
   // The rows are already stamped as notified, so anything thrown while the mail
   // is built must put them back — otherwise a payment alert is lost for good.
@@ -172,15 +258,15 @@ Deno.serve(async (request: Request) => {
     });
   } catch (error) {
     await requeue(items);
-    return respond({ error: `The digest mail could not be prepared. Rows returned to the queue. ${error instanceof Error ? error.message : ""}` }, 502);
+    return respond({ error: `The digest mail could not be prepared. Rows returned to the queue. ${error instanceof Error ? error.message : ""}`, letters: outbox }, 502);
   }
 
   if (!mailResponse || !mailResponse.ok) {
     const detail = mailResponse ? (await mailResponse.text()).slice(0, 300) : "Resend could not be reached.";
     await requeue(items);
-    return respond({ error: `The notification mail failed. Rows returned to the queue. ${detail}` }, 502);
+    return respond({ error: `The notification mail failed. Rows returned to the queue. ${detail}`, letters: outbox }, 502);
   }
 
   const payload = await mailResponse.json() as { id?: string };
-  return respond({ queued: items.length, sent: 1, email_id: payload.id ?? null, kinds: [...groups.keys()] });
+  return respond({ queued: items.length, sent: 1, email_id: payload.id ?? null, kinds: [...groups.keys()], letters: outbox });
 });
