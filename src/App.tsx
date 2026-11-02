@@ -46,6 +46,8 @@ import {
   ShieldCheck,
   BookOpen,
   Clock3,
+  Crown,
+  ScrollText,
   Play,
   Pause,
   RotateCcw,
@@ -67,6 +69,7 @@ import {
   Lightbulb,
   Activity,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import CsLabs from "./CsLabs";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
@@ -78,22 +81,30 @@ import MentorshipPayments from "./MentorshipPayments";
 import MenteeSpace from "./MenteeSpace";
 import Marketplace from "./Marketplace";
 import MentorStudio from "./MentorStudio";
+import InterviewExperiences from "./InterviewExperiences";
+import Leaderboard from "./Leaderboard";
+import Certificates, { VerifyPage } from "./Certificates";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaTutor from "./DsaTutor";
 import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
-import { useT } from "./i18n";
+import { useT, type MessageKey } from "./i18n";
+import {
+  getSheetRank,
+  patterns,
+  problemByNumber,
+  problems,
+  seeds,
+  sheetRanks,
+  sheetXp,
+  sheetXpTotal,
+  solveMilestones,
+  type Problem,
+} from "./dsaSheet";
 
 type Status = "Todo" | "In progress" | "Solved";
-type Problem = {
-  number: number;
-  title: string;
-  pattern: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  link: string;
-};
 type ProgressMap = Record<number, { status: Status; notes: string }>;
 type ChatMessage = {
   id: number;
@@ -115,7 +126,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio";
+type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -127,6 +138,9 @@ const viewPaths: Record<WorkspaceView, string> = {
   tutor: "/tutor",
   guru: "/guru",
   cslabs: "/cslabs",
+  leaderboard: "/leaderboard",
+  certificate: "/certificate",
+  verify: "/verify",
   calendar: "/calendar",
   roadmap: "/roadmap",
   lld: "/roadmap/lld",
@@ -140,6 +154,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   mentees: "/mentees",
   marketplace: "/marketplace",
   studio: "/mentor-studio",
+  experiences: "/experiences",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -163,6 +178,18 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "Free algorithm labs — 22 animated DSA and CS simulations",
     description: "22 free, no-sign-in simulations of the algorithms interviewers ask about - sorting, two pointers, sliding window, hashing, trees, graphs, DP, recursion and greedy - running on numbers you type yourself.",
   },
+  leaderboard: {
+    title: "CodexSheet DSA leaderboard — who has solved the 250",
+    description: "Standings on the CodexSheet 250-problem DSA sheet, computed from solved problems only: 10 XP Easy, 20 Medium, 35 Hard, ranked on the server.",
+  },
+  certificate: {
+    title: "DSA practice certificate — CodexSheet",
+    description: "A certificate minted from the problems you actually marked solved on the CodexSheet 250-problem sheet, with a public code anyone can verify.",
+  },
+  verify: {
+    title: "Verify a CodexSheet certificate — check the code",
+    description: "Type a CodexSheet certificate code, CS-1A2B3C4D, to see the name, the milestone and the issue date. No account needed.",
+  },
   calendar: { title: "Study calendar — CodexSheet", description: "Plan the week you will actually study, and see the gap between plan and practice." },
   roadmap: { title: "12-week DSA roadmap — CodexSheet", description: "A week-by-week DSA roadmap built around your target placement season." },
   lld: { title: "Low-level design practice — CodexSheet", description: "Design the systems interviewers ask for: parking lot, elevator, splitwise, and the rest." },
@@ -174,7 +201,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
     title: "1-on-1 DSA mentorship — CodexSheet Family Pass",
-    description: "One ₹1,000 Family Pass: the full CodexSheet workspace plus 1-on-1 mentorship with calls, chat and a plan built around your target company.",
+    description: "Pay what you can between ₹10 and ₹800: the full CodexSheet workspace plus 1-on-1 mentorship with calls, chat and a plan built around your target company.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -182,6 +209,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     description: "Approved mentors publish their own sessions, workbooks and courses at their own prices, and are paid straight to their own UPI id.",
   },
   studio: { title: "Mentor studio — open a storefront on CodexSheet", description: "Apply for a mentor account, publish services and digital products, set your own prices, and confirm your own payments." },
+  experiences: {
+    title: "Real company interview experiences — CodexSheet",
+    description: "Round by round, in the candidate's own words: which company, which role, what they actually asked. Every card was written here and read by a mentor before it was published - nothing is scraped.",
+  },
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -192,6 +223,54 @@ function viewFromLocation(): WorkspaceView {
   const match = (Object.entries(viewPaths) as Array<[WorkspaceView, string]>).find(([, route]) => route === path);
   return match?.[0] ?? "dashboard";
 }
+
+// Every destination that is not one of the three navbar taps, grouped into the
+// parts of the product they belong to. The More menu renders straight from this.
+type NavMenuItem = { view: WorkspaceView; label: string; labelKey?: MessageKey; icon: LucideIcon };
+
+const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
+  {
+    label: "Workspace",
+    items: [
+      { view: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { view: "calendar", label: "Practice calendar", icon: CalendarDays },
+      { view: "certificate", label: "Certificate", icon: ScrollText },
+      { view: "home", label: "Home", labelKey: "nav.home", icon: House },
+    ],
+  },
+  {
+    label: "Learn",
+    items: [
+      { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
+      { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
+      { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
+      { view: "cslabs", label: "Algorithm Labs", icon: Activity },
+      { view: "roadmap", label: "Roadmap", icon: MapIcon },
+      { view: "tutor", label: "Ask Tutor", labelKey: "nav.tutor", icon: BrainCircuit },
+      { view: "notes", label: "Notes", icon: NotebookPen },
+      { view: "articles", label: "Articles", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { view: "chat", label: "Group chat", icon: MessageCircle },
+      { view: "calls", label: "Video calls", icon: Video },
+      { view: "experiences", label: "Interview experiences", icon: Building2 },
+    ],
+  },
+  {
+    label: "Mentors",
+    items: [
+      { view: "mentorship", label: "CodexSheet pass", icon: GraduationCap },
+      { view: "marketplace", label: "Mentor marketplace", icon: Store },
+      { view: "studio", label: "Mentor studio", icon: Package },
+      { view: "mentees", label: "My mentees", icon: Users },
+    ],
+  },
+];
+
+const moreMenuViews: WorkspaceView[] = navMenuGroups.flatMap((group) => group.items.map((item) => item.view));
 
 const passFeatureNames = [
   "Landing", "250-problem library", "Deva editor", "Animated DSA course", "Ask a DSA tutor",
@@ -1024,92 +1103,6 @@ function ArticlesPage({ onOpenIde }: { onOpenIde: () => void }) {
 }
 
 
-const seeds: Array<[string, string, Problem["difficulty"]]> = [
-  ["Two Sum", "Arrays & Hashing", "Easy"],
-  ["Valid Anagram", "Arrays & Hashing", "Easy"],
-  ["Group Anagrams", "Arrays & Hashing", "Medium"],
-  ["Top K Frequent Elements", "Arrays & Hashing", "Medium"],
-  ["Product of Array Except Self", "Arrays & Hashing", "Medium"],
-  ["Valid Palindrome", "Two Pointers", "Easy"],
-  ["3Sum", "Two Pointers", "Medium"],
-  ["Container With Most Water", "Two Pointers", "Medium"],
-  ["Trapping Rain Water", "Two Pointers", "Hard"],
-  ["Best Time to Buy and Sell Stock", "Sliding Window", "Easy"],
-  [
-    "Longest Substring Without Repeating Characters",
-    "Sliding Window",
-    "Medium",
-  ],
-  ["Longest Repeating Character Replacement", "Sliding Window", "Medium"],
-  ["Minimum Window Substring", "Sliding Window", "Hard"],
-  ["Valid Parentheses", "Stack", "Easy"],
-  ["Min Stack", "Stack", "Medium"],
-  ["Evaluate Reverse Polish Notation", "Stack", "Medium"],
-  ["Daily Temperatures", "Monotonic Stack", "Medium"],
-  ["Binary Search", "Binary Search", "Easy"],
-  ["Search a 2D Matrix", "Binary Search", "Medium"],
-  ["Koko Eating Bananas", "Binary Search", "Medium"],
-  ["Reverse Linked List", "Linked List", "Easy"],
-  ["Merge Two Sorted Lists", "Linked List", "Easy"],
-  ["Reorder List", "Linked List", "Medium"],
-  ["Remove Nth Node From End of List", "Linked List", "Medium"],
-  ["LRU Cache", "Linked List", "Medium"],
-  ["Invert Binary Tree", "Trees", "Easy"],
-  ["Maximum Depth of Binary Tree", "Trees", "Easy"],
-  ["Binary Tree Level Order Traversal", "Trees", "Medium"],
-  ["Validate Binary Search Tree", "Trees", "Medium"],
-  ["Kth Smallest Element in a BST", "Trees", "Medium"],
-  ["Subsets", "Backtracking", "Medium"],
-  ["Combination Sum", "Backtracking", "Medium"],
-  ["Permutations", "Backtracking", "Medium"],
-  ["Word Search", "Backtracking", "Medium"],
-  ["N-Queens", "Backtracking", "Hard"],
-  ["Number of Islands", "Graphs", "Medium"],
-  ["Clone Graph", "Graphs", "Medium"],
-  ["Rotting Oranges", "Graphs", "Medium"],
-  ["Course Schedule", "Graphs", "Medium"],
-  ["Graph Valid Tree", "Graphs", "Medium"],
-  ["Climbing Stairs", "1-D DP", "Easy"],
-  ["House Robber", "1-D DP", "Medium"],
-  ["Coin Change", "1-D DP", "Medium"],
-  ["Longest Increasing Subsequence", "1-D DP", "Medium"],
-  ["Word Break", "1-D DP", "Medium"],
-  ["Unique Paths", "2-D DP", "Medium"],
-  ["Longest Common Subsequence", "2-D DP", "Medium"],
-  ["Best Time to Buy and Sell Stock with Cooldown", "2-D DP", "Medium"],
-  ["Burst Balloons", "2-D DP", "Hard"],
-  ["Regular Expression Matching", "2-D DP", "Hard"],
-];
-const patterns = [
-  "Arrays & Hashing",
-  "Two Pointers",
-  "Sliding Window",
-  "Stack",
-  "Monotonic Stack",
-  "Binary Search",
-  "Linked List",
-  "Trees",
-  "Backtracking",
-  "Graphs",
-  "1-D DP",
-  "2-D DP",
-  "Greedy",
-  "Intervals",
-  "Heaps",
-  "Bit Manipulation",
-];
-const problems: Problem[] = Array.from({ length: 250 }, (_, index) => {
-  const seed = seeds[index % seeds.length];
-  const cycle = Math.floor(index / seeds.length);
-  return {
-    number: index + 1,
-    title: cycle === 0 ? seed[0] : `${seed[0]} · Pattern ${cycle + 1}`,
-    pattern:
-      cycle === 0 ? seed[1] : patterns[(index + cycle) % patterns.length],
-    difficulty: seed[2],
-    link: `https://leetcode.com/problems/${seed[0].toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}/description/?search=${encodeURIComponent(seed[0])}`,
-  };
-});
 
 function localDateKey(date: Date) {
   const year = date.getFullYear();
@@ -1147,55 +1140,6 @@ function getPracticeStreak(practiceDays: string[]) {
   return { current, best };
 }
 
-// Everything a student types or solves in the sheet pays out in XP, so the
-// streak, the rank and the toast all read from the same progress map.
-const sheetXp: Record<Problem["difficulty"], number> = { Easy: 10, Medium: 20, Hard: 35 };
-const problemByNumber = new Map(problems.map((item) => [item.number, item]));
-
-const sheetRanks: Array<{ at: number; title: string }> = [
-  { at: 0, title: "Warming up" },
-  { at: 100, title: "Pattern spotter" },
-  { at: 300, title: "Recursion runner" },
-  { at: 600, title: "Dynamic programmer" },
-  { at: 1000, title: "Complexity slayer" },
-  { at: 1600, title: "Interview ready" },
-  { at: 2400, title: "Sheet legend" },
-];
-
-function sheetXpTotal(map: ProgressMap) {
-  let xp = 0;
-  for (const [number, entry] of Object.entries(map)) {
-    if (entry.status !== "Solved") continue;
-    const problem = problemByNumber.get(Number(number));
-    xp += problem ? sheetXp[problem.difficulty] : 10;
-  }
-  return xp;
-}
-
-function getSheetRank(xp: number) {
-  let index = 0;
-  for (let i = 0; i < sheetRanks.length; i += 1) if (xp >= sheetRanks[i].at) index = i;
-  const tier = sheetRanks[index];
-  const next = sheetRanks[index + 1] ?? null;
-  return {
-    title: tier.title,
-    level: index + 1,
-    xp,
-    toNext: next ? next.at - xp : 0,
-    percent: next ? Math.round(((xp - tier.at) / (next.at - tier.at)) * 100) : 100,
-  };
-}
-
-const solveMilestones: Record<number, string> = {
-  1: "First problem solved. Every strong candidate starts exactly here.",
-  10: "10 solved - the patterns are starting to repeat for you.",
-  25: "25 solved. That is enough range to talk confidently in a real round.",
-  50: "50 solved. Half the sheet, and the habits are forming.",
-  100: "100 solved. You now out-practice most applicants you will be ranked against.",
-  150: "150 solved. The hard ones are yours to pick from.",
-  200: "200 solved. Fifty left and the sheet is finished.",
-  250: "250 solved. Whole sheet done. Nothing left to hide behind.",
-};
 
 type SheetReward = { id: number; xp: number; headline: string; detail: string; milestone: boolean };
 
@@ -1598,6 +1542,10 @@ function App() {
   const rewardTimer = useRef<number | null>(null);
   const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  // Bootstrap-style collapse: below the expand breakpoint the view list hides behind
+  // the hamburger and closes itself on every navigation.
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => { setNavOpen(false); }, [activeView]);
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
@@ -1673,7 +1621,7 @@ function App() {
   // Every other feature waits for a confirmed pass at whatever amount the
   // student could pay between ₹10 and ₹800.
   const tr = useT();
-  const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio"] as WorkspaceView[]).includes(activeView);
+  const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio", "experiences", "verify"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -2485,7 +2433,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace");
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2501,78 +2449,85 @@ function App() {
     if (activeView === "marketplace") {
       return <main className="mkt-public"><Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => { window.location.href = "/mentor-studio"; }} onNavigateHome={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
+    if (activeView === "experiences") {
+      return <main className="exp-public"><InterviewExperiences /><StudentFooter /></main>;
+    }
+    if (activeView === "verify") {
+      return <main className="cert-public"><VerifyPage /><StudentFooter /></main>;
+    }
     return <main className="mentorship-public"><MentorshipPayments /><StudentFooter /></main>;
   }
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <div className="brand-lockup">
+      <header className="topbar navbar">
+        <button type="button" className="navbar-brand brand-lockup" onClick={() => navigateToView("home")} aria-label="CodexSheet home">
           <img className="brand-primary-image" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" />
           <span className="workspace-name">DSA practice workspace</span>
-          <ChevronDown size={14} className="muted-icon" />
+        </button>
+        <div className="nav-badges" aria-label="Your standing on the sheet">
+          <span className="nav-badge nav-badge-rank">
+            <Crown size={14} />
+            <span><strong>{sheetRank.title}</strong><small>Level {sheetRank.level} · {sheetRank.xp} XP</small></span>
+          </span>
+          <span className="nav-badge nav-badge-streak">
+            <Flame size={14} />
+            <span><strong>{practiceStreak.current}</strong><small>{practiceStreak.current === 1 ? "day" : "days"} streak</small></span>
+          </span>
+          <span className="nav-badge nav-badge-sheet">
+            <span className="nav-badge-count"><strong>{solved}</strong><small>/ 250 solved</small></span>
+            <i className="nav-badge-track"><b style={{ width: `${percent}%` }} /></i>
+          </span>
         </div>
-        <nav className="view-switcher" aria-label="Workspace views">
-          <button className={activeView === "home" ? "active" : ""} aria-pressed={activeView === "home"} onClick={() => navigateToView("home")}>
-            <House size={16} /> {tr("nav.home")}
-          </button>
-          <button className={activeView === "problems" ? "active" : ""} aria-pressed={activeView === "problems"} onClick={() => navigateToView("problems")}>
+        <button type="button" className="navbar-toggler" aria-expanded={navOpen} aria-controls="workspace-nav" aria-label={navOpen ? "Close navigation" : "Open navigation"} onClick={() => setNavOpen((open) => !open)}>
+          <span className="navbar-toggler-icon" />
+        </button>
+        <div className={`navbar-collapse collapse${navOpen ? " show" : ""}`} id="workspace-nav">
+        <nav className="view-switcher navbar-nav" aria-label="Workspace views">
+          <button className={activeView === "problems" || activeView === "companies" ? "active" : ""} aria-pressed={activeView === "problems" || activeView === "companies"} onClick={() => navigateToView("problems")}>
             <Rows3 size={16} /> {tr("nav.problems")}
             <span>{visibleProblems.length}</span>
           </button>
-          <button className={activeView === "dsa-ide" ? "active" : ""} aria-pressed={activeView === "dsa-ide"} onClick={() => navigateToView("dsa-ide")}>
-            <CodeXml size={16} /> {tr("nav.deva")}
-          </button>
-          <button className={activeView === "dsa-course" ? "active" : ""} aria-pressed={activeView === "dsa-course"} onClick={() => navigateToView("dsa-course")}>
-            <BookOpen size={16} /> {tr("nav.course")}
-          </button>
-          <button className={activeView === "guru" ? "active" : ""} aria-pressed={activeView === "guru"} onClick={() => navigateToView("guru")}>
-            <Sparkles size={16} /> {tr("nav.guru")}
-          </button>
-          <button className={activeView === "cslabs" ? "active" : ""} aria-pressed={activeView === "cslabs"} onClick={() => navigateToView("cslabs")}>
-            <Activity size={16} /> Algorithm Labs
-          </button>
-          <button className={activeView === "tutor" ? "active" : ""} aria-pressed={activeView === "tutor"} onClick={() => navigateToView("tutor")}>
-            <BrainCircuit size={16} /> {tr("nav.tutor")}
+          <button className={activeView === "leaderboard" ? "active" : ""} aria-pressed={activeView === "leaderboard"} onClick={() => navigateToView("leaderboard")}>
+            <Trophy size={16} /> Leaderboard
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={["dashboard", "calendar", "roadmap", "lld", "whiteboard", "chat", "calls", "notes", "articles", "mentorship", "mentees", "marketplace", "studio"].includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
+          <summary className={moreMenuViews.includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
             <div className="nav-more-menu">
-              <button className={activeView === "dashboard" ? "active" : ""} aria-pressed={activeView === "dashboard"} onClick={() => navigateToView("dashboard")}><LayoutDashboard size={16} /> Progress</button>
-              <button className={activeView === "roadmap" ? "active" : ""} aria-pressed={activeView === "roadmap"} onClick={() => navigateToView("roadmap")}><MapIcon size={16} /> Roadmap</button>
-              <button className={activeView === "notes" ? "active" : ""} aria-pressed={activeView === "notes"} onClick={() => navigateToView("notes")}><NotebookPen size={16} /> Notes</button>
-              <button className={activeView === "articles" ? "active" : ""} aria-pressed={activeView === "articles"} onClick={() => navigateToView("articles")}><BookOpen size={16} /> Articles</button>
-              <span className="nav-more-label">Connect</span>
-              <button className={activeView === "chat" ? "active" : ""} aria-pressed={activeView === "chat"} onClick={() => navigateToView("chat")}><MessageCircle size={16} /> Group chat {chatUnreadIds.length > 0 && <span className="chat-unread-badge">{chatUnreadIds.length > 99 ? "99+" : chatUnreadIds.length}</span>}</button>
-              <button className={activeView === "calls" ? "active" : ""} aria-pressed={activeView === "calls"} onClick={() => navigateToView("calls")}><Video size={16} /> Video calls</button>
-              <button className={activeView === "mentees" ? "active" : ""} aria-pressed={activeView === "mentees"} onClick={() => navigateToView("mentees")}><Users size={16} /> My mentees</button>
-              <span className="nav-more-label">Mentors</span>
-              <button className={activeView === "mentorship" ? "active" : ""} aria-pressed={activeView === "mentorship"} onClick={() => navigateToView("mentorship")}><GraduationCap size={16} /> CodexSheet pass</button>
-              <button className={activeView === "marketplace" ? "active" : ""} aria-pressed={activeView === "marketplace"} onClick={() => navigateToView("marketplace")}><Store size={16} /> Mentor marketplace</button>
-              <button className={activeView === "studio" ? "active" : ""} aria-pressed={activeView === "studio"} onClick={() => navigateToView("studio")}><Package size={16} /> Mentor studio</button>
+              {navMenuGroups.map((group) => (
+                <section className="nav-more-group" key={group.label}>
+                  <span className="nav-more-label">{group.label}</span>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const unread = item.view === "chat" ? chatUnreadIds.length : 0;
+                    return (
+                      <button key={item.view} className={activeView === item.view ? "active" : ""} aria-pressed={activeView === item.view} onClick={() => navigateToView(item.view)}>
+                        <Icon size={16} /> {item.labelKey ? tr(item.labelKey) : item.label}
+                        {unread > 0 && <span className="chat-unread-badge">{unread > 99 ? "99+" : unread}</span>}
+                      </button>
+                    );
+                  })}
+                </section>
+              ))}
             </div>
           </details>
         </nav>
-        <div className="top-actions">
+        <div className="top-actions ms-auto">
           <button type="button" className="assistant-launcher" onClick={() => { window.location.href = "/assistant"; }} title="Ask your personal AI">
             <Sparkles size={15} /> <span>AI</span>
           </button>
             {isLoaded ? user ? (
               <UserButton />
             ) : (
-              <>
-                <SignInButton mode="modal" forceRedirectUrl={window.location.href}>
-                  <button className="secondary-button">Sign in</button>
-                </SignInButton>
-                <SignUpButton mode="modal" forceRedirectUrl={window.location.href}>
-                  <button className="primary-button">Create account</button>
-                </SignUpButton>
-              </>
+              <SignInButton mode="modal" forceRedirectUrl={window.location.href}>
+                <button className="btn btn-primary btn-sm primary-button">Sign in</button>
+              </SignInButton>
             ) : null}
+        </div>
         </div>
       </header>
       <section className={`workspace-header${activeView === "companies" ? " company-workspace-header" : ""}`}>
-        {activeView !== "home" && activeView !== "guru" && <div className="title-row">
+        {activeView !== "home" && activeView !== "guru" && activeView !== "leaderboard" && activeView !== "certificate" && activeView !== "verify" && <div className="title-row">
           <div>
             <div className="breadcrumb">
               <span>Library</span>
@@ -2603,6 +2558,7 @@ function App() {
                           : activeView === "calls"
                             ? "Video calls"
                   : activeView === "mentorship" ? "Mentorship"
+                  : activeView === "experiences" ? "Interview experiences"
                   : activeView === "mentees" ? "Mentees"
                   : activeView === "articles" ? "Articles" : "Job search"}
               </span>
@@ -2632,7 +2588,7 @@ function App() {
                         ? "Personal notebook"
                         : activeView === "calls"
                           ? "Video calls"
-                : activeView === "articles" ? "DSA concept articles" : "Find your next opportunity"}{" "}
+                : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : "Find your next opportunity"}{" "}
               <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
             </h1>
             <p>
@@ -2660,7 +2616,7 @@ function App() {
                         ? "Keep private study notes that sync with your account."
                         : activeView === "calls"
                           ? "Meet your study group face to face, right from your workspace."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : "Explore early career roles and find a team where you can grow."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "experiences" ? "Round-by-round accounts written by the candidate who sat in the room. Nothing here is scraped." : "Explore early career roles and find a team where you can grow."}
             </p>
           </div>
         </div>}
@@ -2690,6 +2646,10 @@ function App() {
       {activeView === "mentees" && !passLocked && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
       {activeView === "marketplace" && <Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => navigateToView("studio")} onNavigateHome={() => navigateToView("mentorship")} />}
       {activeView === "studio" && <MentorStudio userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
+      {activeView === "experiences" && <InterviewExperiences userId={user?.id ?? ""} />}
+      {activeView === "leaderboard" && !passLocked && <Leaderboard userId={user?.id ?? ""} />}
+      {activeView === "certificate" && !passLocked && <Certificates userId={user?.id ?? ""} />}
+      {activeView === "verify" && <VerifyPage />}
       {activeView === "lld" && !passLocked && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
       {activeView === "whiteboard" && !passLocked && <LldWhiteboardPage />}
       {activeView === "companies" && !passLocked && <CompanyProblems />}
@@ -2838,7 +2798,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all 19 features · ₹1,000 <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
+            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all 19 features · pay what you can <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
           </header>
           <div className="roadmap-controls">
             <label>

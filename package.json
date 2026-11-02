@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "@uiw/react-codemirror": "^4.25.12",
     "@vitejs/plugin-react": "latest",
+    "bootstrap": "^5.3.8",
     "gsap": "^3.15.0",
     "jose": "^6.2.12",
     "lucide-react": "latest",

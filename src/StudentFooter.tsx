@@ -79,6 +79,15 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
           <Mail size={13} /> {mentorEmail}
         </a>
         <span className="site-footer-rights">codexsheet@2026</span>
+        {/* A crawler cannot follow the workspace nav — it is all buttons. */}
+        <nav className="site-footer-links" aria-label="Free pages">
+          <a href="/cslabs">Algorithm labs</a>
+          <a href="/guru">Guru, the free AI teacher</a>
+          <a href="/experiences">Interview experiences</a>
+        <a href="/verify">Verify a certificate</a>
+          <a href="/marketplace">Mentor marketplace</a>
+          <a href="/mentorship">Family Pass</a>
+        </nav>
       </div>
       <form className="site-footer-feedback" onSubmit={(event) => void submit(event)}>
         <span className="site-footer-kicker"><MessageSquareText size={13} /> {tr("footer.feedbackTitle")}</span>

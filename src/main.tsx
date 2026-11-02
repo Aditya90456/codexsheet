@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./bootstrap-compat.css";
 import "./styles.css";
 import "./redesign.css";
 import "./deva-runner.css";

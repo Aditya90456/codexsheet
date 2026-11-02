@@ -44,6 +44,7 @@ import {
   type MentorAccount,
   type MentorProfile,
 } from "./mentorMarket";
+import { loadExperienceQueue, outcomeLabel, setExperienceVisibility, type ExperienceRow } from "./interviewStories";
 
 const expertiseHint = "Comma separated, e.g. Dynamic Programming, Graphs, System design";
 
@@ -123,6 +124,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
   const [draft, setDraft] = useState<Draft | null>(null);
   const [sales, setSales] = useState<MarketOrderRow[]>([]);
   const [applications, setApplications] = useState<MentorProfile[]>([]);
+  const [stories, setStories] = useState<ExperienceRow[]>([]);
   const [busy, setBusy] = useState<"save" | "product" | "sale" | "review" | "delete" | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -150,13 +152,17 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
     }
     setProducts(ownProducts);
     setSales(ownSales);
-    if (nextAccount?.platform_mentor) setApplications(await loadMentorApplications());
+    if (nextAccount?.platform_mentor) {
+      setApplications(await loadMentorApplications());
+      setStories((await loadExperienceQueue()).rows);
+    }
     setLoading(false);
   }
 
   useEffect(() => { void refresh(); }, [userId]);
 
   const pendingSales = useMemo(() => sales.filter((row) => row.status === "awaiting"), [sales]);
+  const pendingStories = useMemo(() => stories.filter((story) => !story.visible), [stories]);
   const earned = account?.earned ?? sales
     .filter((row) => row.status === "confirmed" || row.status === "delivered")
     .reduce((total, row) => total + Number(row.amount), 0);
@@ -216,6 +222,16 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
     const error = await reviewMentorApplication(application.user_id, status);
     setBusy(null);
     setNotice(error ? { ok: false, text: error } : { ok: true, text: `${application.display_name} ${status}.` });
+    void refresh();
+  }
+
+  // Publishing is the only move a mentor has on someone else's story: the words
+  // belong to the candidate and the DB trigger refuses every other edit.
+  async function publishStory(id: number, visible: boolean) {
+    setBusy("review");
+    const error = await setExperienceVisibility(id, visible);
+    setBusy(null);
+    setNotice(error ? { ok: false, text: error } : { ok: true, text: visible ? "Published on /experiences." : "Taken off the public page." });
     void refresh();
   }
 
@@ -280,6 +296,42 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
                     <span className={`mkt-state ${application.status}`}>{application.status}</span>
                     <button type="button" className="mkt-primary" onClick={() => void decide(application, "approved")} disabled={busy === "review"}><BadgeCheck size={14} /> Approve</button>
                     <button type="button" className="mkt-ghost" onClick={() => void decide(application, "suspended")} disabled={busy === "review"}>Suspend</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {account?.platform_mentor && (
+        <section className="mkt-panel" aria-label="Interview experiences to read">
+          <h2>{<UserRoundSearch size={16} />} Interview experiences {pendingStories.length > 0 && <span className="mkt-count">{pendingStories.length} to read</span>}</h2>
+          <p className="mkt-small">Students write these on <a href="/experiences">/experiences</a>. A story stays invisible until someone with platform rights publishes it, and after that the only move left is taking it down — the database refuses any edit to the candidate&apos;s words.</p>
+          {stories.length === 0 ? (
+            <p className="mkt-empty">Nobody has sent one in yet.</p>
+          ) : (
+            <ul className="mkt-app-list">
+              {stories.map((story) => (
+                <li key={`story-${story.id}`} className="mkt-app">
+                  <div>
+                    <strong>{story.company} · {story.role}</strong>
+                    <span>{outcomeLabel[story.outcome]} · {story.interview_year}{story.location ? ` · ${story.location}` : ""} · {story.rounds.length} round{story.rounds.length === 1 ? "" : "s"}</span>
+                    {story.rounds.map((round, index) => (
+                      <span key={`story-${story.id}-round-${index}`} className="mkt-small">
+                        <strong>{round.name}</strong>{round.questions.length > 0 ? ` — ${round.questions.join(" · ")}` : " — no questions noted"}
+                      </span>
+                    ))}
+                    <p>{story.narrative}</p>
+                    <span className="mkt-mono">{story.handle || "anonymous"} · {story.user_id || "no login on the submission"}</span>
+                  </div>
+                  <div className="mkt-app-actions">
+                    <span className={`mkt-state ${story.visible ? "approved" : "pending"}`}>{story.visible ? "live" : "awaiting"}</span>
+                    {story.visible ? (
+                      <button type="button" className="mkt-ghost" onClick={() => void publishStory(story.id, false)} disabled={busy === "review"}><X size={14} /> Take down</button>
+                    ) : (
+                      <button type="button" className="mkt-primary" onClick={() => void publishStory(story.id, true)} disabled={busy === "review"}><BadgeCheck size={14} /> Publish</button>
+                    )}
                   </div>
                 </li>
               ))}
