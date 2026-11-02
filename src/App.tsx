@@ -68,6 +68,7 @@ import {
   GraduationCap,
   Lightbulb,
   Activity,
+  Layers,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -84,6 +85,7 @@ import MentorStudio from "./MentorStudio";
 import InterviewExperiences from "./InterviewExperiences";
 import Leaderboard from "./Leaderboard";
 import Certificates, { VerifyPage } from "./Certificates";
+import PatternLibrary from "./PatternLibrary";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaTutor from "./DsaTutor";
@@ -126,12 +128,13 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
+type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
   dashboard: "/dashboard",
   problems: "/problems",
+  patterns: "/patterns",
   companies: "/companies",
   "dsa-ide": "/ide/dsa",
   "dsa-course": "/learn/dsa",
@@ -168,6 +171,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   problems: {
     title: "The CodexSheet DSA problem sheet — by pattern and company",
     description: "A curated DSA problem sheet organised by pattern, difficulty and hiring company, with the solution approach for every problem.",
+  },
+  patterns: {
+    title: "16 DSA patterns, each with a spoken lesson film — CodexSheet",
+    description: "Every pattern behind the 250-problem DSA sheet: how to spot it, the code skeleton, an eight-week interview plan, and a lesson film that reads its own captions in eight Indian languages while the real algorithm runs step by step on screen.",
   },
   companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
   "dsa-ide": { title: "DSA code editor with real test judging — CodexSheet", description: "Write Python, Java, C++ or JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
@@ -241,6 +248,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
   {
     label: "Learn",
     items: [
+      { view: "patterns", label: "Pattern library", icon: Layers },
       { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
       { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
@@ -1621,7 +1629,7 @@ function App() {
   // Every other feature waits for a confirmed pass at whatever amount the
   // student could pay between ₹10 and ₹800.
   const tr = useT();
-  const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio", "experiences", "verify"] as WorkspaceView[]).includes(activeView);
+  const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio", "experiences", "verify", "patterns"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -2433,7 +2441,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify");
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2451,6 +2459,9 @@ function App() {
     }
     if (activeView === "experiences") {
       return <main className="exp-public"><InterviewExperiences /><StudentFooter /></main>;
+    }
+    if (activeView === "patterns") {
+      return <main className="patterns-public"><PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} /><StudentFooter /></main>;
     }
     if (activeView === "verify") {
       return <main className="cert-public"><VerifyPage /><StudentFooter /></main>;
@@ -2527,7 +2538,7 @@ function App() {
         </div>
       </header>
       <section className={`workspace-header${activeView === "companies" ? " company-workspace-header" : ""}`}>
-        {activeView !== "home" && activeView !== "guru" && activeView !== "leaderboard" && activeView !== "certificate" && activeView !== "verify" && <div className="title-row">
+        {activeView !== "home" && activeView !== "guru" && activeView !== "leaderboard" && activeView !== "certificate" && activeView !== "verify" && activeView !== "patterns" && <div className="title-row">
           <div>
             <div className="breadcrumb">
               <span>Library</span>
@@ -3264,6 +3275,9 @@ function App() {
           )}
         </section>
       )}
+      {activeView === "patterns" && <section className="patterns-page">
+        <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
+      </section>}
       {activeView === "problems" && !passLocked && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">

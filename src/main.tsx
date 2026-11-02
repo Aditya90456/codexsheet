@@ -12,6 +12,7 @@ import "./roadmap-board.css";
 import "./mentorship.css";
 import "./guru.css";
 import "./cslabs.css";
+import "./pattern-library.css";
 import "./mentees.css";
 import "./marketplace.css";
 import "./articleReader.css";
