@@ -772,16 +772,29 @@ grant select, insert, update on public.mentorship_orders to authenticated;
 grant insert on public.mentorship_orders to anon;
 grant usage, select on sequence public.mentorship_orders_id_seq to anon, authenticated;
 
--- Pay what you can: a Family pass outside the ₹10 to ₹800 band never lands.
+-- One flat ₹199: a Family claim at any other amount never lands, and an
+-- account that already holds a confirmed pass cannot file a second one.
 create or replace function public.mentorship_orders_family_pass_only()
 returns trigger
 language plpgsql
 as $fn$
 begin
-  if new.plan = 'family' and (new.amount < 10 or new.amount > 800) then
-    raise exception 'The CodexSheet pass is pay-what-you-can between ₹10 and ₹800 (got ₹%)', new.amount
+  if new.plan = 'family' and new.amount <> 199 then
+    raise exception 'The CodexSheet pass is one flat ₹199 (got ₹%)', new.amount
       using errcode = '22023';
   end if;
+
+  if coalesce(new.user_id, '') <> '' and new.plan = 'family' then
+    perform 1 from public.mentorship_orders paid
+      where paid.user_id = new.user_id
+        and paid.status in ('confirmed', 'delivered')
+      for update;
+    if found then
+      raise exception 'This account already holds a confirmed CodexSheet pass'
+        using errcode = '23505';
+    end if;
+  end if;
+
   return new;
 end;
 $fn$;
@@ -883,13 +896,13 @@ begin
     picked.buyer_name,
     picked.buyer_contact,
     (case picked.plan
-      when 'family' then 'CodexSheet Family pass (all 19 features)'
+      when 'family' then 'CodexSheet Family pass (all 17 features) - flat price'
       when 'one-to-one' then '1:1 mentorship (legacy price)'
       when 'ltm-3-months' then 'Long-term mentorship (3 months)'
       when 'ltm-6-months' then 'Long-term mentorship (6 months)'
       else '250-pattern DSA roadmap (full access unlock)' end) || ' - Rs ' || to_char(picked.amount, 'FM999990.00'),
     concat_ws(' | ',
-      case when picked.paytm_reference <> '' then 'Paytm reference ' || picked.paytm_reference end,
+      case when picked.paytm_reference <> '' then 'UTR ' || picked.paytm_reference end,
       case when picked.note <> '' then picked.note end),
     picked.created_at
   from picked;
@@ -1150,6 +1163,11 @@ begin
   from public.mentorship_orders placed
   where trim(lower(placed.reference)) = trim(lower(coalesce(p_reference, '')));
 
+  if btrim(coalesce(v_order.paytm_reference, '')) = '' then
+    raise exception 'Order % has no Paytm UTR recorded, so there is nothing to verify against the statement', v_order.reference
+      using errcode = '22023';
+  end if;
+
   update public.mentorship_orders placed
     set status = 'confirmed', notified_at = coalesce(placed.notified_at, now()), updated_at = now()
   where placed.reference = v_order.reference;
@@ -1187,7 +1205,7 @@ $fn$;
 revoke all on function public.mentor_confirm_mentee(text, text, text) from public;
 grant execute on function public.mentor_confirm_mentee(text, text, text) to authenticated, service_role;
 
--- ₹1,000 opens all 19 features. The gate asks one question instead of naming a
+-- ₹199 opens all 17 features. The gate asks one question instead of naming a
 -- product: is this a mentor, or a buyer with a confirmed payment (matched on the
 -- Clerk id or the verified email of an order paid without signing in)?
 -- mentorship_orders itself stays unreadable from the browser.
@@ -1633,23 +1651,22 @@ security definer
 set search_path = public
 as $fn$
 declare
-  v_room uuid;
   v_meet text := btrim(coalesce(p_meeting_url, ''));
   v_when timestamptz;
-  v_old_room uuid;
 begin
   if not public.is_workspace_mentor() then
     raise exception 'Only mentors can open a session' using errcode = '42501';
   end if;
 
-  -- Only a real Google Meet link is stored; anything else would send a student
-  -- somewhere the mentor did not intend.
-  if v_meet <> '' and v_meet !~* '^https://meet\.google\.com/[a-z0-9/?=&%._-]+$' then
-    raise exception 'Use a https://meet.google.com link or leave it empty for the platform room'
+  -- Sessions are Google Meet only. The link used to be optional because an empty
+  -- one fell back to a browser room that needs TURN to connect at all; now the
+  -- link is the session and nothing else is offered.
+  if v_meet !~* '^https://meet\.google\.com/[a-z0-9/?=&%._-]+$' then
+    raise exception 'A session needs a https://meet.google.com link'
       using errcode = '22023', hint = v_meet;
   end if;
 
-  select into v_when, v_old_room coalesce(p_scheduled_at, lane.scheduled_at), lane.live_room_id
+  select into v_when coalesce(p_scheduled_at, lane.scheduled_at)
   from public.mentees lane where lane.id = p_mentee_id;
 
   if v_when is not null and exists (
@@ -1665,33 +1682,19 @@ begin
       using errcode = '23505';
   end if;
 
-  v_room := gen_random_uuid();
-
-  -- The room must exist in call_rooms or join_call_room rejects the student.
-  insert into public.call_rooms (id, created_by)
-  values (v_room, auth.jwt() ->> 'sub');
-
-  -- A mentor only owns their own students; the room binds to that lane alone.
   update public.mentees lane
-    set live_room_id = v_room,
-        meeting_url = v_meet,
+    set meeting_url = v_meet,
         scheduled_at = v_when,
+        live_room_id = null,
         updated_at = now()
     where lane.id = p_mentee_id
       and lane.mentor_user_id = coalesce(auth.jwt() ->> 'sub', '');
 
   if not found then
-    delete from public.call_rooms room where room.id = v_room;
     raise exception 'No such mentee' using errcode = 'P0002';
   end if;
 
-  -- Re-opening replaces the room, so the old one must not linger as an
-  -- enterable empty call.
-  if v_old_room is not null and v_old_room <> v_room then
-    delete from public.call_rooms room where room.id = v_old_room;
-  end if;
-
-  return jsonb_build_object('room', v_room, 'meeting_url', v_meet, 'scheduled_at', v_when);
+  return jsonb_build_object('meeting_url', v_meet, 'scheduled_at', v_when);
 end;
 $fn$;
 

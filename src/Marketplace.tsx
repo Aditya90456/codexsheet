@@ -374,7 +374,7 @@ export default function Marketplace({
                         {watch.delivery_note && /^https?:\S+$/.test(watch.delivery_note.trim()) && (
                           <span className="mkt-join">
                             <Video size={14} />
-                            <a href={watch.delivery_note.trim()} target="_blank" rel="noopener noreferrer">Join the room</a>
+                            <a href={watch.delivery_note.trim()} target="_blank" rel="noopener noreferrer">Join on Google Meet</a>
                           </span>
                         )}
                       </>

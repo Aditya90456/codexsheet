@@ -1,7 +1,8 @@
-// Mentorship pricing and the Paytm-only payment contract.
+// Mentorship pricing and the Paytm QR-only payment contract.
 // Money moves through Aditya's personal Paytm UPI handle, so the app never
-// touches a gateway: it locks the amount, builds the UPI intent, and records
-// the claim for him to confirm against his Paytm statement.
+// touches a gateway: it locks the amount into the code the student scans,
+// requires the UTR from the receipt, and records the claim for him to confirm
+// against his Paytm statement.
 export const payee = {
   phone: "8335873311",
   upiId: "8335873311@paytm",
@@ -14,25 +15,29 @@ export const mentorEmail = "adityabakshi1011@gmail.com";
 export type MentorshipPlanId = "family";
 
 /**
- * Pay what you can. Most students cannot clear a fixed fee, so the band is the
- * price: the DB trigger rejects a family order outside ₹10 to ₹800 and
- * workspace_unlocked() treats every confirmed amount as a full pass.
+ * One flat price for the whole workspace. The QR is generated from this number
+ * and the database insert trigger rejects a family order that is not exactly
+ * ₹199, so neither the page nor a hand-edited UPI app can change what is owed.
  */
-export const passBand = { min: 10, max: 800, suggested: 250, presets: [10, 50, 100, 250, 500, 800] } as const;
+export const passPrice = 199;
 
-export function clampAmount(value: number): number {
-  if (!Number.isFinite(value)) return passBand.suggested;
-  return Math.min(passBand.max, Math.max(passBand.min, Math.round(value)));
-}
+/** Everything the pass opens. The lock screen renders this list and the copy quotes its length. */
+export const passFeatureNames = [
+  "Landing", "250-problem library", "Deva editor", "Animated DSA course",
+  "Progress dashboard", "Company question sets", "Roadmap board", "Senior SDE · LLD", "LLD whiteboard",
+  "Personal notes", "Concept articles", "Job search", "Group chat", "Google Meet sessions",
+  "Practice calendar", "1:1 Google Meet sessions", "Mentee space",
+];
+
+/** How many workspace features the pass opens; every piece of copy quotes this. */
+export const passFeatureCount = passFeatureNames.length;
 
 export type MentorshipPlan = {
   id: MentorshipPlanId;
   tag: string;
   title: string;
   subtitle: string;
-  min: number;
-  max: number;
-  suggested: number;
+  price: number;
   cadence: string;
   includes: string[];
   highlight?: boolean;
@@ -43,18 +48,15 @@ export const mentorshipPlans: MentorshipPlan[] = [
     id: "family",
     tag: "FAM",
     title: "CodexSheet Family Pass",
-    subtitle: "All 19 features, whatever you can pay",
-    min: passBand.min,
-    max: passBand.max,
-    suggested: passBand.suggested,
+    subtitle: `All ${passFeatureCount} features · one flat ${rupees(passPrice)}`,
+    price: passPrice,
     cadence: "one payment · no expiry",
     includes: [
-      "Every one of the 19 workspace features, opened at once",
+      `Every one of the ${passFeatureCount} workspace features, opened at once`,
       "All 250 patterns and the full problem library",
-      "Deva editor with real judged submissions, the animated course and the AI tutor",
-      "Roadmap board, notes, articles, LLD path, whiteboard, calendar and job search",
-      "Group chat, video calls and the personal AI",
-      "A 1:1 session with Aditya you book yourself, plus the private chat lane",
+      "Deva editor with real judged submissions and the animated course",
+      "Roadmap board, notes, articles, job search and the practice calendar",
+      "Group chat, plus a 1:1 Google Meet session with Aditya you book yourself",
     ],
   },
 ];
@@ -96,10 +98,10 @@ export const refundWindow = {
 
 /** What happens between the Paytm QR and the first call. */
 export const passFlow: { title: string; body: string }[] = [
-  { title: "Pay on Paytm", body: "Scan the QR. Amount and payee are locked in the code, so there is nothing to mistype." },
-  { title: "Record your reference", body: "Fill the small form on this page. It files the claim with your reference code." },
-  { title: "Aditya matches the money", body: "He ticks your reference against his own Paytm statement. The badge flips DUE → DONE." },
-  { title: "Your lane opens", body: "All 19 features, the full 250-problem sheet, your weekly slot and the private chat." },
+  { title: "Pay the ₹199", body: "Scan the QR. The amount is printed inside the code and the server refuses any other figure, so there is nothing to mistype or underpay." },
+  { title: "Record reference and UTR", body: "Fill the small form on this page. Your Paytm UTR is required — it is the only thing that ties your claim to a real statement entry." },
+  { title: "Aditya verifies the UTR", body: "He searches his Paytm merchant statement for that UTR. Only a match flips the badge DUE → DONE." },
+  { title: "Your lane opens", body: `All ${passFeatureCount} features, the full 250-problem sheet, your weekly slot and the private chat.` },
 ];
 
 /** Only promises the product actually keeps — no invented résumé. */
@@ -113,6 +115,26 @@ export const mentorCraft: string[] = [
 /** Rupee display with Indian grouping, so 1000 reads as ₹1,000. */
 export function rupees(amount: number): string {
   return `₹${amount.toLocaleString("en-IN")}`;
+}
+
+/**
+ * Sessions and webinars happen on Google Meet. The same pattern the database uses
+ * is applied client-side so a mentor is told before the RPC rejects the link.
+ */
+export function isMeetLink(value: string): boolean {
+  return /^https:\/\/meet\.google\.com\/[a-z0-9/?=&%._-]+$/i.test(value.trim());
+}
+
+/**
+ * The UPI UTR is the only string that appears on both the student's Paytm receipt
+ * and Aditya's merchant statement, so it is what makes a claim searchable instead
+ * of eyeballed. A real one is a 12-digit bank reference and can arrive prefixed
+ * ("UTR2134...", "PAY..."), so length plus a digit count gates it rather than a
+ * strict pattern - a phone number must not pass as proof of payment.
+ */
+export function utrValid(value: string): boolean {
+  const cleaned = value.replace(/[\s-]/g, "");
+  return /^[A-Za-z0-9]{12,30}$/.test(cleaned) && (cleaned.match(/\d/g) ?? []).length >= 11;
 }
 
 /** Names a plan for a student, including the products retired when the pass launched. */
@@ -184,17 +206,21 @@ export function paytmAppUriFor(payee: UpiPayee, reference: string, amount: numbe
   return `paytmmp://pay?${query}`;
 }
 
-/** The Family Pass is capped by its band; a mentor's own price is whatever they set. */
-export function upiUri(plan: MentorshipPlan, reference: string, amount: number): string {
-  return upiUriFor(payee, reference, clampAmount(amount));
+/**
+ * The pass always costs ₹199, so these three ignore whatever the caller holds
+ * and stamp the fixed price into the intent. A stale `amount` in component
+ * state can therefore never reach a student's UPI app.
+ */
+export function upiUri(plan: MentorshipPlan, reference: string): string {
+  return upiUriFor(payee, reference, plan.price);
 }
 
-export function paytmIntentUri(plan: MentorshipPlan, reference: string, amount: number): string {
-  return paytmIntentUriFor(payee, reference, clampAmount(amount));
+export function paytmIntentUri(plan: MentorshipPlan, reference: string): string {
+  return paytmIntentUriFor(payee, reference, plan.price);
 }
 
-export function paytmAppUri(plan: MentorshipPlan, reference: string, amount: number): string {
-  return paytmAppUriFor(payee, reference, clampAmount(amount));
+export function paytmAppUri(plan: MentorshipPlan, reference: string): string {
+  return paytmAppUriFor(payee, reference, plan.price);
 }
 
 /**

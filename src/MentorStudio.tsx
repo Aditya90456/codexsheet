@@ -432,7 +432,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
               {draft.kind === "webinar" && (
                 <>
                   <label>Starts (your local time)<input type="datetime-local" value={draft.starts_at} onChange={(e) => setDraft({ ...draft, starts_at: e.target.value })} /></label>
-                  <label>Room link<input value={draft.room_url} maxLength={500} onChange={(e) => setDraft({ ...draft, room_url: e.target.value })} placeholder="https://meet.google.com/…" /></label>
+                  <label>Google Meet link for the webinar<input value={draft.room_url} maxLength={500} onChange={(e) => setDraft({ ...draft, room_url: e.target.value })} placeholder="https://meet.google.com/…" /></label>
                   <p className="mkt-small mkt-wide">The webinar leaves the shop window by itself once {istWhen(draft.starts_at) || "its time"} has passed. The link is not public: students get it from you as the delivery note when you mark their claim delivered.</p>
                 </>
               )}
@@ -446,7 +446,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
               </button>
             </div>
             <p className="mkt-price-note">{rupees(draft.price)} · your QR below is built from <span className="mkt-mono">{profile.upi_id || "your UPI id"}</span>. Buyers pay you, not CodexSheet.</p>
-            {draft.kind === "webinar" && <p className="mkt-price-note">Sold for {istWhen(draft.starts_at) || "the time you picked"} · buyers see the date on the listing and get the room link from you.</p>}
+            {draft.kind === "webinar" && <p className="mkt-price-note">Sold for {istWhen(draft.starts_at) || "the time you picked"} · buyers see the date on the listing and get your Google Meet link from you.</p>}
             <div className="mkt-editor-foot">
               <img src={qrImageUrl(sellerUpiUri(profile, draft.slug || "your-product", draft.price), 336)} alt="Your UPI QR for this product" width={168} height={168} />
               <button type="button" className="mkt-primary" onClick={() => void saveDraft()} disabled={busy === "product"}>
@@ -485,7 +485,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
                   </p>
                   {sale.status === "awaiting" ? (
                     <div className="mkt-sale-actions">
-                      <input placeholder={sale.product_title && sale.status === "awaiting" ? "Paste the room link here so the student can join" : "Delivery note the student sees (link, time, what you sent)"} maxLength={1000} value={saleNotes[sale.reference] ?? ""} onChange={(e) => setSaleNotes({ ...saleNotes, [sale.reference]: e.target.value })} />
+                      <input placeholder={sale.product_title && sale.status === "awaiting" ? "Paste the Google Meet link here so the buyer can join" : "Delivery note the student sees (link, time, what you sent)"} maxLength={1000} value={saleNotes[sale.reference] ?? ""} onChange={(e) => setSaleNotes({ ...saleNotes, [sale.reference]: e.target.value })} />
                       <button type="button" className="mkt-primary" onClick={() => void closeSale(sale.reference, "confirmed")} disabled={busy === "sale"}>Money received</button>
                       <button type="button" className="mkt-secondary" onClick={() => void closeSale(sale.reference, "delivered")} disabled={busy === "sale"}>Delivered</button>
                       <button type="button" className="mkt-ghost danger" onClick={() => void closeSale(sale.reference, "cancelled")} disabled={busy === "sale"}>Cancel</button>

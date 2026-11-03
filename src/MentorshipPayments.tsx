@@ -4,15 +4,15 @@ import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
 import {
   curriculum,
-  clampAmount,
   mentorCraft,
   mentorEmail,
   mentorshipPlans,
   refundWindow,
   orderReference,
-  passBand,
+  passFeatureCount,
   passFlow,
   payee,
+  passPrice,
   paytmAppUri,
   paytmIntentUri,
   paymentBadge,
@@ -20,6 +20,7 @@ import {
   queuedOrders,
   recordOrder,
   rupees,
+  utrValid,
   upiUri,
   type MentorshipOrder,
 } from "./mentorship";
@@ -32,7 +33,7 @@ const shortDay = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 const contactHref = (reference: string) =>
-  `mailto:${mentorEmail}?subject=${encodeURIComponent(`CodexSheet mentorship payment ${reference}`)}&body=${encodeURIComponent(`Reference: ${reference}\nPaytm transaction ID:\nWhat I want to work on:`)}`;
+  `mailto:${mentorEmail}?subject=${encodeURIComponent(`CodexSheet mentorship payment ${reference}`)}&body=${encodeURIComponent(`Reference: ${reference}\nPaytm UTR:\nWhat I want to work on:`)}`;
 
 function usePlatform() {
   return useMemo(() => {
@@ -48,7 +49,6 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   const [qrDead, setQrDead] = useState(false);
   const [superseded, setSuperseded] = useState("");
   const ticket = useMemo(() => ({ reference, issuedAt }), [reference, issuedAt]);
-  const [amount, setAmount] = useState(plan.suggested);
   const [buyerName, setBuyerName] = useState(userName);
   const [buyerContact, setBuyerContact] = useState(userEmail);
   const [paytmReference, setPaytmReference] = useState("");
@@ -100,7 +100,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     void loadLedger();
   }
 
-  const paytmUri = platform.android ? paytmIntentUri(plan, reference, amount) : platform.ios ? paytmAppUri(plan, reference, amount) : upiUri(plan, reference, amount);
+  const paytmUri = platform.android ? paytmIntentUri(plan, reference) : platform.ios ? paytmAppUri(plan, reference) : upiUri(plan, reference);
 
   // A code that outlives its window is retired, so the student gets a new
   // reference. The one they may already have paid against stays reachable.
@@ -137,10 +137,14 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   async function submit() {
     if (!buyerName.trim()) { setSaved({ ok: false, message: "Add your name so Aditya knows who to schedule." }); return; }
     if (!buyerContact.trim()) { setSaved({ ok: false, message: "Add an email or phone so the session link can reach you." }); return; }
+    if (!utrValid(paytmReference)) {
+      setSaved({ ok: false, message: "The Paytm UTR is what proves the payment. Copy the 12-digit transaction reference from the Paytm receipt - it is shown under the amount, not the phone number." });
+      return;
+    }
     const order: MentorshipOrder = {
       reference,
       plan: plan.id,
-      amount,
+      amount: passPrice,
       buyerName,
       buyerContact,
       buyerEmail: /.+@.+\..+/.test(buyerContact.trim()) ? buyerContact.trim() : userEmail.trim(),
@@ -159,7 +163,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     const outcome = await recordOrder(order, insert as (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>);
     setSaving(false);
     setSaved(outcome.ok
-      ? { ok: true, message: `Recorded as ${reference}. Aditya confirms it against the Paytm statement, then the whole workspace unlocks.` }
+      ? { ok: true, message: `Recorded as ${reference}. Aditya searches his Paytm statement for your UTR, then the whole workspace unlocks.` }
       : { ok: false, message: `Saved on this device (${outcome.reason}). Email the reference ${reference} with your Paytm screenshot so it is not lost.` });
     // The record is saved and the Paytm transaction is done, so show at once
     // whether the money is still due or already confirmed.
@@ -185,40 +189,21 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">ALL 19 FEATURES · PAY WHAT YOU CAN · {rupees(plan.min)} TO {rupees(plan.max)}</span>
-        <h1>Everything on CodexSheet. <em>You pick the price, {rupees(plan.min)} to {rupees(plan.max)}.</em></h1>
-        <p>All 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the AI tutor, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself — the same 19 features whatever you pay. Paytm only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">ALL {passFeatureCount} FEATURES · ONE PASS · {rupees(plan.price)}</span>
+        <h1>Everything on CodexSheet. <em>{rupees(plan.price)}, once.</em></h1>
+        <p>All 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself — the same {passFeatureCount} features for everyone. Paytm QR only, no card forms, no gateway.</p>
       </header>
 
       <div className="mentorship-plans">
         <article className="mentorship-plan selected">
-          <span className="mentorship-plan-price">{rupees(amount)}</span>
+          <span className="mentorship-plan-price">{rupees(plan.price)}</span>
           <strong>{plan.title}</strong>
           <span className="mentorship-plan-subtitle">{plan.subtitle}</span>
           <span className="mentorship-plan-cadence">{plan.cadence}</span>
-          <div className="mentorship-amount">
-            <label className="mentorship-amount-slider">
-              <span>PAY WHAT YOU CAN · {rupees(plan.min)} TO {rupees(plan.max)}</span>
-              <input type="range" min={plan.min} max={plan.max} step={5} value={amount} onChange={(event) => setAmount(clampAmount(Number(event.target.value)))} aria-label="Slide to choose your pass amount" />
-              <b>{rupees(amount)}</b>
-            </label>
-            <div className="mentorship-amount-presets">
-              {passBand.presets.map((value) => (
-                <button type="button" key={value} className={amount === value ? "selected" : ""} aria-pressed={amount === value} onClick={() => setAmount(value)}>{rupees(value)}</button>
-              ))}
-              <label className="mentorship-amount-own">
-                <span>Own amount</span>
-                <input type="number" min={plan.min} max={plan.max} step={1} value={amount} onChange={(event) => setAmount(clampAmount(Number(event.target.value)))} aria-label="Type any amount from ₹10 to ₹800" />
-              </label>
-            </div>
-            <p className="mentorship-amount-note">
-              {amount <= plan.min + 15
-                ? "₹10 is the floor, not a trial. It opens all 19 features, and you pay the rest when you are working."
-                : amount >= plan.max
-                  ? `₹${plan.max} is the top of the band. That is the one that funds the students paying ₹${plan.min}.`
-                  : "Same workspace at every amount. Anything above ₹" + plan.min + " pays for a student who could only give ₹" + plan.min + "."}
-            </p>
-          </div>
+          <p className="mentorship-amount-note">
+            {rupees(plan.price)} is the price, not a starting point. It is printed inside the QR below and the server
+            refuses a claim for any other amount, so there is nothing to negotiate and nothing to underpay.
+          </p>
           <ul>{plan.includes.map((line) => <li key={line}>{line}</li>)}</ul>
         </article>
       </div>
@@ -256,14 +241,14 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
 
       <div className="mentorship-split">
         <article className="mentorship-pay">
-          <h2><span className="mentorship-step">1</span> Pay {rupees(amount)} by scanning the QR</h2>
-          <p className="mentorship-pay-note">The amount and the payee are locked inside the code below, and the reference goes in the Paytm note so Aditya can match your payment.</p>
+          <h2><span className="mentorship-step">1</span> Pay {rupees(plan.price)} by scanning the QR</h2>
+          <p className="mentorship-pay-note">{rupees(plan.price)} and the payee are printed inside the code below, and the database rejects a claim for any other figure. Type <strong>{reference}</strong> as the Paytm note, then keep the UTR from the receipt - step 2 needs it.</p>
 
           <div className="mentorship-qr">
             <PaymentQr
               ticket={ticket}
-              uri={upiUri(plan, reference, amount)}
-              alt={`Pay ${rupees(amount)} to Aditya Bakshi on Paytm, reference ${reference}`}
+              uri={upiUri(plan, reference)}
+              alt={`Pay ${rupees(plan.price)} to Aditya Bakshi on Paytm, reference ${reference}`}
               size={248}
               onRegenerate={regenerateQr}
               onExpire={() => setQrDead(true)}
@@ -272,7 +257,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
               <span className="mentorship-qr-label"><QrCode size={15} /> Scan with any UPI app</span>
               <p>Paytm, PhonePe, GPay or BHIM all read this code. Desktop students: scan it with your phone.</p>
               <p className="mentorship-manual">
-                If your app rejects the code, pick <strong>Pay to UPI ID</strong> instead of Scan, send exactly {rupees(amount)} to{" "}
+                If your app rejects the code, pick <strong>Pay to UPI ID</strong> instead of Scan, send exactly {rupees(plan.price)} to{" "}
                 <button type="button" className="mentorship-handle" onClick={() => void copy("handle", payee.upiId)}>
                   {copied === "handle" ? <Check size={13} /> : <Copy size={13} />} {payee.upiId}
                 </button>{" "}
@@ -291,10 +276,10 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
             {platform.android || platform.ios ? (
               <>
                 <a className="mentorship-primary" href={paytmUri} onClick={guardExpiredPayment}><Smartphone size={16} /> Open in Paytm</a>
-                <a className="mentorship-secondary" href={upiUri(plan, reference, amount)} onClick={guardExpiredPayment}><Wallet size={16} /> Any UPI app</a>
+                <a className="mentorship-secondary" href={upiUri(plan, reference)} onClick={guardExpiredPayment}><Wallet size={16} /> Any UPI app</a>
               </>
             ) : (
-              <button type="button" className="mentorship-primary" onClick={() => void copy("uri", upiUri(plan, reference, amount))}>
+              <button type="button" className="mentorship-primary" onClick={() => void copy("uri", upiUri(plan, reference))}>
                 {copied === "uri" ? <Check size={16} /> : <Wallet size={16} />} {copied === "uri" ? "UPI link copied" : "Copy the UPI link"}
               </button>
             )}
@@ -304,7 +289,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
             <ShieldCheck size={17} />
             <div>
               <strong>{refundWindow.headline}</strong>
-              <p>{refundWindow.body.replace("{price}", rupees(amount))}</p>
+              <p>{refundWindow.body.replace("{price}", rupees(plan.price))}</p>
             </div>
           </div>
 
@@ -332,7 +317,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
                       ? `Aditya confirmed ${rupees(Number(watched.amount))} for ${planLabel(watched.plan)}. ${watched.status === "delivered" ? "The session was delivered." : "Your weekly session and chat lane are live on /mentees."}`
                       : paymentBadge(watched).cls === "off"
                         ? "This request was cancelled. Record a new one if you still want the session."
-                        : `${rupees(Number(watched.amount))} is still due: Aditya has not ticked ${reference} against his Paytm statement yet. Keep the transaction ID until he does.`}</p>
+                        : `${rupees(Number(watched.amount))} is still due: Aditya has not ticked ${reference} against his Paytm statement yet. Keep the UTR until he does.`}</p>
                   </>
                 ) : (
                   <p className="mentorship-small">{watchNote || "Checking the record against the server…"}</p>
@@ -348,9 +333,9 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
             <div className="mentorship-form">
               <label>Name<input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} placeholder="Your name" maxLength={120} /></label>
               <label>Email or phone<input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="where the session link goes" maxLength={160} /></label>
-              <label>Paytm reference / UTR<input value={paytmReference} onChange={(event) => setPaytmReference(event.target.value)} placeholder="from the Paytm receipt, optional" maxLength={80} /></label>
+              <label>Paytm UTR / transaction reference (required)<input value={paytmReference} onChange={(event) => setPaytmReference(event.target.value)} placeholder="the 12-digit reference on your Paytm receipt" maxLength={80} /></label>
               <label>What do you want to work on<textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="DSA roadmap, system design, mock interviews…" maxLength={1000} /></label>
-              <p className="mentorship-summary">Plan: <strong>{plan.title} · {plan.subtitle}</strong> · {rupees(amount)} · ref {reference}</p>
+              <p className="mentorship-summary">Plan: <strong>{plan.title} · {plan.subtitle}</strong> · {rupees(plan.price)} · ref {reference}</p>
               <button type="button" className="mentorship-primary" onClick={() => void submit()} disabled={saving}>
                 {saving ? <LoaderCircle size={16} className="mentorship-spin" /> : <Check size={16} />} {saving ? "Recording…" : "Record my payment"}
               </button>
@@ -412,7 +397,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
           {!userId && ledger === null && pendingOnThisDevice === 0 && (
             <p className="mentorship-small">Sign in and the page tracks your own references, so you can see which payment is still due without retyping the code.</p>
           )}
-          <p className="mentorship-small">DUE means Aditya has not matched your Paytm transaction against his statement yet. DONE means he has, and all 19 features unlock with it. Nothing here charges you twice: you pay once by scanning the QR.</p>
+          <p className="mentorship-small">DUE means Aditya has not found your UTR in his Paytm statement yet. DONE means he has, and all {passFeatureCount} features unlock with it. Nothing here charges you twice: the pass is one {rupees(plan.price)} payment against one reference, and a second claim on a paid account is rejected.</p>
         </section>
       )}
 
@@ -427,7 +412,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
       <section className="mentorship-faq" aria-label="How mentorship works">
         <article><strong>Weekly session</strong><p>Every pass covers a 1:1 call, and you pick the hour yourself from the times Aditya publishes.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya between sessions, no extra charge.</p></article>
-        <article><strong>How payment is confirmed</strong><p>Pay on Paytm, record the reference here, and Aditya marks it confirmed against his Paytm statement before the first call.</p></article>
+        <article><strong>How payment is confirmed</strong><p>Pay the ₹199 on Paytm, record your reference and UTR here, and Aditya marks it confirmed only when that UTR appears in his statement - before the first call.</p></article>
         <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if the pass is not for you, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>
       </section>
     </section>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ExternalLink, Maximize2, Minus, MousePointer2, Plus, Route, Target } from "lucide-react";
+import { roadmapStages } from "./dsaPatterns";
 
 export type BoardStatus = "Todo" | "In progress" | "Solved";
 type BoardProblem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard"; link: string };
@@ -13,13 +14,7 @@ type Props = {
   onStatus: (problemNumber: number, status: BoardStatus) => void;
 };
 
-const stages = [
-  { name: "Foundations", patterns: ["Arrays & Hashing", "Bit Manipulation"] },
-  { name: "Linear scanning", patterns: ["Two Pointers", "Sliding Window", "Stack", "Binary Search"] },
-  { name: "Structures", patterns: ["Linked List", "Monotonic Stack", "Heaps", "Trees"] },
-  { name: "Search & recursion", patterns: ["Backtracking", "Graphs"] },
-  { name: "Optimization", patterns: ["1-D DP", "2-D DP", "Greedy", "Intervals"] },
-];
+const stages = roadmapStages;
 
 /** "core" is the path you must walk; "optional" is a link that only reinforces. */
 const links: Array<[string, string, "core" | "optional"]> = [

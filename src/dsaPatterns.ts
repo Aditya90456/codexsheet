@@ -507,6 +507,52 @@ export const interviewPlan: Array<{ week: number; focus: string[]; goal: string 
 
 export const filmLength = (card: PatternCard) => card.film[card.film.length - 1].at + 8;
 
+/**
+ * The ladder itself: five stages, each a set of patterns walked in order. The
+ * roadmap board lays its nodes out from this list and the landing page quotes it,
+ * so the path a student sees before signing in is the same path the board draws
+ * after they do. `weeks` is the 12-week curriculum pace, not a deadline.
+ */
+export type RoadmapStage = {
+  name: string;
+  weeks: string;
+  outcome: string;
+  patterns: string[];
+};
+
+export const roadmapStages: RoadmapStage[] = [
+  {
+    name: "Foundations",
+    weeks: "Week 1",
+    outcome: "Lookups before loops. You stop writing a nested scan for a question a hash map already answers.",
+    patterns: ["Arrays & Hashing", "Bit Manipulation"],
+  },
+  {
+    name: "Linear scanning",
+    weeks: "Weeks 2-5",
+    outcome: "Two pointers, shrinking windows, a stack for nesting and a search that halves the space. One pass, no extra memory.",
+    patterns: ["Two Pointers", "Sliding Window", "Stack", "Binary Search"],
+  },
+  {
+    name: "Structures",
+    weeks: "Weeks 4-10",
+    outcome: "Pointers that must not leak, a monotonic stack, a size-k heap and recursion you can draw on paper first.",
+    patterns: ["Linked List", "Monotonic Stack", "Heaps", "Trees"],
+  },
+  {
+    name: "Search & recursion",
+    weeks: "Weeks 8-9",
+    outcome: "Islands, schedules, shortest unweighted path, then subsets and permutations with pruning you can justify.",
+    patterns: ["Backtracking", "Graphs"],
+  },
+  {
+    name: "Optimization",
+    weeks: "Weeks 10-12",
+    outcome: "State, transition, base case. Then sweeps and exchange proofs, and a mixed timed set before the mock.",
+    patterns: ["1-D DP", "2-D DP", "Greedy", "Intervals"],
+  },
+];
+
 function stamp(seconds: number) {
   const pad = (value: number, size = 2) => String(Math.floor(value)).padStart(size, "0");
   return `${pad(seconds / 3600)}:${pad((seconds % 3600) / 60)}:${pad(seconds % 60)}.000`;

@@ -9,7 +9,6 @@ import {
 import {
   ArrowRight,
   AudioLines,
-  BrainCircuit,
   Zap,
   CalendarDays,
   Check,
@@ -88,11 +87,12 @@ import Certificates, { VerifyPage } from "./Certificates";
 import PatternLibrary from "./PatternLibrary";
 import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
-import DsaTutor from "./DsaTutor";
 import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT, type MessageKey } from "./i18n";
+import { passFeatureCount, passFeatureNames, passPrice, rupees } from "./mentorship";
+import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import {
   getSheetRank,
   patterns,
@@ -128,7 +128,7 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
-type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "tutor" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "calls" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
+type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -138,7 +138,6 @@ const viewPaths: Record<WorkspaceView, string> = {
   companies: "/companies",
   "dsa-ide": "/ide/dsa",
   "dsa-course": "/learn/dsa",
-  tutor: "/tutor",
   guru: "/guru",
   cslabs: "/cslabs",
   leaderboard: "/leaderboard",
@@ -150,7 +149,6 @@ const viewPaths: Record<WorkspaceView, string> = {
   whiteboard: "/whiteboard/lld",
   chat: "/chat",
   notes: "/notes",
-  calls: "/calls",
   articles: "/articles",
   jobs: "/jobs",
   mentorship: "/mentorship",
@@ -179,7 +177,6 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
   "dsa-ide": { title: "DSA code editor with real test judging — CodexSheet", description: "Write Python, Java, C++ or JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
   "dsa-course": { title: "Animated DSA course — CodexSheet", description: "A lesson-by-lesson DSA course where every data structure is shown moving, not described." },
-  tutor: { title: "AI DSA tutor that answers in your language — CodexSheet", description: "Ask about any algorithm and get the exact step you are stuck on, in English, Hindi, Bengali, Tamil, Telugu, Marathi or Gujarati." },
   guru: { title: "Guru — the free AI DSA teacher — CodexSheet", description: "Guru teaches one DSA topic at a time, checks your reasoning and hands you the problem that follows." },
   cslabs: {
     title: "Free algorithm labs — 22 animated DSA and CS simulations",
@@ -203,12 +200,11 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   whiteboard: { title: "LLD whiteboard — CodexSheet", description: "Sketch classes and interactions the way you would on a real interview whiteboard." },
   chat: { title: "Mentor chat — CodexSheet", description: "Ask your mentor between sessions and get an answer the same day." },
   notes: { title: "Your DSA notes — CodexSheet", description: "The notes you write while practising, kept next to the problem they belong to." },
-  calls: { title: "Mentorship session — CodexSheet", description: "Join the booked 1-on-1 DSA session." },
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
     title: "1-on-1 DSA mentorship — CodexSheet Family Pass",
-    description: "Pay what you can between ₹10 and ₹800: the full CodexSheet workspace plus 1-on-1 mentorship with calls, chat and a plan built around your target company.",
+    description: "One ₹199 CodexSheet Family Pass: the full workspace plus 1-on-1 mentorship with a Google Meet session, chat and a plan built around your target company.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -224,7 +220,6 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
 
 function viewFromLocation(): WorkspaceView {
   const params = new URLSearchParams(window.location.search);
-  if (params.has("room") || params.has("schedule")) return "calls";
   const path = window.location.pathname.replace(/\/$/, "") || "/";
   if (path === "/artcles") return "articles";
   const match = (Object.entries(viewPaths) as Array<[WorkspaceView, string]>).find(([, route]) => route === path);
@@ -254,7 +249,6 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
       { view: "cslabs", label: "Algorithm Labs", icon: Activity },
       { view: "roadmap", label: "Roadmap", icon: MapIcon },
-      { view: "tutor", label: "Ask Tutor", labelKey: "nav.tutor", icon: BrainCircuit },
       { view: "notes", label: "Notes", icon: NotebookPen },
       { view: "articles", label: "Articles", icon: BookOpen },
     ],
@@ -263,7 +257,6 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
     label: "Community",
     items: [
       { view: "chat", label: "Group chat", icon: MessageCircle },
-      { view: "calls", label: "Video calls", icon: Video },
       { view: "experiences", label: "Interview experiences", icon: Building2 },
     ],
   },
@@ -279,13 +272,6 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
 ];
 
 const moreMenuViews: WorkspaceView[] = navMenuGroups.flatMap((group) => group.items.map((item) => item.view));
-
-const passFeatureNames = [
-  "Landing", "250-problem library", "Deva editor", "Animated DSA course", "Ask a DSA tutor",
-  "Progress dashboard", "Company question sets", "Roadmap board", "Senior SDE · LLD", "LLD whiteboard",
-  "Personal notes", "Concept articles", "Job search", "Group chat", "Video calls",
-  "Practice calendar", "1:1 mentorship", "Mentee space", "Personal AI",
-];
 
 function WorkspacePassLock({ checking, onOpenStore, onRecheck, onOpenGuru }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void; onOpenGuru: () => void }) {
   const tr = useT();
@@ -366,6 +352,17 @@ function HomePage({
 }) {
   const pageRef = useRef<HTMLElement>(null);
   const tr = useT();
+  const stageStats = useMemo(() => {
+    const ownerOf = new Map(roadmapStages.flatMap((stage, index) => stage.patterns.map((name) => [name, index] as const)));
+    const buckets = roadmapStages.map(() => ({ total: 0, tiers: { 1: 0, 2: 0, 3: 0 } as Record<1 | 2 | 3, number> }));
+    for (const problem of problems) {
+      const stageIndex = ownerOf.get(problem.pattern);
+      if (stageIndex === undefined) continue;
+      buckets[stageIndex].total += 1;
+      buckets[stageIndex].tiers[interviewTier(problem)] += 1;
+    }
+    return buckets;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -384,21 +381,13 @@ function HomePage({
             .from(".home-flow-link", { scaleX: 0, duration: 0.45, stagger: 0.12, transformOrigin: "left center" }, "-=0.3")
             .from(".home-lab-foot", { y: 10, opacity: 0, duration: 0.45 }, "-=0.2");
 
-          engine.from(".home-loop-step", {
-            y: 24,
+          engine.from(".home-stage", {
+            y: 22,
             opacity: 0,
-            duration: 0.65,
-            stagger: 0.14,
-            ease: "power2.out",
-            scrollTrigger: { trigger: ".home-loop", start: "top 78%", once: true },
-          });
-          engine.from(".home-feature-card", {
-            y: 24,
-            opacity: 0,
-            duration: 0.6,
+            duration: 0.55,
             stagger: 0.09,
             ease: "power2.out",
-            scrollTrigger: { trigger: ".home-features", start: "top 78%", once: true },
+            scrollTrigger: { trigger: ".home-roadmap", start: "top 78%", once: true },
           });
           engine.from(".home-progress-fill", {
             scaleX: 0,
@@ -413,26 +402,6 @@ function HomePage({
             scrollTrigger: { trigger: ".home-hero", start: "top top", end: "bottom top", scrub: 0.7 },
           });
           engine.to(".home-mark-orbit", { rotate: 360, duration: 32, ease: "none", repeat: -1 });
-        });
-        motion.add("(prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine)", () => {
-          const cards = Array.from(pageRef.current?.querySelectorAll<HTMLElement>(".home-feature-card") ?? []);
-          const cleanups = cards.map((card) => {
-            const tiltX = engine.quickTo(card, "--tilt-x", { duration: 0.32, ease: "power2.out" });
-            const tiltY = engine.quickTo(card, "--tilt-y", { duration: 0.32, ease: "power2.out" });
-            const onMove = (event: PointerEvent) => {
-              const bounds = card.getBoundingClientRect();
-              tiltX(((event.clientX - bounds.left) / bounds.width - 0.5) * 7);
-              tiltY((0.5 - (event.clientY - bounds.top) / bounds.height) * 7);
-            };
-            const onLeave = () => { tiltX(0); tiltY(0); };
-            card.addEventListener("pointermove", onMove);
-            card.addEventListener("pointerleave", onLeave);
-            return () => {
-              card.removeEventListener("pointermove", onMove);
-              card.removeEventListener("pointerleave", onLeave);
-            };
-          });
-          return () => cleanups.forEach((cleanup) => cleanup());
         });
         return () => motion.revert();
       }, pageRef);
@@ -474,48 +443,33 @@ function HomePage({
         <div className="home-hero-bottom"><span>START WITH ONE PROBLEM</span><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div>
       </section>
 
-      <section className="home-loop" aria-labelledby="home-loop-title">
+      <section className="home-roadmap" aria-labelledby="home-roadmap-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">A SIMPLE SYSTEM, USED DAILY</span><h2 id="home-loop-title">Practice that <em>adds up.</em></h2></div>
-          <p>Small, deliberate reps build the instincts that interviews ask for.</p>
+          <div><span className="home-section-kicker">THE PATH, IN ORDER</span><h2 id="home-roadmap-title">Five stages, <em>250 problems.</em></h2></div>
+          <p>The sheet is a ladder, not a list. Each stage is a set of patterns, the reps behind them and what you can say out loud by the end of it.</p>
         </div>
-        <div className="home-loop-grid">
-          <button className="home-loop-step" type="button" onClick={() => onNavigate("roadmap")}>
-            <span className="home-loop-number">01</span><strong>Follow a roadmap</strong><span>Set your timeline and focus on the patterns you need most.</span><span className="home-step-link">Build your plan <ArrowRight size={14} /></span>
-          </button>
-          <button className="home-loop-step" type="button" onClick={() => onNavigate("problems")}>
-            <span className="home-loop-number">02</span><strong>Solve with intent</strong><span>Practice a curated problem set, then mark what you have learned.</span><span className="home-step-link">Browse problems <ArrowRight size={14} /></span>
-          </button>
-          <button className="home-loop-step" type="button" onClick={() => onNavigate("calendar")}>
-            <span className="home-loop-number">03</span><strong>Keep your rhythm</strong><span>See your progress take shape and make the next session count.</span><span className="home-step-link">View calendar <ArrowRight size={14} /></span>
-          </button>
-        </div>
-      </section>
-
-      <section className="home-features" aria-labelledby="home-features-title">
-        <div className="home-section-heading">
-          <div><span className="home-section-kicker">TOOLS FOR EVERY STUDY SESSION</span><h2 id="home-features-title">Everything you need to <em>make progress.</em></h2></div>
-          <p>Choose a starting point. Your tools and progress stay together as you learn.</p>
-        </div>
-        <div className="home-feature-grid">
-          <button className="home-feature-card" type="button" onClick={() => onNavigate("problems")}>
-            <span className="home-feature-icon"><Rows3 size={19} /></span><span className="home-feature-index">01 / PRACTICE</span><strong>Problem library</strong><span className="home-feature-description">A curated set of coding problems organized by pattern and difficulty.</span><span className="home-feature-link">Browse problems <ArrowRight size={15} /></span>
-          </button>
-          <button className="home-feature-card" type="button" onClick={() => onNavigate("roadmap")}>
-            <span className="home-feature-icon"><MapIcon size={19} /></span><span className="home-feature-index">02 / PLAN</span><strong>Adaptive roadmap</strong><span className="home-feature-description">Shape a weekly study plan around your pace and focus areas.</span><span className="home-feature-link">Build your roadmap <ArrowRight size={15} /></span>
-          </button>
-          <button className="home-feature-card" type="button" onClick={() => onNavigate("dashboard")}>
-            <span className="home-feature-icon"><Target size={19} /></span><span className="home-feature-index">03 / PROGRESS</span><strong>Progress dashboard</strong><span className="home-feature-description">Track solved problems, patterns covered, and your daily streak.</span><span className="home-feature-link">View progress <ArrowRight size={15} /></span>
-          </button>
-          <button className="home-feature-card" type="button" onClick={() => onNavigate("calendar")}>
-            <span className="home-feature-icon"><CalendarDays size={19} /></span><span className="home-feature-index">04 / CONSISTENCY</span><strong>Practice calendar</strong><span className="home-feature-description">See your practice history and keep a steady learning rhythm.</span><span className="home-feature-link">Open calendar <ArrowRight size={15} /></span>
-          </button>
-          <button className="home-feature-card" type="button" onClick={() => onNavigate("chat")}>
-            <span className="home-feature-icon"><UsersRound size={19} /></span><span className="home-feature-index">05 / TOGETHER</span><strong>Study with peers</strong><span className="home-feature-description">Talk through tricky problems with your study group.</span><span className="home-feature-link">Join the group <ArrowRight size={15} /></span>
-          </button>
-          <button className="home-feature-card" type="button" onClick={() => onNavigate("notes")}>
-            <span className="home-feature-icon"><NotebookPen size={19} /></span><span className="home-feature-index">06 / REFLECT</span><strong>Personal notes</strong><span className="home-feature-description">Save useful insights and keep your problem-solving notes in one place.</span><span className="home-feature-link">Open your notebook <ArrowRight size={15} /></span>
-          </button>
+        <ol className="home-stage-list">
+          {roadmapStages.map((stage, index) => {
+            const stats = stageStats[index];
+            return (
+              <li className="home-stage" key={stage.name}>
+                <span className="home-stage-index">{String(index + 1).padStart(2, "0")}</span>
+                <div className="home-stage-body">
+                  <div className="home-stage-top"><strong>{stage.name}</strong><span className="home-stage-weeks">{stage.weeks}</span></div>
+                  <p>{stage.outcome}</p>
+                  <div className="home-stage-patterns">{stage.patterns.map((name) => <span key={name}>{name}</span>)}</div>
+                </div>
+                <div className="home-stage-count">
+                  <strong>{stats.total}<small> problems</small></strong>
+                  <span>{([1, 2, 3] as const).map((tier) => `${stats.tiers[tier]} ${tierLabels[tier].toLowerCase()}`).join(" · ")}</span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="home-roadmap-foot">
+          <button className="home-stage-cta" type="button" onClick={() => onNavigate("roadmap")}>Open the roadmap board <ArrowRight size={15} /></button>
+          <button className="home-stage-ghost" type="button" onClick={() => onNavigate("patterns")}>{roadmapStages.reduce((count, stage) => count + stage.patterns.length, 0)} pattern cards, with the film for each <ArrowRight size={15} /></button>
         </div>
       </section>
 
@@ -527,10 +481,8 @@ function HomePage({
         <div className="home-creator-copy">
           <span className="home-section-kicker">A NOTE FROM THE CREATOR</span>
           <h2 id="home-creator-title">Hey, I’m Aditya.<br /><em>I build with purpose.</em></h2>
-          <p>I’m a full-stack developer, competitive programmer, and the creator of CodexSheet. I love turning ideas into real-world products and solving problems through code.</p>
-          <p>I’m building CodexSheet to make learning data structures and algorithms more structured, practical, and accessible for students preparing for technical interviews.</p>
+          <p>I’m a full-stack developer and competitive programmer. I built CodexSheet to make data structures and algorithms structured, practical and reachable for students preparing for technical interviews.</p>
           <blockquote>“The challenges we face can inspire us to build solutions that help others.”</blockquote>
-          <p>I’m constantly learning, building, and sharing my journey as I work toward products that make a real difference in the developer community.</p>
           <div className="home-creator-tags"><span>Full-Stack Development</span><span>Competitive Programming</span><span>Learning in Public</span></div>
           <a className="home-creator-link" href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer">Connect on LinkedIn <ExternalLink size={14} /></a>
         </div>
@@ -539,15 +491,15 @@ function HomePage({
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
           <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
-          <p>Pay what you can — ₹10 to ₹800 — and all 19 features open, paid straight to Paytm. Guru, the AI teacher, stays free for everyone.</p>
+          <p>{rupees(passPrice)} once — all {passFeatureCount} features open, paid on the Paytm QR. Guru, the AI teacher, stays free for everyone.</p>
         </div>
         <div className="home-offer-grid" aria-label="The CodexSheet pass and the free AI teacher">
           <article className="home-offer-card home-offer-pass">
-            <div className="home-offer-top"><span className="home-offer-icon">19</span><span className="home-offer-price">₹10–₹800</span></div>
-            <span className="home-offer-label">EVERY FEATURE, PAY WHAT YOU CAN</span>
+            <div className="home-offer-top"><span className="home-offer-icon">{passFeatureCount}</span><span className="home-offer-price">{rupees(passPrice)}</span></div>
+            <span className="home-offer-label">EVERY FEATURE, ONE PRICE</span>
             <h3>CodexSheet Family Pass</h3>
-            <p>All 19 features at once: the 250-pattern library, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat, calls — plus the 12-week plan and a 1:1 session with Aditya that you book yourself. ₹10 opens the same workspace as ₹800. Ask within 5 days of confirming and the amount comes straight back.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Choose your amount and open all 19 features <ArrowRight size={15}/></a>
+            <p>All {passFeatureCount} features at once: the 250-problem library, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat and a 1:1 Google Meet session with Aditya that you book yourself. {rupees(passPrice)} is the whole price - no band, no negotiation. Ask within 5 days of confirming and it comes straight back.</p>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all {passFeatureCount} features for {rupees(passPrice)} <ArrowRight size={15}/></a>
           </article>
           <article className="home-offer-card home-offer-guru">
             <div className="home-offer-top"><span className="home-offer-icon">AI</span><span className="home-offer-price">FREE</span></div>
@@ -556,27 +508,6 @@ function HomePage({
             <p>He teaches out loud in 7 Indian languages, draws every pattern as a 3D figure on the board, and has a face that smiles when you get it and frowns when you skip the basics. He keeps teaching when your network drops.</p>
             <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
           </article>
-        </div>
-      </section>
-
-      <section className="home-portfolio" aria-labelledby="home-portfolio-title">
-        <div className="home-section-heading">
-          <div><span className="home-section-kicker">PORTFOLIO</span><h2 id="home-portfolio-title">Built for <em>steady progress.</em></h2></div>
-          <p>A closer look at the learning tools and resources in the Codexsheet workspace.</p>
-        </div>
-        <div className="home-portfolio-grid">
-          <a className="home-portfolio-card portfolio-featured" href="/problems">
-            <span className="home-portfolio-label">01 · PRACTICE PLATFORM</span><span className="home-portfolio-art portfolio-art-sheet"><Rows3 size={31}/><i>250</i></span>
-            <strong>Codexsheet DSA Practice</strong><span>Pattern based problem practice with progress tracking, notes, and a focused study flow.</span><span className="home-service-link">Explore the problem sheet <ArrowRight size={14}/></span>
-          </a>
-          <a className="home-portfolio-card" href="/roadmap">
-            <span className="home-portfolio-label">02 · LEARNING PLAN</span><span className="home-portfolio-art portfolio-art-roadmap"><MapIcon size={30}/><span><i/><i/><i/></span></span>
-            <strong>Adaptive DSA Roadmap</strong><span>A weekly plan shaped around your timeline, practice pace, and focus patterns.</span><span className="home-service-link">Build a roadmap <ArrowRight size={14}/></span>
-          </a>
-          <a className="home-portfolio-card" href="/articles">
-            <span className="home-portfolio-label">03 · EDITORIAL</span><span className="home-portfolio-art portfolio-art-journal"><BookOpen size={30}/><span>FIELD<br/>NOTES</span></span>
-            <strong>DSA Field Notes</strong><span>Short visual explainers for the ideas behind common coding interview patterns.</span><span className="home-service-link">Read the journal <ArrowRight size={14}/></span>
-          </a>
         </div>
       </section>
 
@@ -1200,318 +1131,6 @@ function recognizeSheetQuery(raw: string) {
   return { patterns: found, difficulty, status, matched: found.length > 0 || Boolean(difficulty) || Boolean(status) };
 }
 
-type CallSignal = {
-  from: string;
-  to?: string;
-  description?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidateInit;
-  name?: string;
-};
-
-const fallbackCallIceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
-
-function CallVideo({ stream, muted, label, self = false }: { stream: MediaStream | null; muted?: boolean; label: string; self?: boolean }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = stream;
-  }, [stream]);
-  return (
-    <div className={`call-video-tile${self ? " self" : ""}`}>
-      {stream ? <video ref={videoRef} autoPlay playsInline muted={muted} /> : <div className="call-avatar">{label.slice(0, 1).toUpperCase()}</div>}
-      <span className="call-video-name">{label}{self ? " (You)" : ""}</span>
-    </div>
-  );
-}
-
-function VideoCalls({ userId, userName }: { userId: string | null; userName: string }) {
-  const [inviteRoomId, setInviteRoomId] = useState(() => new URLSearchParams(window.location.search).get("room") ?? "");
-  const [joinRoomInput, setJoinRoomInput] = useState("");
-  const [sharedRoomId, setSharedRoomId] = useState("");
-  const [roomCreatorId, setRoomCreatorId] = useState("");
-  const [roomId, setRoomId] = useState("");
-  const [joined, setJoined] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<Record<string, { stream: MediaStream; name: string }>>({});
-  const [muted, setMuted] = useState(false);
-  const [cameraOff, setCameraOff] = useState(false);
-  const [screenSharing, setScreenSharing] = useState(false);
-  const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [relayNotice, setRelayNotice] = useState("");
-  const [connectingLabel, setConnectingLabel] = useState("Connecting to room…");
-  const localId = useRef(crypto.randomUUID());
-  const streamRef = useRef<MediaStream | null>(null);
-  const displayStreamRef = useRef<MediaStream | null>(null);
-  const peers = useRef(new Map<string, RTCPeerConnection>());
-  const iceServers = useRef<RTCIceServer[]>(fallbackCallIceServers);
-  const pendingIceCandidates = useRef(new Map<string, RTCIceCandidateInit[]>());
-  const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
-  useEffect(() => {
-    if (!inviteRoomId || !supabase || !userId) return;
-    void supabase.from("call_rooms").select("created_by").eq("id", inviteRoomId).maybeSingle().then(({ data }) => {
-      if (data?.created_by) setRoomCreatorId(data.created_by);
-    });
-  }, [inviteRoomId, userId]);
-
-  async function createRoom() {
-    if (!supabase || !userId) { setError("Sign in to create a peer room."); return; }
-    const { data, error: createError } = await supabase.from("call_rooms").insert({ created_by: userId }).select("id").single();
-    if (createError || !data) { setError(`Could not create the room. ${createError?.message ?? "Please try again."}`); return; }
-    setSharedRoomId(data.id); setInviteRoomId(data.id); setRoomCreatorId(userId);
-    const url = new URL(window.location.href); url.searchParams.delete("schedule"); url.searchParams.delete("call"); url.searchParams.set("room", data.id); window.history.replaceState({}, "", url);
-  }
-
-  function openRoomInvite() {
-    if (!userId) { setError("Sign in to join a peer room."); return; }
-    const value = joinRoomInput.trim();
-    let targetRoomId = value;
-    try { targetRoomId = new URL(value).searchParams.get("room") ?? value; } catch { /* A raw room ID is also accepted. */ }
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetRoomId)) {
-      setError("Paste a valid peer room link or room ID."); return;
-    }
-    setRoomCreatorId(""); setSharedRoomId(""); setInviteRoomId(targetRoomId); setJoinRoomInput(""); setError("");
-    const url = new URL(window.location.href); url.searchParams.delete("schedule"); url.searchParams.delete("call"); url.searchParams.set("room", targetRoomId); window.history.replaceState({}, "", url);
-  }
-
-  async function invitePeers(url: URL) {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "Join my Codexsheet peer room", text: "Join me for a peer video call.", url: url.toString() });
-      } else {
-        await navigator.clipboard.writeText(url.toString());
-        setCopied(true); window.setTimeout(() => setCopied(false), 1800);
-      }
-    } catch (cause) {
-      if (cause instanceof Error && cause.name === "AbortError") return;
-      try {
-        await navigator.clipboard.writeText(url.toString());
-        setCopied(true); window.setTimeout(() => setCopied(false), 1800);
-      } catch { setError("Could not share the peer room link. Copy the link above instead."); }
-    }
-  }
-
-  async function startRoom(targetRoomId: string) {
-    if (!supabase || !userId) { setError("Sign in to join this peer room."); return; }
-    if (connecting) return;
-    setConnecting(true); setConnectingLabel("Joining room…"); setError(""); setRelayNotice("");
-    try {
-      const { error: joinError } = await supabase.rpc("join_call_room", { p_room_id: targetRoomId });
-      if (joinError) throw new Error(joinError.message);
-      const { data: room, error: roomError } = await supabase.from("call_rooms").select("created_by").eq("id", targetRoomId).single();
-      if (roomError || !room) throw new Error("That room link is no longer available.");
-      setRoomCreatorId(room.created_by);
-      setRoomId(targetRoomId);
-      const { data: iceConfig, error: iceConfigError } = await supabase.functions.invoke("call-ice");
-      const servedIceServers: RTCIceServer[] = !iceConfigError && Array.isArray(iceConfig?.iceServers)
-        ? iceConfig.iceServers as RTCIceServer[]
-        : [];
-      if (servedIceServers.length > 0) iceServers.current = servedIceServers;
-      // STUN alone cannot cross a symmetric NAT, so say so instead of failing quietly.
-      if (iceConfigError || servedIceServers.length === 0 || iceConfig?.turnConfigured === false) {
-        setRelayNotice("This room has no call relay, so it can fail on strict mobile or office networks. A Google Meet link always connects.");
-      }
-      setConnectingLabel("Allow camera and microphone access…");
-      const media = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      streamRef.current = media;
-      setConnectingLabel("Refreshing sign-in for the call…");
-      await refreshRealtimeAuth();
-      setStream(media); setJoined(true);
-    } catch (cause) {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      await supabase.rpc("leave_call_room", { p_room_id: targetRoomId });
-      setConnecting(false);
-      setConnectingLabel("Connecting to room…");
-      const message = cause instanceof Error ? cause.message : "Please try again.";
-      const mediaIssue = cause instanceof DOMException || /camera|microphone|media|permission|secure context/i.test(message);
-      setError(mediaIssue
-        ? `Camera or microphone unavailable: ${message}. Check browser permissions and use HTTPS, then try again.`
-        : `Could not join the peer room: ${message}`);
-    }
-  }
-
-  useEffect(() => {
-    if (!joined || !supabase || !roomId) return;
-    let active = true;
-    const channel = supabase.channel(`video-call-${roomId}`, { config: { private: true, broadcast: { self: false } } });
-    channelRef.current = channel;
-    const send = async (event: string, payload: CallSignal) => {
-      const status = await channel.send({ type: "broadcast", event, payload });
-      if (status !== "ok") {
-        console.error(`Peer room ${event} signal failed:`, status);
-        setError(`Call signaling failed (${status}). Rejoin the room and check your connection.`);
-      }
-      return status;
-    };
-    const connectPresentPeers = () => {
-      const present = Object.values(channel.presenceState()).flat() as Array<{ peerId?: string; name?: string }>;
-      for (const participant of present) {
-        const remoteId = participant.peerId;
-        if (!remoteId || remoteId === localId.current || localId.current < remoteId || peers.current.has(remoteId)) continue;
-        const peer = createPeer(remoteId, participant.name || "Peer");
-        void peer.createOffer().then((offer) => peer.setLocalDescription(offer)).then(() => send("offer", { from: localId.current, to: remoteId, name: userName, description: peer.localDescription?.toJSON() }));
-      }
-    };
-    const createPeer = (remoteId: string, name = "Guest") => {
-      const existing = peers.current.get(remoteId);
-      if (existing) return existing;
-      const peer = new RTCPeerConnection({ iceServers: iceServers.current });
-      peers.current.set(remoteId, peer);
-      streamRef.current?.getTracks().forEach((track) => peer.addTrack(track, streamRef.current!));
-      peer.ontrack = (event) => {
-        if (!active) return;
-        const incoming = event.streams[0];
-        if (incoming) setRemoteStreams((current) => ({ ...current, [remoteId]: { stream: incoming, name } }));
-      };
-      peer.onicecandidate = (event) => { if (event.candidate) void send("ice", { from: localId.current, to: remoteId, candidate: event.candidate.toJSON() }); };
-      peer.onconnectionstatechange = () => {
-        if (["failed", "closed", "disconnected"].includes(peer.connectionState)) {
-          setRemoteStreams((current) => { const next = { ...current }; delete next[remoteId]; return next; });
-        }
-        if (peer.connectionState === "failed") {
-          const hasTurn = iceServers.current.length > 1;
-          setError(hasTurn
-            ? "Could not establish a media connection. Check that your TURN server is reachable and its credentials are valid, then rejoin."
-            : "Could not establish a media connection. Add a TURN server to the production deployment; STUN alone cannot connect some networks. Then rebuild and rejoin.");
-        }
-      };
-      return peer;
-    };
-    channel.on("presence", { event: "sync" }, connectPresentPeers);
-    channel.on("presence", { event: "join" }, connectPresentPeers);
-    channel.on("broadcast", { event: "offer" }, async ({ payload }: { payload: CallSignal }) => {
-      if (payload.to !== localId.current || !payload.description) return;
-      const peer = createPeer(payload.from, payload.name || "Peer");
-      try {
-        await peer.setRemoteDescription(payload.description);
-        const queuedCandidates = pendingIceCandidates.current.get(payload.from) ?? [];
-        pendingIceCandidates.current.delete(payload.from);
-        await Promise.all(queuedCandidates.map((candidate) => peer.addIceCandidate(candidate)));
-        const answer = await peer.createAnswer(); await peer.setLocalDescription(answer);
-      } catch (cause) {
-        setError(`Could not negotiate with a peer: ${cause instanceof Error ? cause.message : "WebRTC negotiation failed."}`);
-        return;
-      }
-      await send("answer", { from: localId.current, to: payload.from, description: peer.localDescription?.toJSON() });
-    });
-    channel.on("broadcast", { event: "answer" }, async ({ payload }: { payload: CallSignal }) => {
-      if (payload.to !== localId.current || !payload.description) return;
-      const peer = peers.current.get(payload.from);
-      if (!peer) return;
-      try {
-        await peer.setRemoteDescription(payload.description);
-        const queuedCandidates = pendingIceCandidates.current.get(payload.from) ?? [];
-        pendingIceCandidates.current.delete(payload.from);
-        await Promise.all(queuedCandidates.map((candidate) => peer.addIceCandidate(candidate)));
-      } catch (cause) {
-        setError(`Could not negotiate with a peer: ${cause instanceof Error ? cause.message : "WebRTC negotiation failed."}`);
-      }
-    });
-    channel.on("broadcast", { event: "ice" }, async ({ payload }: { payload: CallSignal }) => {
-      if (payload.to !== localId.current || !payload.candidate) return;
-      const peer = peers.current.get(payload.from);
-      if (!peer || !peer.remoteDescription) {
-        const queued = pendingIceCandidates.current.get(payload.from) ?? [];
-        queued.push(payload.candidate);
-        pendingIceCandidates.current.set(payload.from, queued);
-        return;
-      }
-      try { await peer.addIceCandidate(payload.candidate); } catch (cause) {
-        console.warn("Could not add peer ICE candidate:", cause);
-      }
-    });
-    channel.on("broadcast", { event: "leave" }, ({ payload }: { payload: CallSignal }) => {
-      peers.current.get(payload.from)?.close(); peers.current.delete(payload.from);
-      pendingIceCandidates.current.delete(payload.from);
-      setRemoteStreams((current) => { const next = { ...current }; delete next[payload.from]; return next; });
-    });
-    channel.subscribe((status, subscriptionError) => {
-      if (status === "SUBSCRIBED") {
-        void channel.track({ peerId: localId.current, userId, name: userName }).then((trackStatus) => {
-          setConnecting(false);
-          if (trackStatus !== "ok") {
-            setError(`Joined the room, but could not announce your presence (${trackStatus}). Check Realtime permissions and rejoin.`);
-            return;
-          }
-          connectPresentPeers();
-        }).catch((cause: unknown) => {
-          setConnecting(false);
-          setError(`Joined the room, but could not announce your presence: ${cause instanceof Error ? cause.message : "Realtime error"}`);
-        });
-      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        setError(`Could not connect to the call room${subscriptionError instanceof Error ? `: ${subscriptionError.message}` : ". Check Supabase Realtime authorization and your connection."}`); setConnecting(false);
-      }
-    });
-    return () => {
-      active = false;
-      void send("leave", { from: localId.current });
-      channel.unsubscribe(); channelRef.current = null;
-      peers.current.forEach((peer) => peer.close()); peers.current.clear();
-      pendingIceCandidates.current.clear();
-    };
-  }, [joined, roomId, userId, userName]);
-
-  function leaveCall() {
-    void channelRef.current?.send({ type: "broadcast", event: "leave", payload: { from: localId.current } });
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    displayStreamRef.current?.getTracks().forEach((track) => track.stop());
-    displayStreamRef.current = null; setScreenSharing(false);
-    streamRef.current = null; setStream(null); setRemoteStreams({}); setJoined(false); setConnecting(false);
-    peers.current.forEach((peer) => peer.close()); peers.current.clear();
-    pendingIceCandidates.current.clear();
-    setRoomId("");
-    if (supabase && userId && roomId) void supabase.rpc("leave_call_room", { p_room_id: roomId });
-  }
-
-  async function toggleScreenShare() {
-    if (screenSharing) {
-      const cameraTrack = streamRef.current?.getVideoTracks()[0] ?? null;
-      for (const peer of peers.current.values()) {
-        const sender = peer.getSenders().find((item) => item.track?.kind === "video");
-        if (sender && cameraTrack) await sender.replaceTrack(cameraTrack);
-      }
-      displayStreamRef.current?.getTracks().forEach((track) => track.stop());
-      displayStreamRef.current = null;
-      setStream(streamRef.current); setScreenSharing(false);
-      return;
-    }
-    if (!navigator.mediaDevices.getDisplayMedia) { setError("Screen sharing is not supported by this browser."); return; }
-    try {
-      const display = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const displayTrack = display.getVideoTracks()[0];
-      displayStreamRef.current = display;
-      for (const peer of peers.current.values()) {
-        const sender = peer.getSenders().find((item) => item.track?.kind === "video");
-        if (sender) await sender.replaceTrack(displayTrack);
-      }
-      setStream(display); setScreenSharing(true);
-      displayTrack.onended = () => { if (displayStreamRef.current) void toggleScreenShare(); };
-    } catch (cause) {
-      if (cause instanceof Error && cause.name !== "NotAllowedError") setError(`Could not share your screen: ${cause.message}`);
-    }
-  }
-
-  if (!joined) {
-    const roomToShare = sharedRoomId || inviteRoomId;
-    const isRoomOwner = Boolean(userId && roomCreatorId === userId);
-    const shareUrl = new URL(window.location.href);
-    shareUrl.searchParams.delete("schedule"); shareUrl.searchParams.delete("call");
-    if (roomToShare) shareUrl.searchParams.set("room", roomToShare);
-    return <section className="calls-page">
-      {!roomToShare ? <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>Meet your peers.<br/><em>Face to face.</em></h2><p>Create a private video room and share its link with classmates. Peers with the link can join directly, and you can talk together in real time.</p>{userId ? <><button className="request-room-button create-room-button" onClick={() => void createRoom()}><Video size={17}/> Create a peer room <ArrowRight size={15}/></button><div className="join-room-divider"><span>OR JOIN A ROOM</span></div><form className="join-room-form" onSubmit={(event) => { event.preventDefault(); openRoomInvite(); }}><input aria-label="Room invite link or ID" value={joinRoomInput} onChange={(event) => setJoinRoomInput(event.target.value)} placeholder="Paste an invite link or room ID"/><button type="submit"><ArrowRight size={15}/> Join room</button></form></> : <div className="share-link-hint"><ShieldCheck size={14}/> Sign in to create or join a room.</div>}</div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Users size={23}/></div><span>PEER TO PEER</span><strong>Study together</strong><small>Open link · Join · Connect</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section> : <section className="share-link-hero"><div className="share-link-copy"><span className="calls-eyebrow"><Video size={14}/> CODEXSHEET MEET</span><h2>{isRoomOwner ? <>Your peer room.<br/><em>Ready when you are.</em></> : <>You’re invited.<br/><em>Join the room.</em></>}</h2><p>{isRoomOwner ? "Share this private link with anyone you’d like to meet. Peers can join directly." : "Join the shared room to meet the host and other peers. No request or approval needed."}</p><div className="share-link-field"><Link2 size={17}/><span title={shareUrl.toString()}>{shareUrl.toString()}</span><button onClick={async () => { try { await navigator.clipboard.writeText(shareUrl.toString()); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch { setError("Could not copy the peer room link."); } }}><Copy size={15}/>{copied ? "Copied" : "Copy link"}</button></div><div className="share-link-hint"><ShieldCheck size={14}/> Anyone with this link can join while signed in.</div></div><div className="share-link-art"><div className="share-link-glow"/><div className="share-link-card"><div className="share-link-card-icon"><Video size={23}/></div><span>LIVE PEER ROOM</span><strong>Room for everyone</strong><small>Share · Join · Talk</small><div className="share-link-card-dots"><i/><i/><i/></div></div><span className="share-link-spark share-link-spark-a">✦</span><span className="share-link-spark share-link-spark-b">✳</span></div></section>}
-      {roomToShare && userId && <div className="schedule-layout room-meeting-layout"><div className="schedule-main-card room-request-card"><div className="room-card-icon"><Video size={22}/></div><span className="schedule-kicker">{isRoomOwner ? "YOUR PEER ROOM" : "PEER ROOM INVITE"}</span><h3>{isRoomOwner ? "Start the call" : "Join the conversation"}</h3><p>{isRoomOwner ? "Start your camera and microphone, then your peers can connect through the link above." : "Your camera and microphone turn on only after you join."}</p><div className="room-card-steps"><span><i>01</i> Share the room link</span><span><i>02</i> Peers join directly</span><span><i>03</i> Talk face to face</span></div><div className="peer-room-actions"><button className="request-room-button" disabled={connecting} onClick={() => void startRoom(roomToShare)}><Video size={16}/>{connecting ? "Joining…" : isRoomOwner ? "Start call" : "Join call"}<ArrowRight size={15}/></button><button className="invite-peers-button" onClick={() => void invitePeers(shareUrl)}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button></div></div><aside className="schedule-side-card"><div className="schedule-side-heading"><span className="schedule-kicker">PEER ROOM</span><span className="approval-count"><Users size={13}/></span></div><h3>Bring your study group</h3><p>Share the room link with peers. Everyone who joins appears in the call.</p><div className="request-empty"><div className="request-empty-icon"><Link2 size={20}/></div><strong>One link, shared conversation</strong><span>Peer-to-peer video, microphone, and screen sharing.</span></div><div className="approval-footnote"><ShieldCheck size={15}/> Calls stay private to people with the room link.</div></aside></div>}
-      {connecting && <div className="call-connecting">{connectingLabel}</div>}
-      {(relayNotice && !connecting) && <div className="call-toast relay-notice" role="status">{relayNotice}<button onClick={() => setRelayNotice("")}>×</button></div>}
-      {(error) && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}
-      <div className="call-footnote"><span><span className="status-dot"/> PEER ROOM</span><span>Private peer-to-peer calls · No recording</span></div>
-    </section>;
-  }
-
-  const participants = Object.entries(remoteStreams);
-  return <section className="live-call-page"><div className="live-call-top"><div><span className="live-label"><span className="status-dot" /> LIVE PEER ROOM</span><h2>Study room <span>/{roomId}</span></h2></div><button className="invite-button" onClick={() => { const inviteUrl = new URL(window.location.href); inviteUrl.searchParams.set("room", roomId); inviteUrl.searchParams.delete("call"); void invitePeers(inviteUrl); }}><Users size={15}/>{copied ? "Link copied" : "Invite peers"}</button><button className="invite-button" onClick={() => { leaveCall(); }}><ArrowRight size={15} /> Back to meetings</button></div><div className="live-call-stage"><div className={`video-grid video-grid-${Math.min(participants.length + 1, 4)}`}><CallVideo stream={stream} muted label={userName} self />{participants.map(([id, participant]) => <CallVideo key={id} stream={participant.stream} label={participant.name} />)}</div>{participants.length === 0 && <div className="waiting-guests"><span className="status-dot" /> Waiting for peers to join <span>Peers with this link can join</span></div>}</div><div className="live-call-bottom"><div className="call-people"><Users size={16} /> {participants.length + 1} {participants.length === 0 ? "person" : "people"}</div><div className="call-controls"><button className={muted ? "control-off" : ""} aria-label={muted ? "Unmute microphone" : "Mute microphone"} onClick={() => { const next = !muted; setMuted(next); streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = !next; }); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}<span>{muted ? "Unmute" : "Mute"}</span></button><button className={cameraOff ? "control-off" : ""} aria-label={cameraOff ? "Turn camera on" : "Turn camera off"} onClick={() => { const next = !cameraOff; setCameraOff(next); streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = !next; }); }}>{cameraOff ? <VideoOff size={18} /> : <Video size={18} />}<span>Camera</span></button><button className={`screen-share-button${screenSharing ? " control-off" : ""}`} onClick={() => void toggleScreenShare()}><MonitorUp size={18} /><span>{screenSharing ? "Stop sharing" : "Share screen"}</span></button><button className="leave-call-button" onClick={leaveCall}><PhoneOff size={18} /><span>Leave</span></button></div><div className="call-encryption"><ShieldCheck size={15} /> Private peer-to-peer call</div></div>{connecting && <div className="call-connecting">{connectingLabel}</div>}{error && <div className="call-toast" role="status">{error}<button onClick={() => setError("")}>×</button></div>}{relayNotice && <div className="call-toast relay-notice" role="status">{relayNotice}<button onClick={() => setRelayNotice("")}>×</button></div>}</section>;
-}
-
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
@@ -1557,15 +1176,13 @@ function App() {
   const navigateToView = (view: WorkspaceView) => {
     const url = new URL(window.location.href);
     url.pathname = viewPaths[view];
-    if (view !== "calls") {
-      url.searchParams.delete("room");
-      url.searchParams.delete("schedule");
-      url.searchParams.delete("call");
-    }
+    url.searchParams.delete("room");
+    url.searchParams.delete("schedule");
+    url.searchParams.delete("call");
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
   };
-  // One pay-what-you-can pass (₹10 to ₹800) opens every feature, including the
+  // One flat ₹199 pass opens every feature, including the
   // full 250-problem set; signed out, only the landing page and the store are open. Supabase missing => unlocked.
   const [passLocked, setPassLocked] = useState(true);
   const [passChecking, setPassChecking] = useState(() => Boolean(supabase));
@@ -1627,7 +1244,7 @@ function App() {
 
   // Only the landing page, the store and Guru (the free AI teacher) are open.
   // Every other feature waits for a confirmed pass at whatever amount the
-  // student could pay between ₹10 and ₹800.
+  // student pays once.
   const tr = useT();
   const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio", "experiences", "verify", "patterns"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
@@ -2524,9 +2141,6 @@ function App() {
           </details>
         </nav>
         <div className="top-actions ms-auto">
-          <button type="button" className="assistant-launcher" onClick={() => { window.location.href = "/assistant"; }} title="Ask your personal AI">
-            <Sparkles size={15} /> <span>AI</span>
-          </button>
             {isLoaded ? user ? (
               <UserButton />
             ) : (
@@ -2552,8 +2166,6 @@ function App() {
                       ? "Deva Editor"
                   : activeView === "dsa-course"
                       ? "DSA Course"
-                    : activeView === "tutor"
-                      ? "DSA Tutor"
                     : activeView === "calendar"
                       ? "Calendar"
                       : activeView === "roadmap"
@@ -2566,8 +2178,6 @@ function App() {
                       ? "Group chat"
                         : activeView === "notes"
                           ? "Personal notes"
-                          : activeView === "calls"
-                            ? "Video calls"
                   : activeView === "mentorship" ? "Mentorship"
                   : activeView === "experiences" ? "Interview experiences"
                   : activeView === "mentees" ? "Mentees"
@@ -2583,8 +2193,6 @@ function App() {
                     ? "Deva Editor"
                   : activeView === "dsa-course"
                     ? "DSA visual course"
-                  : activeView === "tutor"
-                    ? "Ask a DSA doubt"
                   : activeView === "calendar"
                     ? "Practice calendar"
                     : activeView === "roadmap"
@@ -2597,8 +2205,6 @@ function App() {
                     ? "Group chat"
                       : activeView === "notes"
                         ? "Personal notebook"
-                        : activeView === "calls"
-                          ? "Video calls"
                 : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : "Find your next opportunity"}{" "}
               <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
             </h1>
@@ -2611,8 +2217,6 @@ function App() {
                     ? "Plan on the whiteboard, edit your solution, and trace each loop step."
                 : activeView === "dsa-course"
                     ? "Learn core DSA patterns through detailed explanations and interactive visual walkthroughs."
-                  : activeView === "tutor"
-                    ? "Get patient, step-by-step help with data structures, algorithms, and interview problems."
                   : activeView === "calendar"
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
@@ -2625,8 +2229,6 @@ function App() {
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
                         ? "Keep private study notes that sync with your account."
-                        : activeView === "calls"
-                          ? "Meet your study group face to face, right from your workspace."
                         : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "experiences" ? "Round-by-round accounts written by the candidate who sat in the room. Nothing here is scraped." : "Explore early career roles and find a team where you can grow."}
             </p>
           </div>
@@ -2666,10 +2268,8 @@ function App() {
       {activeView === "companies" && !passLocked && <CompanyProblems />}
       {activeView === "dsa-ide" && !passLocked && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
       {activeView === "dsa-course" && !passLocked && <DsaCourseStudio />}
-      {activeView === "tutor" && !passLocked && <DsaTutor />}
       {activeView === "guru" && <DsaGuru onOpenPass={() => navigateToView("mentorship")} />}
       {activeView === "cslabs" && <CsLabs onOpenPass={() => navigateToView("mentorship")} />}
-      {activeView === "calls" && !passLocked && <VideoCalls userId={user?.id ?? null} userName={clerkDisplayName} />}
       {activeView === "dashboard" && !passLocked && (
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
@@ -2809,7 +2409,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all 19 features · pay what you can <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
+            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all {passFeatureCount} features · {rupees(passPrice)} <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
           </header>
           <div className="roadmap-controls">
             <label>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, Download, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
-import { mentorEmail, paymentBadge, planLabel, rupees } from "./mentorship";
+import { isMeetLink, mentorEmail, paymentBadge, planLabel, rupees } from "./mentorship";
 
 type Mentee = {
   id: number;
@@ -14,7 +14,6 @@ type Mentee = {
   email: string;
   weekly_slot: string;
   notes: string;
-  live_room_id: string | null;
   meeting_url: string;
   scheduled_at: string | null;
   started_at: string;
@@ -95,7 +94,7 @@ function googleCalendarHref(mentee: Mentee) {
   const start = new Date(mentee.scheduled_at);
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   const utc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const link = mentee.meeting_url || `https://codexsheet.in/calls?room=${mentee.live_room_id}`;
+  const link = mentee.meeting_url;
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: `CodexSheet mentorship · ${planLabel(mentee.plan)}`,
@@ -112,13 +111,13 @@ function downloadInvite(mentee: Mentee) {
   const start = new Date(mentee.scheduled_at);
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   const utc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const link = mentee.meeting_url || `https://codexsheet.in/calls?room=${mentee.live_room_id}`;
+  const link = mentee.meeting_url;
   const body = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//CodexSheet//Mentorship//EN",
     "BEGIN:VEVENT",
-    `UID:${mentee.live_room_id ?? mentee.reference}@codexsheet.in`,
+    `UID:${mentee.reference}@codexsheet.in`,
     `DTSTAMP:${utc(new Date())}`,
     `DTSTART:${utc(start)}`,
     `DTEND:${utc(end)}`,
@@ -234,18 +233,17 @@ function SessionChat({ mentee, userId, otherLabel }: { mentee: Mentee; userId: s
   );
 }
 
-/** The one control both people press: same label, same room, on each side. */
+/** The one control both people press: the mentor's Google Meet link, on each side. */
 function JoinButton({ mentee }: { mentee: Mentee }) {
-  if (!mentee.live_room_id && !mentee.meeting_url) return null;
-  const external = mentee.meeting_url !== "";
+  if (!isMeetLink(mentee.meeting_url)) return null;
   return (
     <a
       className="mentees-primary mentees-join"
-      href={mentee.meeting_url || `/calls?room=${mentee.live_room_id}`}
-      target={external ? "_blank" : undefined}
+      href={mentee.meeting_url}
+      target="_blank"
       rel="noreferrer"
     >
-      <PhoneCall size={15} /> Join session
+      <PhoneCall size={15} /> Join on Google Meet
     </a>
   );
 }
@@ -514,10 +512,15 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
     setRoomBusy(mentee.id);
     setError(null);
     let result;
-    if (mentee.live_room_id) {
+    if (mentee.meeting_url) {
       result = await supabase.rpc("mentor_close_session", { p_mentee_id: mentee.id });
     } else {
       const edit = sessionEdits[mentee.id] ?? { meeting: "", when: "" };
+      if (!isMeetLink(edit.meeting)) {
+        setError("Paste the Google Meet link for this session. CodexSheet does not host the call itself.");
+        setRoomBusy(null);
+        return;
+      }
       result = await supabase.rpc("mentor_open_session", {
         p_mentee_id: mentee.id,
         p_meeting_url: edit.meeting.trim(),
@@ -543,19 +546,18 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
   }
 
   function joinHref(mentee: Mentee) {
-    return mentee.meeting_url || `${window.location.origin}/calls?room=${mentee.live_room_id}`;
+    return mentee.meeting_url;
   }
 
   function copyRoom(mentee: Mentee) {
-    if (!mentee.live_room_id) return;
-    const href = joinHref(mentee);
+    if (!isMeetLink(mentee.meeting_url)) return;
     navigator.clipboard
-      .writeText(href)
+      .writeText(joinHref(mentee))
       .then(() => {
-        setCopiedRoom(mentee.live_room_id);
+        setCopiedRoom(mentee.reference);
         window.setTimeout(() => setCopiedRoom(null), 2200);
       })
-      .catch(() => setError("Your browser blocked the clipboard. Open the room and copy the address bar."));
+      .catch(() => setError("Your browser blocked the clipboard. Copy the Meet link from the session row."));
   }
 
   function draftOf(mentee: Mentee): Draft {
@@ -648,7 +650,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                     {busy === String(mentee.id) ? <LoaderCircle size={15} className="mentees-spin" /> : <Check size={15} />} Save
                   </button>
                 </div>
-                {!mentee.live_room_id && (
+                {!mentee.meeting_url && (
                   <div className="mentees-schedule">
                     <label><span>Session time (IST)</span>
                       <input
@@ -657,7 +659,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                         onChange={(event) => patchEdit(mentee, { when: event.target.value })}
                       />
                     </label>
-                    <label><span>Google Meet link · optional</span>
+                    <label><span>Google Meet link · required</span>
                       <input
                         value={editOf(mentee).meeting}
                         onChange={(event) => patchEdit(mentee, { meeting: event.target.value })}
@@ -672,8 +674,8 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                   <button type="button" className="mentees-session" onClick={() => void toggleSession(mentee)} disabled={roomBusy === mentee.id}>
                     {roomBusy === mentee.id
                       ? <LoaderCircle size={14} className="mentees-spin" />
-                      : mentee.live_room_id ? <RotateCcw size={14} /> : <PhoneCall size={14} />}
-                    {mentee.live_room_id ? "End session" : mentee.meeting_url ? "Re-book with Meet" : "Open room now"}
+                      : mentee.meeting_url ? <RotateCcw size={14} /> : <PhoneCall size={14} />}
+                    {mentee.meeting_url ? "End session" : "Save Meet link"}
                   </button>
                   <button
                     type="button"
@@ -687,12 +689,12 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                       <Mail size={14} /> Contact
                     </a>
                   )}
-                  {mentee.live_room_id || mentee.scheduled_at ? (
+                  {mentee.meeting_url || mentee.scheduled_at ? (
                     <span className="mentees-room">
-                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "No hour booked — opens on press"}</span>
-                      {mentee.live_room_id && (
+                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "No hour booked yet"}</span>
+                      {isMeetLink(mentee.meeting_url) && (
                         <button type="button" onClick={() => copyRoom(mentee)}>
-                          {copiedRoom === mentee.live_room_id ? "Link copied" : "Copy invite link"}
+                          {copiedRoom === mentee.reference ? "Link copied" : "Copy Meet link"}
                         </button>
                       )}
                     </span>
@@ -739,7 +741,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <p className="mentees-note">
               {dues.length > 0
                 ? "Your record appears here the moment Aditya confirms the payment above against his Paytm statement."
-                : <>Nothing confirmed yet. The pass is ₹10–₹800 on the <a href="/mentorship">mentorship page</a>.</>}
+                : <>Nothing confirmed yet. The pass is ₹199 on the <a href="/mentorship">mentorship page</a>.</>}
             </p>
           )}
           {mine.map((mentee) => {
