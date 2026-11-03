@@ -317,7 +317,7 @@
   .mentorship-spin { animation: none; }
 }
 
-/* The payment QR tile is shared by the Family Pass and every mentor checkout, so
+/* The payment QR tile is shared by the 1:1 session booking and every mentor checkout, so
    it reads --ms-* where those exist and falls back to the live blue palette
    inside the marketplace tree. */
 .payqr { display: grid; gap: 8px; justify-items: start; }

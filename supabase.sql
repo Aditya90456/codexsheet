@@ -772,25 +772,27 @@ grant select, insert, update on public.mentorship_orders to authenticated;
 grant insert on public.mentorship_orders to anon;
 grant usage, select on sequence public.mentorship_orders_id_seq to anon, authenticated;
 
--- One flat ₹199: a Family claim at any other amount never lands, and an
--- account that already holds a confirmed pass cannot file a second one.
+-- One flat ₹199: a session claim at any other amount never lands, and an
+-- account that already has a confirmed booking cannot file a second one.
 create or replace function public.mentorship_orders_family_pass_only()
 returns trigger
 language plpgsql
 as $fn$
 begin
   if new.plan = 'family' and new.amount <> 199 then
-    raise exception 'The CodexSheet pass is one flat ₹199 (got ₹%)', new.amount
+    raise exception 'A CodexSheet session is one flat ₹199 (got ₹%)', new.amount
       using errcode = '22023';
   end if;
 
+  -- A BEFORE row trigger cannot lock rows of the table it is inserting into, so
+  -- the duplicate probe reads without `for update`.
   if coalesce(new.user_id, '') <> '' and new.plan = 'family' then
     perform 1 from public.mentorship_orders paid
       where paid.user_id = new.user_id
         and paid.status in ('confirmed', 'delivered')
-      for update;
+      limit 1;
     if found then
-      raise exception 'This account already holds a confirmed CodexSheet pass'
+      raise exception 'This account already has a confirmed CodexSheet booking'
         using errcode = '23505';
     end if;
   end if;
@@ -896,7 +898,7 @@ begin
     picked.buyer_name,
     picked.buyer_contact,
     (case picked.plan
-      when 'family' then 'CodexSheet Family pass (all 17 features) - flat price'
+      when 'family' then '1:1 session with Aditya - 60 minutes on Google Meet'
       when 'one-to-one' then '1:1 mentorship (legacy price)'
       when 'ltm-3-months' then 'Long-term mentorship (3 months)'
       when 'ltm-6-months' then 'Long-term mentorship (6 months)'
@@ -975,7 +977,7 @@ begin
 end;
 $fn$;
 
-revoke all on function public.mentorship_pending_notifications(integer) from public;
+revoke all on function public.mentorship_pending_notifications(integer) from public, anon, authenticated;
 grant execute on function public.mentorship_pending_notifications(integer) to service_role;
 
 -- Put claimed rows back in the queue when delivery fails, so a resend is
@@ -2138,9 +2140,12 @@ $fn$;
 revoke all on function public.mentor_close_market_order(text, text, text) from public, anon;
 grant execute on function public.mentor_close_market_order(text, text, text) to authenticated;
 
--- ── The workspace gate learns that mentoring is no longer one person ────────
--- A mentor's product can carry workspace access; a confirmed claim for one opens
--- the sheet the same way the Family Pass does.
+-- ── The workspace is free ────────────────────────────────────────────────────
+-- Every learning feature opens with a sign-in. Money buys only Aditya's own
+-- time, so the gate that used to read confirmed orders is retired and always
+-- open. The function stays because minting a certificate calls it; a fresh
+-- install gets this definition, and 20261103_workspace_is_free.sql brings an
+-- existing database to the same place.
 create or replace function public.workspace_unlocked()
 returns boolean
 language sql
@@ -2148,31 +2153,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.is_workspace_mentor()
-    or exists (
-      select 1
-      from public.mentorship_orders placed
-      where placed.status in ('confirmed', 'delivered')
-        and (
-          (coalesce(auth.jwt() ->> 'sub', '') <> '' and placed.user_id = coalesce(auth.jwt() ->> 'sub', ''))
-          or (coalesce(auth.jwt() ->> 'email', '') <> ''
-              and placed.buyer_email <> ''
-              and lower(placed.buyer_email) = lower(coalesce(auth.jwt() ->> 'email', '')))
-        )
-    )
-    or exists (
-      select 1
-      from public.market_orders bought
-      join public.mentor_products item on item.id = bought.product_id
-      where bought.status in ('confirmed', 'delivered')
-        and item.unlocks_workspace
-        and (
-          (coalesce(auth.jwt() ->> 'sub', '') <> '' and bought.buyer_user_id = coalesce(auth.jwt() ->> 'sub', ''))
-          or (coalesce(auth.jwt() ->> 'email', '') <> ''
-              and bought.buyer_email <> ''
-              and lower(bought.buyer_email) = lower(coalesce(auth.jwt() ->> 'email', '')))
-        )
-    );
+  select true;
 $$;
 
 revoke all on function public.workspace_unlocked() from public;
@@ -2621,9 +2602,12 @@ $fn$;
 revoke all on function public.mentor_close_market_order(text, text, text) from public, anon;
 grant execute on function public.mentor_close_market_order(text, text, text) to authenticated;
 
--- ── The workspace gate learns that mentoring is no longer one person ────────
--- A mentor's product can carry workspace access; a confirmed claim for one opens
--- the sheet the same way the Family Pass does.
+-- ── The workspace is free ────────────────────────────────────────────────────
+-- Every learning feature opens with a sign-in. Money buys only Aditya's own
+-- time, so the gate that used to read confirmed orders is retired and always
+-- open. The function stays because minting a certificate calls it; a fresh
+-- install gets this definition, and 20261103_workspace_is_free.sql brings an
+-- existing database to the same place.
 create or replace function public.workspace_unlocked()
 returns boolean
 language sql
@@ -2631,31 +2615,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.is_workspace_mentor()
-    or exists (
-      select 1
-      from public.mentorship_orders placed
-      where placed.status in ('confirmed', 'delivered')
-        and (
-          (coalesce(auth.jwt() ->> 'sub', '') <> '' and placed.user_id = coalesce(auth.jwt() ->> 'sub', ''))
-          or (coalesce(auth.jwt() ->> 'email', '') <> ''
-              and placed.buyer_email <> ''
-              and lower(placed.buyer_email) = lower(coalesce(auth.jwt() ->> 'email', '')))
-        )
-    )
-    or exists (
-      select 1
-      from public.market_orders bought
-      join public.mentor_products item on item.id = bought.product_id
-      where bought.status in ('confirmed', 'delivered')
-        and item.unlocks_workspace
-        and (
-          (coalesce(auth.jwt() ->> 'sub', '') <> '' and bought.buyer_user_id = coalesce(auth.jwt() ->> 'sub', ''))
-          or (coalesce(auth.jwt() ->> 'email', '') <> ''
-              and bought.buyer_email <> ''
-              and lower(bought.buyer_email) = lower(coalesce(auth.jwt() ->> 'email', '')))
-        )
-    );
+  select true;
 $$;
 
 revoke all on function public.workspace_unlocked() from public;

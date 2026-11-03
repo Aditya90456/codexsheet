@@ -545,7 +545,7 @@ function metricsOf(frame: LabFrame, frames: LabFrame[]) {
   return rows;
 }
 
-export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
+export default function CsLabs({ onOpenMentorship }: { onOpenMentorship: () => void }) {
   const tr = useT();
   const lang = useUiLanguage();
   const [subject, setSubject] = useState<CsSubject | "all">("all");
@@ -881,7 +881,7 @@ export default function CsLabs({ onOpenPass }: { onOpenPass: () => void }) {
             </div>
           )}
 
-          <button className="csl-bridge" onClick={onOpenPass}>
+          <button className="csl-bridge" onClick={onOpenMentorship}>
             <GitBranch size={13} /> {tr("guru.mentor")}
           </button>
         </aside>

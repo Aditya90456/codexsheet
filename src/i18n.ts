@@ -1,5 +1,5 @@
 // CodexSheet speaks the languages its students actually study in. The UI keeps a
-// deliberately small translated surface (the free path: landing, the pass lock,
+// deliberately small translated surface (the free path: landing, the workspace,
 // Guru, mentorship) and everything else falls back to English, while the AI
 // teacher itself answers in the chosen language through /api/tutor.
 import { useEffect, useState } from "react";
@@ -52,7 +52,6 @@ const messages = {
   "nav.course": { en: "DSA Course", hi: "डीएसए कोर्स", bn: "ডিএসএ কোর্স", ta: "டிஎஸ்எ படிப்ப", te: "డీఎస్ఏ కోర్సు", mr: "डीएसए अभ्यासक्रम", gu: "ડીએસએ કોર્સ" },
   "nav.guru": { en: "Guru · free AI teacher", hi: "गुरु · मुफ़्त AI टीचर", bn: "গুরু · ফ্রি AI শিক্ষক", ta: "குரு · இலவச AI ஆசிரியர்", te: "గురు · ఉచిత AI ఉపాధ్యాయుడు", mr: "गुरु · मोफत AI शिक्षक", gu: "ગુરુ · મફત AI શિક્ષક" },
   "nav.more": { en: "More", hi: "और", bn: "আরও", ta: "மேலும்", te: "మరింత", mr: "अधिक", gu: "વધુ" },
-  "top.pass": { en: "Pass ₹199", hi: "पास ₹199", bn: "পাস ₹199", ta: "பாஸ் ₹199", te: "పాస్ ₹199", mr: "पास ₹199", gu: "પાસ ₹199" },
   "home.eyebrow": { en: "YOUR NEXT INTERVIEW STARTS HERE", hi: "आपका अगला इंटरव्यू यहीं से शुरू", bn: "তোমার পরের ইন্টারভিউ এখান থেকে", ta: "உங்கள் அடுத்த நேர்காணல் இங்கே தொடங்குகிறது", te: "మీ తదుపరి ఇంటర్వ్యూ ఇక్కడే మొదలవుతుంది", mr: "तुमचा पुढचा इंटरव्यू इथूनच", gu: "તમારી આગલી ઈન્ટરવ્યૂ અહીંથી શરૂ" },
   "home.title1": { en: "DSA interview practice", hi: "डीएसए इंटरव्यू की तैयारी", bn: "ডিএসএ ইন্টারভিউ প্রস্তুতি", ta: "டிஎஸ்எ நேர்காணல் பயிற்சி", te: "డీఎస్ఏ ఇంటర్వ్యూ సన్నాహం", mr: "डीएसए इंटरव्यू सराव", gu: "ડીએસએ ઈન્ટરવ્યૂ અભ્યાસ" },
   "home.title2": { en: "with a plan.", hi: "एक प्लान के साथ।", bn: "একটি পরিকল্পনা নিয়ে।", ta: "ஒரு திட்டத்துடன்.", te: " ఒక ప్లాన్‌తో.", mr: "एक योजनेसह.", gu: "એક યોજના સાથે." },
@@ -69,30 +68,6 @@ const messages = {
   "home.cta2": { en: "Meet your AI teacher", hi: "अपने AI टीचर से मिलो", bn: "তোমার AI শিক্ষকের সাথে দেখা", ta: "உங்கள் AI ஆசிரியரை சந்தி", te: "మీ AI ఉపాధ్యాయుడిని కలవండి", mr: "तुमच्या AI शिक्षकाला भेटा", gu: "તમારા AI શિક્ષકને મળો" },
   "home.proof1": { en: "250 curated problems", hi: "250 चुने हुए प्रॉब्लम", bn: "২৫০ বাছাই করা প্রবলেম", ta: "250 தேர்ந்த பிரச்சினைகள்", te: "250 ఎంపిక చేసిన సమస్యలు", mr: "250 निवडलेले प्रश्न", gu: "250 પસંદ કરેલા પ્રશ્નો" },
   "home.proof2": { en: "Free AI teacher, 7 languages", hi: "मुफ़्त AI टीचर, 7 भाषाएँ", bn: "ফ্রি AI শিক্ষক, ৭টি ভাষা", ta: "இலவச AI ஆசிரியர், 7 மொழிகள்", te: "ఉచిత AI ఉపాధ్యాయుడు, 7 భాషలు", mr: "मोफत AI शिक्षक, 7 भाषा", gu: "મફત AI શિક્ષક, 7 ભાષાઓ" },
-  "lock.kicker": { en: "CODEXSHEET FAMILY PASS · ₹199", hi: "CODEXSHEET FAMILY PASS · ₹199", bn: "CODEXSHEET FAMILY PASS · ₹199", ta: "CODEXSHEET FAMILY PASS · ₹199", te: "CODEXSHEET FAMILY PASS · ₹199", mr: "CODEXSHEET FAMILY PASS · ₹199", gu: "CODEXSHEET FAMILY PASS · ₹199" },
-  "lock.title": { en: "One payment opens all 17 features.", hi: "एक payment, सारे 17 features खुल जाते हैं।", bn: "একটি পেমেন্টেই খুলে যায় ১৭টি ফিচার।", ta: "ஒரு கட்டணமே, 17 அம்சங்களும் திறக்கும்.", te: "ఒక చెల్లింపుతోనే 17 ఫీచర్లు తెరుచుకుంటాయి.", mr: "एकच पेमेंट, सर्व 17 फीचर्स उघडतात.", gu: "એક જ પેમેન્ટ, બધા 17 ફીચર ખૂલી જાય." },
-  "lock.body": {
-    en: "The 250-problem sheet is the product. ₹199 on Paytm opens it in full, along with the Deva editor, the animated course, notes, chat, calls and your 1:1 session. Guru, the free AI teacher, stays free forever.",
-    hi: "250 प्रॉब्लम वाली शीट ही प्रोडक्ट है। Paytm पर ₹199 से यह पूरा खुलता है — देवा एडिटर, एनिमेटेड कोर्स, नोट्स, चैट, कॉल्स और तुम्हारी 1:1 सीटिंग भी। गुरु, यानी AI टीचर, हमेशा मुफ़्त रहेगा।",
-    bn: "২৫০ প্রবলেমের শীটই আসল প্রোডাক্ট। Paytm-এ ₹199 দিলে সব খোলে — দেবা এডিটর, অ্যানিমেটেড কোর্স, নোট, চ্যাট, কল আর 1:1 সেশনও। গুরু, তোমার AI শিক্ষক, সবসময় ফ্রি থাকবে।",
-    ta: "250 பிரச்சினைகள் உள்ள ஷீட் தான் பிரோடக்ட். Paytm-ல் ₹199 கொடுத்தால் தேவா எடிட்டர், அனிமேட்டட் படிப்பு, குறிப்புகள், சாட், அழைப்பு, 1:1 அமர்வு அனைத்தும் திறக்கும். குரு (AI ஆசிரியர்) எப்போதும் இலவசம்.",
-    te: "250 సమస్యల షీటే అసలైన ప్రోడక్ట్. Paytm పై ₹199 ఇస్తే దేవ ఎడిటర్, యానిమేటెడ్ కోర్సు, నోట్స్, చాట్, కాల్స్, 1:1 సెషన్ అన్నీ తెరుచుకుంటాయి. గురు (AI ఉపాధ్యాయుడు) ఎప్పుడూ ఉచితం.",
-    mr: "250 प्रश्नांची शीटच खरे प्रोडक्ट. Paytm वर ₹199 द्या म्हणजे देवा एडिटर, अ‍ॅनिमेटेड अभ्यासक्रम, नोटीस, चॅट, कॉल्स आणि 1:1 सेशन्स सर्व उघडेल. गुरु (AI शिक्षक) नेहमी मोफत राहील.",
-    gu: "250 પ્રશ્નોની શીટ જ સાચી પ્રોડક્ટ. Paytm પર ₹199 આપો એટલે દેવ એડિટર, એનિમેટેડ કોર્સ, નોટ્સ, ચેટ, કૉલ્સ અને 1:1 સેશન બધું ખૂલી જશે. ગુરુ (AI શિક્ષક) હંમેશા મફત રહેશે.",
-  },
-  "lock.note": {
-    en: "Aditya matches every payment against his own Paytm statement, usually the same day. Your reference starts with CS-FAM-. Not for you? Say so within 5 days of confirmation and he refunds whatever you paid, straight back on Paytm.",
-    hi: "Aditya हर payment अपनी Paytm statement से मिलाता है, अक्सर उसी दिन। तुम्हारा reference CS-FAM- से शुरू होता है। काम नहीं करना? confirm होने के 5 दिन में बताना, जितना भरा था उतना Paytm पर वापस मिलेगा।",
-    bn: "Aditya প্রতিটি পেমেন্ট নিজের Paytm statement-এর সাথে মিলিয়ে নেন, প্রায় একই দিনে। তোমার reference শুরু হয় CS-FAM- দিয়ে। দরকার নেই? confirm হওয়ার ৫ দিনের মধ্যে বলো, যা দিয়েছিলে তা-ই Paytm-এ ফেরত পাবে।",
-    ta: "Aditya ஒவ்வொரு payment-ஐயும் தன் Paytm statement-உடன் ஒப்பிடுவார், பெரும்பாலும் அன்றே. உங்கள் reference CS-FAM- என தொடங்கும். தேவையில்லையா? உறுதிப்படுத்த 5 நாட்கள் உள்ளே சொல்லுங்கள், நீங்கள் கொடுத்ததை Paytm-ல் திரும்பப் பெறுவீர்கள்.",
-    te: "Aditya ప్రతి payment ను తన Paytm statement తో పోల్చి చూస్తాడు, చాలాసార్ల అదే రోజు. మీ reference CS-FAM- తో మొదలవుతుంది. అవసరం లేదా? confirm అయిన 5 రోజుల్లో చెప్పండి, మీరు చెల్లించింది Paytm లో తిరిగి ఇప్పిస్తాడు.",
-    mr: "Aditya प्रत्येक payment आपल्या Paytm statement शी जुळवतो, बहुतेक त्याच दिवशी. तुझा reference CS-FAM- ने सुरू होतो. हवा नाही? confirm झाल्याच्या 5 दिसांत सांग, तू भरलली रकम Paytm वर परत मिळेल.",
-    gu: "Aditya દરેક payment પોતાની Paytm statement સાથે મેળવે છે, ઘણીવાર એ જ દિવસે. તમારો reference CS-FAM- થી શરૂ થાય છે. જોઈતો નથી? confirm થયાના 5 દિવસમાં કહો, તમે ભરેલી રકમ Paytm પર પાછી મળશે.",
-  },
-  "lock.pay": { en: "Pay ₹199 on Paytm", hi: "Paytm पर ₹199 भुगतान करो", bn: "Paytm-এ ₹199 দিন", ta: "Paytm-ல் ₹199 செலுத்து", te: "Paytm పై ₹199 చెల్లించండి", mr: "Paytm वर ₹199 भरा", gu: "Paytm પર ₹199 ભુગટાવો" },
-  "lock.paid": { en: "I paid — unlock", hi: "मैंने pay किया — खोलो", bn: "আমি দিয়েছি — খোলো", ta: "நான் செலுத்தினேன் — திற", te: "చెల్లించాను — తెరవండి", mr: "मी भरले — उघडा", gu: "મે ભર્યું — ખોલો" },
-  "lock.checking": { en: "Checking…", hi: "देख रहे हैं…", bn: "দেখছি…", ta: "பார்க்கிறேன்…", te: "చూస్తున్నాను…", mr: "तपासत आहे…", gu: "તપાસી રહ્યું છે…" },
-  "lock.free": { en: "No money? Ask Guru for free", hi: "पैसे नहीं? गुरु से मुफ़्त पूछो", bn: "টাকা নেই? গুরুকে ফ্রি জিজ্ঞাসা করো", ta: "பணம் இல்லை? குருவிடம் இலவசமாக கேள்", te: "డబ్బు లేదా? గురు ఉచితంగా అడగతాడు", mr: "पैसे नाहीत? गुरुला मोफत विचार", gu: "પૈસા નથી? ગુરુને મફત પૂછો" },
   "guru.kicker": { en: "FREE · AI TEACHER · 7 INDIAN LANGUAGES", hi: "मुफ़्त · AI टीचर · 7 भारतीय भाषाएँ", bn: "ফ্রি · AI শিক্ষক · ৭টি ভারতীয় ভাষা", ta: "இலவசம் · AI ஆசிரியர் · 7 இந்திய மொழிகள்", te: "ఉచితం · AI ఉపాధ్యాయుడు · 7 భారతీయ భాషలు", mr: "मोफत · AI शिक्षक · 7 भारतीय भाषा", gu: "મફત · AI શિક્ષક · 7 ભારતીય ભાષાઓ" },
   "guru.title": { en: "Guru teaches you DSA out loud.", hi: "गुरु तुम्हें DSA बोलकर सिखाता है।", bn: "গুরু তোমাকে DSA বলে বুঝিয়ে শেখায়।", ta: "குரு உங்களுக்கு DSA சொல்லித் தருவார்.", te: "గురు మీకు DSA నోటితోనే బోధిస్తాడు.", mr: "गुरु तुला DSA बोलून शिकवतो.", gu: "ગુરુ તમને DSA બોલીને શીખવે છે." },
   "guru.body": {
@@ -127,7 +102,7 @@ const messages = {
   "guru.board": { en: "The board", hi: "बोर्ड", bn: "বোর্ড", ta: "போர்டு", te: "బోర్డు", mr: "फलक", gu: "બોર્ડ" },
   "guru.chat": { en: "Ask Guru", hi: "गुरु से पूछो", bn: "গুরুকে জিজ্ঞাসা", ta: "குருவிடம் கேள்", te: "గురుకి అడగి", mr: "गुरुला विचारा", gu: "ગુરુને પૂછો" },
   "guru.langNote": { en: "Guru replies in {language}.", hi: "गुरु {language} में जवाब देगा।", bn: "গুরু {language}-এ উত্তর দেবে।", ta: "குரு {language} இல் பதில் சொல்வார்.", te: "గురు {language} లో సమాధానం ఇస్తాడు.", mr: "गुरु {language} मध्ये उत्तर देतो.", gu: "ગુરુ {language} માં જવાબ આપે છે." },
-  "guru.passCta": { en: "Want the whole CodexSheet too?", hi: "पूरा CodexSheet भी चाहिए?", bn: "পুরো CodexSheet-ও চাই?", ta: "முழு CodexSheet வேண்டுமா?", te: "మొత్తం CodexSheet కావాలా?", mr: "पूर्ण CodexSheet हवा आहे?", gu: "આખું CodexSheet પણ જોઈએ?" },
+  "guru.bookSession": { en: "Book a 1:1 with Aditya · ₹199", hi: "एडिटिया के साथ 1:1 बुक करो · ₹199", bn: "আদিত্যের সঙ্গে 1:1 বুক করো · ₹199", ta: "ஆதித்தியாவுடன் 1:1 முன்பதிவு · ₹199", te: "ఆదిత్యాతో 1:1 బుక్ చేయండి · ₹199", mr: "आदित्यासोबत 1:1 बुक करा · ₹199", gu: "આદિત્ય સાથે 1:1 બુક કરો · ₹199" },
   "guru.free": { en: "Guru is free forever, in every language he speaks.", hi: "गुरु हमेशा मुफ़्त है, हर उस भाषा में जो वो बोलता है।", bn: "গুরু চিরকাল ফ্রি, যে সব ভাষায় কথা বলে।", ta: "குரு எப்போதும் இலவசம், அவர் பேசும் ஒவ்வொரு மொழியிலும்.", te: "గురు ఎప్పుడూ ఉచితం, అతను మాట్లాడే ప్రతి భాషలో.", mr: "गुरु नेहमी मोफत, ज्या भाषा तो बोलतो त्यात.", gu: "ગુરુ હંમેશા મફત, જે ભાષાઓ બોલે છે તેમાં." },
   "guru.topics": { en: "Every topic Guru can teach you", hi: "गुरु जो हर टॉपिक पढ़ाता है", bn: "গুরু যে সব টপিক শখায়", ta: "குரு சொல்லும் ஒவ்வொரு தலைப்பும்", te: "గురు నేర్పించే ప్రతి అంశం", mr: "गुरु जे प्रत्येक विषय शिकवतो", gu: "ગુરુ જે દરેક વિષય શીખવે છે" },
   "guru.nextUp": { en: "Next up", hi: "आगे यह", bn: "এরপর", ta: "அடுத்து", te: "తర్వాత", mr: "पुढे", gu: "આગળ" },
@@ -163,7 +138,6 @@ const messages = {
   "cslabs.formulas": { en: "Formulas", hi: "Formulas", bn: "Formulas", ta: "Formulas", te: "Formulas", mr: "Formulas", gu: "Formulas" },
   "cslabs.traps": { en: "Traps", hi: "गलतियाँ", bn: "ভুল", ta: "பிழைகள்", te: "తప్పులు", mr: "चुका", gu: "ભૂલો" },
   "cslabs.interview": { en: "Interview", hi: "Interview", bn: "Interview", ta: "Interview", te: "Interview", mr: "Interview", gu: "Interview" },
-  "ms.kicker": { en: "ALL 17 FEATURES · ONE PASS · ₹199", hi: "सारे 17 features · एक पास · ₹199", bn: "সব ১৭ ফিচার · এক পাস · ₹199", ta: "அனைத்து 17 அம்சம் · ஒரே பாஸ் · ₹199", te: "అన్ని 17 ఫీచర్లు · ఒక పాస్ · ₹199", mr: "सर्व 17 फीचर्स · एक पास · ₹199", gu: "બધા 17 ફીચર · એક પાસ · ₹199" },
 } as const;
 
 export type MessageKey = keyof typeof messages;

@@ -1,6 +1,8 @@
 // Mentorship pricing and the Paytm QR-only payment contract.
-// Money moves through Aditya's personal Paytm UPI handle, so the app never
-// touches a gateway: it locks the amount into the code the student scans,
+// Every learning feature on CodexSheet is free — sign in and the whole workspace
+// opens, with no card and no code. The one thing money buys is Aditya's own time:
+// a single 1:1 session. It moves through his personal Paytm UPI handle, so the app
+// never touches a gateway: it locks the amount into the code the student scans,
 // requires the UTR from the receipt, and records the claim for him to confirm
 // against his Paytm statement.
 export const payee = {
@@ -11,26 +13,26 @@ export const payee = {
 
 export const mentorEmail = "adityabakshi1011@gmail.com";
 
-/** The only thing CodexSheet sells. Older rows in the ledger still name plans below. */
+/** The ledger keeps calling a session "family"; the id is a storage detail now. */
 export type MentorshipPlanId = "family";
 
 /**
- * One flat price for the whole workspace. The QR is generated from this number
- * and the database insert trigger rejects a family order that is not exactly
- * ₹199, so neither the page nor a hand-edited UPI app can change what is owed.
+ * One flat price for one 1:1 session. The QR is generated from this number and
+ * the database insert trigger rejects a session order that is not exactly ₹199,
+ * so neither the page nor a hand-edited UPI app can change what is owed.
  */
-export const passPrice = 199;
+export const sessionPrice = 199;
 
-/** Everything the pass opens. The lock screen renders this list and the copy quotes its length. */
-export const passFeatureNames = [
+/** Everything that is free the moment a student signs in. The copy quotes its length. */
+export const freeFeatureNames = [
   "Landing", "250-problem library", "Deva editor", "Animated DSA course",
   "Progress dashboard", "Company question sets", "Roadmap board", "Senior SDE · LLD", "LLD whiteboard",
-  "Personal notes", "Concept articles", "Job search", "Group chat", "Google Meet sessions",
-  "Practice calendar", "1:1 Google Meet sessions", "Mentee space",
+  "Personal notes", "Concept articles", "Job search", "Group chat", "Guru the AI teacher",
+  "Practice calendar", "Interview experiences", "Leaderboard and certificates",
 ];
 
-/** How many workspace features the pass opens; every piece of copy quotes this. */
-export const passFeatureCount = passFeatureNames.length;
+/** How many features cost nothing; every piece of copy quotes this. */
+export const freeFeatureCount = freeFeatureNames.length;
 
 export type MentorshipPlan = {
   id: MentorshipPlanId;
@@ -46,17 +48,17 @@ export type MentorshipPlan = {
 export const mentorshipPlans: MentorshipPlan[] = [
   {
     id: "family",
-    tag: "FAM",
-    title: "CodexSheet Family Pass",
-    subtitle: `All ${passFeatureCount} features · one flat ${rupees(passPrice)}`,
-    price: passPrice,
-    cadence: "one payment · no expiry",
+    tag: "1:1",
+    title: "1:1 Mentorship with Aditya",
+    subtitle: `One 60-minute Google Meet session · ${rupees(sessionPrice)}`,
+    price: sessionPrice,
+    cadence: "per session · you pick the hour",
     includes: [
-      `Every one of the ${passFeatureCount} workspace features, opened at once`,
-      "All 250 patterns and the full problem library",
-      "Deva editor with real judged submissions and the animated course",
-      "Roadmap board, notes, articles, job search and the practice calendar",
-      "Group chat, plus a 1:1 Google Meet session with Aditya you book yourself",
+      "A 60-minute Google Meet call, booked into an hour you choose from his published slots",
+      "He reads your code line by line, on the real judged submission inside the Deva editor",
+      "A written feedback note on your solution after the call",
+      "A private chat lane with Aditya for questions between sessions",
+      `The rest of CodexSheet stays free: all ${freeFeatureCount} features, the whole 250-problem sheet`,
     ],
   },
 ];
@@ -89,25 +91,25 @@ export const curriculum: CurriculumWeek[] = [
   { label: "Week 12", title: "Mixed set, then a real mock", focus: ["Greedy", "Bit Manipulation"], pace: "19 problems + a timed set", outcome: "One recorded 1:1 mock interview with Aditya and a written feedback note on your code." },
 ];
 
-/** Five days from a confirmed pass to ask for the money back. */
+/** Five days from a confirmed payment to ask for the money back. */
 export const refundWindow = {
   days: 5,
   headline: "Five days to decide",
-  body: "If the pass is not what you needed, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
+  body: "If the session was not worth it, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
 };
 
-/** What happens between the Paytm QR and the first call. */
-export const passFlow: { title: string; body: string }[] = [
+/** What happens between the Paytm QR and the call. */
+export const sessionFlow: { title: string; body: string }[] = [
   { title: "Pay the ₹199", body: "Scan the QR. The amount is printed inside the code and the server refuses any other figure, so there is nothing to mistype or underpay." },
   { title: "Record reference and UTR", body: "Fill the small form on this page. Your Paytm UTR is required — it is the only thing that ties your claim to a real statement entry." },
-  { title: "Aditya verifies the UTR", body: "He searches his Paytm merchant statement for that UTR. Only a match flips the badge DUE → DONE." },
-  { title: "Your lane opens", body: `All ${passFeatureCount} features, the full 250-problem sheet, your weekly slot and the private chat.` },
+  { title: "Aditya verifies the UTR", body: "He searches his Paytm statement for that UTR. Only a match flips the badge DUE → DONE." },
+  { title: "Book your hour", body: "Confirmed orders get a slot in his published window and a private chat lane. The Google Meet link for the call is written into your entry." },
 ];
 
 /** Only promises the product actually keeps — no invented résumé. */
 export const mentorCraft: string[] = [
   "He reads your solution line by line, on the real judged submission in the Deva editor — not a paragraph of advice.",
-  "One 1:1 call every week, and you pick the hour from the slots he publishes (Mon–Fri, 11:00–18:00 IST).",
+  "You pick the hour from the slots he publishes (Mon–Fri, 11:00–18:00 IST), one session at a time.",
   "Stuck between sessions? Message him in the private lane; there is no per-question charge.",
   "He confirms your payment himself before the first call, so the ledger and his Paytm statement always agree.",
 ];
@@ -137,7 +139,7 @@ export function utrValid(value: string): boolean {
   return /^[A-Za-z0-9]{12,30}$/.test(cleaned) && (cleaned.match(/\d/g) ?? []).length >= 11;
 }
 
-/** Names a plan for a student, including the products retired when the pass launched. */
+/** Names a plan for a student, including the products retired when the workspace went free. */
 export function planLabel(plan: string): string {
   const legacy: Record<string, string> = {
     "one-to-one": "1:1 Mentorship",

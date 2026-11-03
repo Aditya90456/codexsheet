@@ -91,7 +91,7 @@ import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT, type MessageKey } from "./i18n";
-import { passFeatureCount, passFeatureNames, passPrice, rupees } from "./mentorship";
+import { freeFeatureCount, rupees, sessionPrice } from "./mentorship";
 import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import {
   getSheetRank,
@@ -203,8 +203,8 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
-    title: "1-on-1 DSA mentorship — CodexSheet Family Pass",
-    description: "One ₹199 CodexSheet Family Pass: the full workspace plus 1-on-1 mentorship with a Google Meet session, chat and a plan built around your target company.",
+    title: "1-on-1 DSA mentorship with Aditya Bakshi — ₹199 per session",
+    description: "One 60-minute Google Meet session with Aditya: your code reviewed line by line on a judged submission, a written feedback note afterwards, and a private chat lane between sessions. Pay on the Paytm QR. The workspace itself is free.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -263,7 +263,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
   {
     label: "Mentors",
     items: [
-      { view: "mentorship", label: "CodexSheet pass", icon: GraduationCap },
+      { view: "mentorship", label: "1:1 mentorship", icon: GraduationCap },
       { view: "marketplace", label: "Mentor marketplace", icon: Store },
       { view: "studio", label: "Mentor studio", icon: Package },
       { view: "mentees", label: "My mentees", icon: Users },
@@ -273,66 +273,6 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
 
 const moreMenuViews: WorkspaceView[] = navMenuGroups.flatMap((group) => group.items.map((item) => item.view));
 
-function WorkspacePassLock({ checking, onOpenStore, onRecheck, onOpenGuru }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void; onOpenGuru: () => void }) {
-  const tr = useT();
-  return (
-    <section className="workspace-lock" aria-label="CodexSheet Family Pass">
-      <div className="workspace-lock-card">
-        <span className="workspace-lock-kicker">{tr("lock.kicker")}</span>
-        <h2>{tr("lock.title")}</h2>
-        <p>{tr("lock.body")}</p>
-        <div className="workspace-lock-actions">
-          <button type="button" className="primary-button" onClick={onOpenStore}>{tr("lock.pay")} <ArrowRight size={16} /></button>
-          <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? tr("lock.checking") : tr("lock.paid")}</button>
-          <button type="button" className="workspace-lock-guru" onClick={onOpenGuru}>{tr("lock.free")} <ArrowRight size={15} /></button>
-        </div>
-        <small>{tr("lock.note")}</small>
-      </div>
-      <ul className="workspace-lock-list" aria-label="What the pass unlocks">
-        {passFeatureNames.map((feature, index) => (
-          <li key={feature}><i>{String(index + 1).padStart(2, "0")}</i>{feature}</li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-
-// Signed out, Google and students see the shape of the sheet before the paywall:
-// every pattern, its problem count and the named problems inside it.
-function SheetProblemIndex({ onOpenStore }: { onOpenStore: () => void }) {
-  const byPattern = patterns.map((name) => ({
-    name,
-    total: problems.filter((problem) => problem.pattern === name).length,
-    seeds: seeds.filter((seed) => seed[1] === name),
-  }));
-  return (
-    <section className="sheet-index" aria-labelledby="sheet-index-title">
-      <div className="sheet-index-head">
-        <span className="sheet-index-eyebrow">THE SHEET, IN FULL</span>
-        <h2 id="sheet-index-title">250 DSA problems, 16 interview patterns</h2>
-        <p>Every problem carries the pattern it teaches, its difficulty and the LeetCode link to solve it on. Working through the sheet tracks solved status, notes, XP and your day streak.</p>
-      </div>
-      <div className="sheet-index-patterns">
-        {byPattern.map((group) => (
-          <article className="sheet-index-pattern" key={group.name}>
-            <h3>{group.name}<small>{group.total} problems</small></h3>
-            {group.seeds.length ? (
-              <ul className="sheet-index-problems">
-                {group.seeds.map(([title, , level]) => (
-                  <li key={title}><span>{title}</span><em className={`difficulty ${level.toLowerCase()}`}>{level}</em></li>
-                ))}
-              </ul>
-            ) : (
-              <p className="sheet-index-empty">More reps of this pattern appear inside the sheet.</p>
-            )}
-          </article>
-        ))}
-      </div>
-      <button type="button" className="sheet-index-cta" onClick={onOpenStore}>Open the sheet with the Family Pass <ArrowRight size={15} /></button>
-    </section>
-  );
-}
 
 
 function HomePage({
@@ -490,23 +430,23 @@ function HomePage({
 
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">LEARN WITH ADITYA BAKSHI</span><h2 id="home-services-title">Get help with <em>your next step.</em></h2></div>
-          <p>{rupees(passPrice)} once — all {passFeatureCount} features open, paid on the Paytm QR. Guru, the AI teacher, stays free for everyone.</p>
+          <div><span className="home-section-kicker">FREE, THEN ONE THING YOU CAN PAY FOR</span><h2 id="home-services-title">The workspace is <em>free.</em></h2></div>
+          <p>All {freeFeatureCount} features open the moment you sign in — no card, no code. The only thing money buys is Aditya&apos;s time.</p>
         </div>
-        <div className="home-offer-grid" aria-label="The CodexSheet pass and the free AI teacher">
-          <article className="home-offer-card home-offer-pass">
-            <div className="home-offer-top"><span className="home-offer-icon">{passFeatureCount}</span><span className="home-offer-price">{rupees(passPrice)}</span></div>
-            <span className="home-offer-label">EVERY FEATURE, ONE PRICE</span>
-            <h3>CodexSheet Family Pass</h3>
-            <p>All {passFeatureCount} features at once: the 250-problem library, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat and a 1:1 Google Meet session with Aditya that you book yourself. {rupees(passPrice)} is the whole price - no band, no negotiation. Ask within 5 days of confirming and it comes straight back.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Open all {passFeatureCount} features for {rupees(passPrice)} <ArrowRight size={15}/></a>
+        <div className="home-offer-grid" aria-label="What is free and what costs money">
+          <article className="home-offer-card home-offer-free">
+            <div className="home-offer-top"><span className="home-offer-icon">{freeFeatureCount}</span><span className="home-offer-price">FREE</span></div>
+            <span className="home-offer-label">EVERY FEATURE, NO PAYMENT</span>
+            <h3>The whole CodexSheet workspace</h3>
+            <p>The 250-problem library, the Deva editor with real judged submissions, the animated course, the roadmap board, algorithm labs, notes, group chat, the practice calendar and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
+            <a href="/problems" onClick={(event) => { event.preventDefault(); onNavigate("problems"); }}>Open the problem sheet <ArrowRight size={15}/></a>
           </article>
-          <article className="home-offer-card home-offer-guru">
-            <div className="home-offer-top"><span className="home-offer-icon">AI</span><span className="home-offer-price">FREE</span></div>
-            <span className="home-offer-label">NO CARD · NO SIGN-IN NEEDED TO LEARN</span>
-            <h3>Guru · the AI DSA teacher</h3>
-            <p>He teaches out loud in 7 Indian languages, draws every pattern as a 3D figure on the board, and has a face that smiles when you get it and frowns when you skip the basics. He keeps teaching when your network drops.</p>
-            <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
+          <article className="home-offer-card home-offer-session">
+            <div className="home-offer-top"><span className="home-offer-icon">1:1</span><span className="home-offer-price">{rupees(sessionPrice)}</span></div>
+            <span className="home-offer-label">THE ONLY THING CODEXSHEET SELLS</span>
+            <h3>An hour with Aditya on Google Meet</h3>
+            <p>He reads your code line by line, on the real judged submission, then writes you a feedback note. You pick the hour from the slots he publishes, and a private chat lane stays open between sessions. Paid on the Paytm QR, refundable for 5 days after it is confirmed.</p>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Book a 1:1 session for {rupees(sessionPrice)} <ArrowRight size={15}/></a>
           </article>
         </div>
       </section>
@@ -1182,20 +1122,6 @@ function App() {
     window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setActiveView(view);
   };
-  // One flat ₹199 pass opens every feature, including the
-  // full 250-problem set; signed out, only the landing page and the store are open. Supabase missing => unlocked.
-  const [passLocked, setPassLocked] = useState(true);
-  const [passChecking, setPassChecking] = useState(() => Boolean(supabase));
-  const refreshPassAccess = useCallback(async () => {
-    if (!supabase) { setPassLocked(false); return; }
-    setPassChecking(true);
-    const result = await supabase.rpc("workspace_unlocked");
-    if (!result.error) setPassLocked(result.data !== true);
-    setPassChecking(false);
-  }, []);
-  useEffect(() => {
-    if (isSignedIn) void refreshPassAccess();
-  }, [isSignedIn, activeView, refreshPassAccess]);
   useEffect(() => {
     const handlePopState = () => setActiveView(viewFromLocation());
     const canonicalPath = viewPaths[viewFromLocation()];
@@ -1242,11 +1168,7 @@ function App() {
     if (canonical) canonical.href = `${siteOrigin}${path}`;
   }, [activeView]);
 
-  // Only the landing page, the store and Guru (the free AI teacher) are open.
-  // Every other feature waits for a confirmed pass at whatever amount the
-  // student pays once.
   const tr = useT();
-  const passGate = !(["home", "mentorship", "guru", "cslabs", "marketplace", "studio", "experiences", "verify", "patterns"] as WorkspaceView[]).includes(activeView);
   const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
     () => JSON.parse(
       localStorage.getItem("codexsheet-roadmap-preferences") ??
@@ -2066,10 +1988,10 @@ function App() {
 
   if (publicView) {
     if (activeView === "guru") {
-      return <main className="guru-public"><DsaGuru onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+      return <main className="guru-public"><DsaGuru onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
     if (activeView === "cslabs") {
-      return <main className="cslabs-public"><CsLabs onOpenPass={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+      return <main className="cslabs-public"><CsLabs onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
     if (activeView === "marketplace") {
       return <main className="mkt-public"><Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => { window.location.href = "/mentor-studio"; }} onNavigateHome={() => navigateToView("mentorship")} /><StudentFooter /></main>;
@@ -2234,17 +2156,6 @@ function App() {
           </div>
         </div>}
       </section>
-      {passGate && passLocked && !passChecking && (
-        <>
-          {activeView === "problems" && <SheetProblemIndex onOpenStore={() => navigateToView("mentorship")} />}
-          <WorkspacePassLock
-          checking={passChecking}
-          onOpenStore={() => navigateToView("mentorship")}
-          onRecheck={() => void refreshPassAccess()}
-          onOpenGuru={() => navigateToView("guru")}
-        />
-        </>
-      )}
       {activeView === "home" && <HomePage
         solved={solved}
         inProgress={inProgress}
@@ -2253,24 +2164,24 @@ function App() {
         patterns={patternStats}
         onNavigate={navigateToView}
       />}
-      {activeView === "articles" && !passLocked && <ArticlesPage onOpenIde={() => navigateToView("dsa-ide")} />}
-      {activeView === "jobs" && !passLocked && <JobsPage />}
+      {activeView === "articles" && <ArticlesPage onOpenIde={() => navigateToView("dsa-ide")} />}
+      {activeView === "jobs" && <JobsPage />}
       {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
-      {activeView === "mentees" && !passLocked && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
+      {activeView === "mentees" && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
       {activeView === "marketplace" && <Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => navigateToView("studio")} onNavigateHome={() => navigateToView("mentorship")} />}
       {activeView === "studio" && <MentorStudio userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
       {activeView === "experiences" && <InterviewExperiences userId={user?.id ?? ""} />}
-      {activeView === "leaderboard" && !passLocked && <Leaderboard userId={user?.id ?? ""} />}
-      {activeView === "certificate" && !passLocked && <Certificates userId={user?.id ?? ""} />}
+      {activeView === "leaderboard" && <Leaderboard userId={user?.id ?? ""} />}
+      {activeView === "certificate" && <Certificates userId={user?.id ?? ""} />}
       {activeView === "verify" && <VerifyPage />}
-      {activeView === "lld" && !passLocked && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
-      {activeView === "whiteboard" && !passLocked && <LldWhiteboardPage />}
-      {activeView === "companies" && !passLocked && <CompanyProblems />}
-      {activeView === "dsa-ide" && !passLocked && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
-      {activeView === "dsa-course" && !passLocked && <DsaCourseStudio />}
-      {activeView === "guru" && <DsaGuru onOpenPass={() => navigateToView("mentorship")} />}
-      {activeView === "cslabs" && <CsLabs onOpenPass={() => navigateToView("mentorship")} />}
-      {activeView === "dashboard" && !passLocked && (
+      {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
+      {activeView === "whiteboard" && <LldWhiteboardPage />}
+      {activeView === "companies" && <CompanyProblems />}
+      {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
+      {activeView === "dsa-course" && <DsaCourseStudio />}
+      {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}
+      {activeView === "cslabs" && <CsLabs onOpenMentorship={() => navigateToView("mentorship")} />}
+      {activeView === "dashboard" && (
         <>
           <section className="dashboard-welcome" aria-label="Continue your DSA practice">
             <div className="dashboard-welcome-copy">
@@ -2400,7 +2311,7 @@ function App() {
           </section>
         </>
       )}
-      {activeView === "roadmap" && !passLocked && (
+      {activeView === "roadmap" && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
@@ -2409,7 +2320,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className={passLocked ? "roadmap-buy" : "roadmap-buy unlocked"} onClick={() => navigateToView("mentorship")}>{passLocked ? <>Open all {passFeatureCount} features · {rupees(passPrice)} <ArrowRight size={15}/></> : <>Workspace unlocked <Check size={15}/></>}</button>
+            <button type="button" className="roadmap-buy unlocked" onClick={() => navigateToView("mentorship")}>Book a 1:1 with Aditya · {rupees(sessionPrice)} <ArrowRight size={15}/></button>
           </header>
           <div className="roadmap-controls">
             <label>
@@ -2538,7 +2449,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "calendar" && !passLocked && (
+      {activeView === "calendar" && (
         <section className="calendar-card" aria-label="Practice activity calendar">
           <header className="calendar-topline">
             <div className="calendar-titlelockup">
@@ -2642,7 +2553,7 @@ function App() {
           </footer>
         </section>
       )}
-      {activeView === "chat" && !passLocked && (
+      {activeView === "chat" && (
         <section className="chat-card" aria-label="Shared group chat">
           <header className="chat-heading">
             <div className="group-chat-icon"><UsersRound size={18} /></div>
@@ -2748,7 +2659,7 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "notes" && !passLocked && (
+      {activeView === "notes" && (
         <section className="notebook-card" aria-label="Personal notebook">
           <header className="notebook-heading">
             <div className="notebook-icon"><NotebookPen size={18} /></div>
@@ -2878,7 +2789,7 @@ function App() {
       {activeView === "patterns" && <section className="patterns-page">
         <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
       </section>}
-      {activeView === "problems" && !passLocked && <section className="problem-library-page">
+      {activeView === "problems" && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> YOUR PRACTICE, WITH PURPOSE</span>

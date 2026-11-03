@@ -583,7 +583,7 @@
   }
 }
 
-/* Logged-out Guru keeps the same full-bleed dark canvas as the pass page. */
+/* Logged-out Guru keeps the same full-bleed dark canvas as the 1:1 session page. */
 .guru-public {
   min-height: 100vh;
   background: #0c1526;

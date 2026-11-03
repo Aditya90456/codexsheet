@@ -86,7 +86,7 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
           <a href="/experiences">Interview experiences</a>
         <a href="/verify">Verify a certificate</a>
           <a href="/marketplace">Mentor marketplace</a>
-          <a href="/mentorship">Family Pass</a>
+          <a href="/mentorship">1:1 mentorship</a>
         </nav>
       </div>
       <form className="site-footer-feedback" onSubmit={(event) => void submit(event)}>

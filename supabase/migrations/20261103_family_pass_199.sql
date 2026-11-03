@@ -17,21 +17,26 @@ language plpgsql
 as $fn$
 begin
   if new.plan = 'family' and new.amount <> 199 then
-    raise exception 'The CodexSheet pass is one flat ₹199 (got ₹%)', new.amount
+    raise exception 'A CodexSheet session is one flat ₹199 (got ₹%)', new.amount
       using errcode = '22023';
   end if;
 
-  -- One pass per account. A confirmed buyer cannot file a second claim, so an
-  -- honest student who pays twice is stopped before the money leaves, and a
-  -- paid account cannot be re-opened at a different amount. Anonymous claims
-  -- carry no user id and stay allowed; Aditya matches those by hand.
+  -- One session per account. A student who already has a confirmed booking
+  -- cannot file a second claim, so an honest payer who double-pays is stopped
+  -- before the money leaves. Anonymous claims carry no user id and stay
+  -- allowed; Aditya matches those by hand.
+  --
+  -- The probe is a plain SELECT. A BEFORE row trigger cannot lock rows of the
+  -- table it is inserting into, so `for update` here aborts the statement and
+  -- the function never creates; reading without a lock rejects the second claim
+  -- on the same INSERT, which is the only race that matters here.
   if coalesce(new.user_id, '') <> '' and new.plan = 'family' then
     perform 1 from public.mentorship_orders paid
       where paid.user_id = new.user_id
         and paid.status in ('confirmed', 'delivered')
-      for update;
+      limit 1;
     if found then
-      raise exception 'This account already holds a confirmed CodexSheet pass'
+      raise exception 'This account already has a confirmed CodexSheet booking'
         using errcode = '23505';
     end if;
   end if;
@@ -150,7 +155,7 @@ begin
     picked.buyer_name,
     picked.buyer_contact,
     (case picked.plan
-      when 'family' then 'CodexSheet Family pass (all 17 features) - flat price'
+      when 'family' then '1:1 session with Aditya - 60 minutes on Google Meet'
       when 'one-to-one' then '1:1 mentorship (legacy price)'
       when 'ltm-3-months' then 'Long-term mentorship (3 months)'
       when 'ltm-6-months' then 'Long-term mentorship (6 months)'

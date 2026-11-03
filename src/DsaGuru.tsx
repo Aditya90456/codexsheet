@@ -49,7 +49,7 @@ const moodKeys: Record<MentorMood, MessageKey> = {
   proud: "mood.proud",
 };
 
-export default function DsaGuru({ onOpenPass }: { onOpenPass: () => void }) {
+export default function DsaGuru({ onOpenMentorship }: { onOpenMentorship: () => void }) {
   const lang = useUiLanguage();
   const tr = useT();
   const [transcript, setTranscript] = useState<GuruMessage[]>([]);
@@ -294,7 +294,7 @@ export default function DsaGuru({ onOpenPass }: { onOpenPass: () => void }) {
             <input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={tr("guru.placeholder")} aria-label={tr("guru.chat")} maxLength={600} />
             <button className="primary-button" type="submit" disabled={sending || !draft.trim()}><ArrowUp size={16} /> {tr("guru.send")}</button>
           </form>
-          <button type="button" className="guru-pass" onClick={onOpenPass}>{tr("guru.passCta")} · {tr("lock.pay")}</button>
+          <button type="button" className="guru-pass" onClick={onOpenMentorship}>{tr("guru.bookSession")}</button>
         </div>
       </div>
     </section>

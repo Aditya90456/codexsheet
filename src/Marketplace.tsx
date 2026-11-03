@@ -6,7 +6,6 @@ import {
   Copy,
   LoaderCircle,
   MapPin,
-  Package,
   QrCode,
   RefreshCw,
   Search,
@@ -48,7 +47,7 @@ const shortDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "";
 
 /**
- * The marketplace. CodexSheet's own Family Pass lives on /mentorship; this page
+ * The marketplace. CodexSheet's own 1:1 session lives on /mentorship; this page
  * is everybody else's shop window, and every rupee here goes to the mentor whose
  * product was bought - their UPI id, their QR, their confirmation.
  */
@@ -138,7 +137,7 @@ export default function Marketplace({
     setWatchNote("");
   }
 
-  // Same one-sitting rule as the Family Pass: an expired code is retired, and
+  // Same one-sitting rule as the mentorship checkout: an expired code is retired, and
   // the reference a buyer may already have paid against stays restorable.
   function regenerateQr() {
     if (!selected) return;
@@ -286,7 +285,6 @@ export default function Marketplace({
               {(item.includes ?? []).length > 0 && (
                 <ul className="mkt-includes">{item.includes.map((line) => <li key={line}><Check size={12} /> {line}</li>)}</ul>
               )}
-              {item.unlocks_workspace && <p className="mkt-unlock"><Package size={13} /> Also opens the full CodexSheet workspace.</p>}
               <button type="button" className="mkt-primary" onClick={() => openCheckout(item)}>
                 <QrCode size={15} /> {item.kind === "webinar" ? "Reserve your seat" : `Pay ${rupees(Number(item.price))} to ${item.mentor_name}`}
               </button>

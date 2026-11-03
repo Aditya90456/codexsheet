@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, Download, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
-import { isMeetLink, mentorEmail, paymentBadge, planLabel, rupees } from "./mentorship";
+import { isMeetLink, mentorEmail, paymentBadge, planLabel, rupees, sessionPrice } from "./mentorship";
 
 type Mentee = {
   id: number;
@@ -741,7 +741,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <p className="mentees-note">
               {dues.length > 0
                 ? "Your record appears here the moment Aditya confirms the payment above against his Paytm statement."
-                : <>Nothing confirmed yet. The pass is ₹199 on the <a href="/mentorship">mentorship page</a>.</>}
+                : <>Nothing confirmed yet. A 1:1 session with Aditya is {rupees(sessionPrice)} on the <a href="/mentorship">mentorship page</a>.</>}
             </p>
           )}
           {mine.map((mentee) => {

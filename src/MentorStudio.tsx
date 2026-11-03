@@ -389,7 +389,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
                   <span className="mkt-when"><CalendarClock size={12} /> {istWhen(product.starts_at)}</span>
                 )}
                 <p>{product.summary}</p>
-                <span className="mkt-small">{product.format} · {product.includes.length} bullets{product.unlocks_workspace ? " · opens the workspace" : ""}</span>
+                <span className="mkt-small">{product.format} · {product.includes.length} bullets</span>
               </div>
               <div className="mkt-product-side">
                 <img src={qrImageUrl(sellerUpiUri(profile, product.slug, product.price))} alt={`UPI QR for ${product.title}`} width={92} height={92} loading="lazy" />
@@ -440,9 +440,6 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
             <div className="mkt-toggles">
               <button type="button" className={draft.active ? "on" : ""} aria-pressed={draft.active} onClick={() => setDraft({ ...draft, active: !draft.active })}>
                 <Store size={14} /> {draft.active ? "Listed on the marketplace" : "Kept private"}
-              </button>
-              <button type="button" className={draft.unlocks_workspace ? "on" : ""} aria-pressed={draft.unlocks_workspace} onClick={() => setDraft({ ...draft, unlocks_workspace: !draft.unlocks_workspace })}>
-                <Package size={14} /> {draft.unlocks_workspace ? "Payment also opens the CodexSheet workspace" : "Workspace access not included"}
               </button>
             </div>
             <p className="mkt-price-note">{rupees(draft.price)} · your QR below is built from <span className="mkt-mono">{profile.upi_id || "your UPI id"}</span>. Buyers pay you, not CodexSheet.</p>

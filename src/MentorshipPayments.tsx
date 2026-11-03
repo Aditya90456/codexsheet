@@ -9,10 +9,10 @@ import {
   mentorshipPlans,
   refundWindow,
   orderReference,
-  passFeatureCount,
-  passFlow,
+  freeFeatureCount,
+  sessionFlow,
   payee,
-  passPrice,
+  sessionPrice,
   paytmAppUri,
   paytmIntentUri,
   paymentBadge,
@@ -144,7 +144,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     const order: MentorshipOrder = {
       reference,
       plan: plan.id,
-      amount: passPrice,
+      amount: sessionPrice,
       buyerName,
       buyerContact,
       buyerEmail: /.+@.+\..+/.test(buyerContact.trim()) ? buyerContact.trim() : userEmail.trim(),
@@ -163,7 +163,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     const outcome = await recordOrder(order, insert as (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>);
     setSaving(false);
     setSaved(outcome.ok
-      ? { ok: true, message: `Recorded as ${reference}. Aditya searches his Paytm statement for your UTR, then the whole workspace unlocks.` }
+      ? { ok: true, message: `Recorded as ${reference}. Aditya searches his Paytm statement for your UTR, then your session slot opens.` }
       : { ok: false, message: `Saved on this device (${outcome.reason}). Email the reference ${reference} with your Paytm screenshot so it is not lost.` });
     // The record is saved and the Paytm transaction is done, so show at once
     // whether the money is still due or already confirmed.
@@ -189,9 +189,9 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">ALL {passFeatureCount} FEATURES · ONE PASS · {rupees(plan.price)}</span>
-        <h1>Everything on CodexSheet. <em>{rupees(plan.price)}, once.</em></h1>
-        <p>All 250 patterns and the problem library, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat, calls, and a 1:1 session with Aditya that you book yourself — the same {passFeatureCount} features for everyone. Paytm QR only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">ONE 60-MINUTE SESSION · {rupees(plan.price)}</span>
+        <h1>The workspace is free. <em>His hour costs {rupees(plan.price)}.</em></h1>
+        <p>All {freeFeatureCount} features — the 250-problem sheet, the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat and Guru — open the moment you sign in. No card, no code. This page is the one thing money still buys: sixty minutes of Aditya&apos;s own time on Google Meet. Paytm QR only, no card forms, no gateway.</p>
       </header>
 
       <div className="mentorship-plans">
@@ -209,14 +209,14 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
       </div>
 
       <section className="mentorship-flow" aria-label="What happens after you pay">
-        {passFlow.map((step, index) => (
+        {sessionFlow.map((step, index) => (
           <article key={step.title}>
             <span className="mentorship-flow-index">{index + 1}</span>
             <div>
               <strong>{step.title}</strong>
               <p>{step.body}</p>
             </div>
-            {index < passFlow.length - 1 && <ArrowRight size={15} className="mentorship-flow-arrow" aria-hidden="true" />}
+            {index < sessionFlow.length - 1 && <ArrowRight size={15} className="mentorship-flow-arrow" aria-hidden="true" />}
           </article>
         ))}
       </section>
@@ -397,7 +397,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
           {!userId && ledger === null && pendingOnThisDevice === 0 && (
             <p className="mentorship-small">Sign in and the page tracks your own references, so you can see which payment is still due without retyping the code.</p>
           )}
-          <p className="mentorship-small">DUE means Aditya has not found your UTR in his Paytm statement yet. DONE means he has, and all {passFeatureCount} features unlock with it. Nothing here charges you twice: the pass is one {rupees(plan.price)} payment against one reference, and a second claim on a paid account is rejected.</p>
+          <p className="mentorship-small">DUE means Aditya has not found your UTR in his Paytm statement yet. DONE means he has, and your session is on the calendar. Nothing here charges you twice: one {rupees(plan.price)} payment buys one session against one reference, and a second claim on a paid account is rejected.</p>
         </section>
       )}
 
@@ -410,10 +410,10 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
         </div>
       </section>
       <section className="mentorship-faq" aria-label="How mentorship works">
-        <article><strong>Weekly session</strong><p>Every pass covers a 1:1 call, and you pick the hour yourself from the times Aditya publishes.</p></article>
+        <article><strong>One session at a time</strong><p>{rupees(plan.price)} buys sixty minutes with Aditya, and you pick the hour yourself from the times he publishes.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya between sessions, no extra charge.</p></article>
-        <article><strong>How payment is confirmed</strong><p>Pay the ₹199 on Paytm, record your reference and UTR here, and Aditya marks it confirmed only when that UTR appears in his statement - before the first call.</p></article>
-        <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if the pass is not for you, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>
+        <article><strong>How payment is confirmed</strong><p>Pay the ₹199 on Paytm, record your reference and UTR here, and Aditya marks it confirmed only when that UTR appears in his statement - before the call.</p></article>
+        <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if the session was not worth it, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>
       </section>
     </section>
   );
