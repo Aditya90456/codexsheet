@@ -330,6 +330,5 @@
 .payqr-refresh { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 8px 12px; border: 0; border-radius: 999px; background: var(--ms-paytm, #8fb4ff); color: #131f33; font-size: 12px; font-weight: 700; cursor: pointer; }
 .payqr-refresh:hover { filter: brightness(1.08); }
 
-.mentorship-pay-buttons-dead a { opacity: .45; }
 .mentorship-qr-restore { font-size: 12px; }
-.mentorship-qr-restore button { border: 0; padding: 0; background: none; color: var(--ms-accent, #7cb3fb); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.mentorship-qr-restore button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: none; color: var(--ms-accent, #7cb3fb); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }

@@ -2,14 +2,18 @@
 // Every learning feature on CodexSheet is free — sign in and the whole workspace
 // opens, with no card and no code. The one thing money buys is Aditya's own time:
 // a single 1:1 session. It moves through his personal Paytm UPI handle, so the app
-// never touches a gateway: it locks the amount into the code the student scans,
-// requires the UTR from the receipt, and records the claim for him to confirm
-// against his Paytm statement.
+// never touches a gateway: the page shows his own Paytm QR, which carries nothing
+// but his UPI id, so the student types the ₹199 themselves and the server rejects a
+// claim for any other figure. The UTR from the receipt is required, and the claim is
+// recorded for him to confirm against his Paytm statement.
 export const payee = {
-  phone: "8335873311",
-  upiId: "8335873311@paytm",
+  phone: "8882118279",
+  upiId: "8882118279@fam",
   displayName: "Aditya Bakshi CodexSheet",
 } as const;
+
+/** His real Paytm QR, saved from his own app. It encodes the payee only - no amount. */
+export const payeeQrSrc = "/paytm-qr.jpg";
 
 export const mentorEmail = "adityabakshi1011@gmail.com";
 
@@ -17,9 +21,10 @@ export const mentorEmail = "adityabakshi1011@gmail.com";
 export type MentorshipPlanId = "family";
 
 /**
- * One flat price for one 1:1 session. The QR is generated from this number and
- * the database insert trigger rejects a session order that is not exactly ₹199,
- * so neither the page nor a hand-edited UPI app can change what is owed.
+ * One flat price for one 1:1 session. His Paytm QR encodes the payee only, so the
+ * student types this figure themselves; the database insert trigger then rejects a
+ * session claim that is not exactly ₹199, which is what makes the statement check
+ * searchable rather than negotiable.
  */
 export const sessionPrice = 199;
 
@@ -100,7 +105,7 @@ export const refundWindow = {
 
 /** What happens between the Paytm QR and the call. */
 export const sessionFlow: { title: string; body: string }[] = [
-  { title: "Pay the ₹199", body: "Scan the QR. The amount is printed inside the code and the server refuses any other figure, so there is nothing to mistype or underpay." },
+  { title: "Pay the ₹199", body: "Scan his Paytm QR. It carries his UPI id and nothing else, so type 199 in the amount field yourself and put your reference code in the note - that note is what makes the entry findable on his statement." },
   { title: "Record reference and UTR", body: "Fill the small form on this page. Your Paytm UTR is required — it is the only thing that ties your claim to a real statement entry." },
   { title: "Aditya verifies the UTR", body: "He searches his Paytm statement for that UTR. Only a match flips the badge DUE → DONE." },
   { title: "Book your hour", body: "Confirmed orders get a slot in his published window and a private chat lane. The Google Meet link for the call is written into your entry." },
@@ -209,9 +214,10 @@ export function paytmAppUriFor(payee: UpiPayee, reference: string, amount: numbe
 }
 
 /**
- * The pass always costs ₹199, so these three ignore whatever the caller holds
- * and stamp the fixed price into the intent. A stale `amount` in component
- * state can therefore never reach a student's UPI app.
+ * The session always costs ₹199, so these three ignore whatever the caller holds
+ * and stamp the fixed price plus the note reference into the intent. The scannable
+ * tile on the page is his own Paytm code, which carries only the payee - these
+ * links are the route that can still pre-fill the amount.
  */
 export function upiUri(plan: MentorshipPlan, reference: string): string {
   return upiUriFor(payee, reference, plan.price);

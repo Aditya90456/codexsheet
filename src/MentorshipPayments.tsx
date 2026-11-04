@@ -12,6 +12,7 @@ import {
   freeFeatureCount,
   sessionFlow,
   payee,
+  payeeQrSrc,
   sessionPrice,
   paytmAppUri,
   paytmIntentUri,
@@ -24,7 +25,6 @@ import {
   upiUri,
   type MentorshipOrder,
 } from "./mentorship";
-import PaymentQr from "./PaymentQr";
 
 type Order = { reference: string; plan: string; amount: number; status: string; filed_at: string; paytm_reference?: string };
 type Payment = Order & { due: boolean; paid: boolean };
@@ -45,10 +45,7 @@ function usePlatform() {
 export default function MentorshipPayments({ userId = null, userName = "", userEmail = "" }: { userId?: string | null; userName?: string; userEmail?: string }) {
   const plan = mentorshipPlans[0]!;
   const [reference, setReference] = useState(() => orderReference(plan));
-  const [issuedAt, setIssuedAt] = useState(() => Date.now());
-  const [qrDead, setQrDead] = useState(false);
   const [superseded, setSuperseded] = useState("");
-  const ticket = useMemo(() => ({ reference, issuedAt }), [reference, issuedAt]);
   const [buyerName, setBuyerName] = useState(userName);
   const [buyerContact, setBuyerContact] = useState(userEmail);
   const [paytmReference, setPaytmReference] = useState("");
@@ -102,26 +99,16 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
 
   const paytmUri = platform.android ? paytmIntentUri(plan, reference) : platform.ios ? paytmAppUri(plan, reference) : upiUri(plan, reference);
 
-  // A code that outlives its window is retired, so the student gets a new
-  // reference. The one they may already have paid against stays reachable.
-  function regenerateQr() {
+  // The QR is his own Paytm code and never changes, so only the note reference is
+  // the student's. A code they may already have paid against stays reachable.
+  function newReference() {
     setSuperseded(reference);
     setReference(orderReference(plan));
-    setIssuedAt(Date.now());
-    setQrDead(false);
   }
 
   function restoreSuperseded() {
     setReference(superseded);
     setSuperseded("");
-    setIssuedAt(Date.now());
-    setQrDead(false);
-  }
-
-  function guardExpiredPayment(event: { preventDefault(): void }) {
-    if (!qrDead) return;
-    event.preventDefault();
-    regenerateQr();
   }
 
   async function copy(label: string, value: string) {
@@ -201,8 +188,8 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
           <span className="mentorship-plan-subtitle">{plan.subtitle}</span>
           <span className="mentorship-plan-cadence">{plan.cadence}</span>
           <p className="mentorship-amount-note">
-            {rupees(plan.price)} is the price, not a starting point. It is printed inside the QR below and the server
-            refuses a claim for any other amount, so there is nothing to negotiate and nothing to underpay.
+            {rupees(plan.price)} is the price, not a starting point. Type it into the Paytm app yourself -
+            the server refuses a claim for any other amount, so there is nothing to negotiate and nothing to underpay.
           </p>
           <ul>{plan.includes.map((line) => <li key={line}>{line}</li>)}</ul>
         </article>
@@ -241,42 +228,45 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
 
       <div className="mentorship-split">
         <article className="mentorship-pay">
-          <h2><span className="mentorship-step">1</span> Pay {rupees(plan.price)} by scanning the QR</h2>
-          <p className="mentorship-pay-note">{rupees(plan.price)} and the payee are printed inside the code below, and the database rejects a claim for any other figure. Type <strong>{reference}</strong> as the Paytm note, then keep the UTR from the receipt - step 2 needs it.</p>
+          <h2><span className="mentorship-step">1</span> Pay {rupees(plan.price)} on his Paytm QR</h2>
+          <p className="mentorship-pay-note">This is Aditya&apos;s own Paytm code, straight from his app. It carries his UPI id and nothing else, so the amount is not filled in for you: type <strong>{rupees(plan.price)}</strong>, put <strong>{reference}</strong> in the note, then keep the UTR from the receipt - step 2 needs it.</p>
 
           <div className="mentorship-qr">
-            <PaymentQr
-              ticket={ticket}
-              uri={upiUri(plan, reference)}
-              alt={`Pay ${rupees(plan.price)} to Aditya Bakshi on Paytm, reference ${reference}`}
-              size={248}
-              onRegenerate={regenerateQr}
-              onExpire={() => setQrDead(true)}
-            />
+            <div className="payqr">
+              <img
+                className="payqr-img"
+                src={payeeQrSrc}
+                width={248}
+                height={256}
+                loading="lazy"
+                alt={`Aditya Bakshi's Paytm QR, UPI id ${payee.upiId}`}
+              />
+              <p className="payqr-meter"><QrCode size={12} /><span>His Paytm QR · payee {payee.upiId}</span></p>
+            </div>
             <div>
-              <span className="mentorship-qr-label"><QrCode size={15} /> Scan with any UPI app</span>
+              <span className="mentorship-qr-label"><Smartphone size={15} /> Scan with any UPI app</span>
               <p>Paytm, PhonePe, GPay or BHIM all read this code. Desktop students: scan it with your phone.</p>
               <p className="mentorship-manual">
-                If your app rejects the code, pick <strong>Pay to UPI ID</strong> instead of Scan, send exactly {rupees(plan.price)} to{" "}
+                No camera handy? Pick <strong>Pay to UPI ID</strong> instead of Scan, send exactly {rupees(plan.price)} to{" "}
                 <button type="button" className="mentorship-handle" onClick={() => void copy("handle", payee.upiId)}>
                   {copied === "handle" ? <Check size={13} /> : <Copy size={13} />} {payee.upiId}
                 </button>{" "}
                 and type <strong>{reference}</strong> as the note.
               </p>
-              {superseded && (
-                <p className="mentorship-qr-restore">
-                  Already paid against <strong>{superseded}</strong>?{" "}
-                  <button type="button" onClick={restoreSuperseded}>Use that code again</button>
-                </p>
-              )}
+              <p className="mentorship-qr-restore">
+                <button type="button" onClick={newReference}><RefreshCw size={13} /> New reference code</button>
+                {superseded && (
+                  <> Already paid against <strong>{superseded}</strong>?{" "}<button type="button" onClick={restoreSuperseded}>Use that reference again</button></>
+                )}
+              </p>
             </div>
           </div>
 
-          <div className={`mentorship-pay-buttons${qrDead ? " mentorship-pay-buttons-dead" : ""}`}>
+          <div className="mentorship-pay-buttons">
             {platform.android || platform.ios ? (
               <>
-                <a className="mentorship-primary" href={paytmUri} onClick={guardExpiredPayment}><Smartphone size={16} /> Open in Paytm</a>
-                <a className="mentorship-secondary" href={upiUri(plan, reference)} onClick={guardExpiredPayment}><Wallet size={16} /> Any UPI app</a>
+                <a className="mentorship-primary" href={paytmUri}><Smartphone size={16} /> Open in Paytm</a>
+                <a className="mentorship-secondary" href={upiUri(plan, reference)}><Wallet size={16} /> Any UPI app</a>
               </>
             ) : (
               <button type="button" className="mentorship-primary" onClick={() => void copy("uri", upiUri(plan, reference))}>
