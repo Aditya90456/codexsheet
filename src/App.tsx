@@ -91,7 +91,7 @@ import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT, type MessageKey } from "./i18n";
-import { freeFeatureCount, rupees, sessionPrice } from "./mentorship";
+import { freeFeatureCount, passBand, passPriceLabel, rupees } from "./mentorship";
 import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import {
   getSheetRank,
@@ -203,8 +203,8 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
-    title: "1-on-1 DSA mentorship with Aditya Bakshi — ₹199 per session",
-    description: "One 60-minute Google Meet session with Aditya: your code reviewed line by line on a judged submission, a written feedback note afterwards, and a private chat lane between sessions. Pay on the Paytm QR. The workspace itself is free.",
+    title: "CodexSheet Sheet Pass — pay what you can, ₹10 to ₹800",
+    description: "The 250-problem DSA sheet is the one thing CodexSheet charges for. Pay any whole figure from ₹10 to ₹800 on Aditya's Paytm QR, he confirms it against his own statement, and the sheet stays open for good. Everything else is free, and there is a 5-day refund.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -430,23 +430,23 @@ function HomePage({
 
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">FREE, THEN ONE THING YOU CAN PAY FOR</span><h2 id="home-services-title">The workspace is <em>free.</em></h2></div>
-          <p>All {freeFeatureCount} features open the moment you sign in — no card, no code. The only thing money buys is Aditya&apos;s time.</p>
+          <div><span className="home-section-kicker">FREE, THEN ONE THING YOU CAN PAY FOR</span><h2 id="home-services-title">Everything is free <em>except the sheet.</em></h2></div>
+          <p>All {freeFeatureCount} features open the moment you sign in — no card, no code. The one thing that costs money is the 250-problem sheet, and you choose the figure.</p>
         </div>
         <div className="home-offer-grid" aria-label="What is free and what costs money">
           <article className="home-offer-card home-offer-free">
             <div className="home-offer-top"><span className="home-offer-icon">{freeFeatureCount}</span><span className="home-offer-price">FREE</span></div>
-            <span className="home-offer-label">EVERY FEATURE, NO PAYMENT</span>
-            <h3>The whole CodexSheet workspace</h3>
-            <p>The 250-problem library, the Deva editor with real judged submissions, the animated course, the roadmap board, algorithm labs, notes, group chat, the practice calendar and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
-            <a href="/problems" onClick={(event) => { event.preventDefault(); onNavigate("problems"); }}>Open the problem sheet <ArrowRight size={15}/></a>
+            <span className="home-offer-label">EVERY FEATURE BUT THE SHEET</span>
+            <h3>The rest of CodexSheet</h3>
+            <p>The Deva editor with real judged submissions, the animated course, the roadmap board, algorithm labs, notes, group chat, the practice calendar and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
+            <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
           </article>
           <article className="home-offer-card home-offer-session">
-            <div className="home-offer-top"><span className="home-offer-icon">1:1</span><span className="home-offer-price">{rupees(sessionPrice)}</span></div>
-            <span className="home-offer-label">THE ONLY THING CODEXSHEET SELLS</span>
-            <h3>An hour with Aditya on Google Meet</h3>
-            <p>He reads your code line by line, on the real judged submission, then writes you a feedback note. You pick the hour from the slots he publishes, and a private chat lane stays open between sessions. Paid on the Paytm QR, refundable for 5 days after it is confirmed.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Book a 1:1 session for {rupees(sessionPrice)} <ArrowRight size={15}/></a>
+            <div className="home-offer-top"><span className="home-offer-icon">250</span><span className="home-offer-price">{passPriceLabel}</span></div>
+            <span className="home-offer-label">THE ONE THING CODEXSHEET SELLS</span>
+            <h3>The 250-problem DSA sheet</h3>
+            <p>Every pattern, every difficulty, with your notes, status, XP and streak kept. Pay what you can - anything from {rupees(passBand.min)} to {rupees(passBand.max)} on Aditya&apos;s Paytm QR, once, no expiry. A confirmed payment also opens his chat lane and his 1:1 Google Meet slots, and it is refundable for 5 days.</p>
+            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Unlock the sheet {passPriceLabel} <ArrowRight size={15}/></a>
           </article>
         </div>
       </section>
@@ -1071,6 +1071,38 @@ function recognizeSheetQuery(raw: string) {
   return { patterns: found, difficulty, status, matched: found.length > 0 || Boolean(difficulty) || Boolean(status) };
 }
 
+// The sheet is the paid part of CodexSheet, so this is the only lock left in the
+// workspace: one panel, in one view, driven by the same RPC that minting a
+// certificate reads.
+function SheetLock({ checking, onOpenStore, onRecheck, onFreeRail }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void; onFreeRail: () => void }) {
+  return (
+    <section className="sheet-lock" aria-label="The 250-problem sheet is locked">
+      <div className="sheet-lock-card">
+        <span className="sheet-lock-kicker"><Lock size={13} /> THE 250-PROBLEM SHEET · PAY WHAT YOU CAN</span>
+        <h2>{rupees(passBand.min)} to {rupees(passBand.max)}. <em>Your figure, not his.</em></h2>
+        <p>Everything else opens the moment you sign in — all {freeFeatureCount} free features, the judged Deva editor, the animated course, the labs, Guru and the roadmap board. The one thing CodexSheet charges for is the sheet: 250 interview problems across the patterns, with your notes, status, XP and streak kept against your account. Pay any whole figure inside the band on Aditya&apos;s Paytm QR, once, and it stays open forever.</p>
+        <div className="sheet-lock-band">
+          <span>{rupees(passBand.min)}<small>minimum</small></span>
+          <span className="suggest">{rupees(passBand.suggested)}<small>he suggests</small></span>
+          <span>{rupees(passBand.max)}<small>maximum</small></span>
+        </div>
+        <ul className="sheet-lock-list">
+          <li><Check size={14} /> All 250 problems, every pattern filter and the 4-question pattern tests</li>
+          <li><Check size={14} /> Notes, status, XP, ranks and solve milestones saved to your account</li>
+          <li><Check size={14} /> A confirmed payment also opens Aditya&apos;s chat lane and his 1:1 Google Meet slots</li>
+          <li><Check size={14} /> Refund inside 5 days of confirmation if the sheet was not worth it</li>
+        </ul>
+        <div className="sheet-lock-actions">
+          <button type="button" className="primary-button" onClick={onOpenStore}>Unlock the sheet {passPriceLabel} <ArrowRight size={16} /></button>
+          <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I already paid"}</button>
+          <button type="button" className="sheet-lock-free" onClick={onFreeRail}>The free rail: Guru, the labs, the editor <ArrowRight size={15} /></button>
+        </div>
+        <small>No card and no gateway. Aditya matches your UTR against his own Paytm statement and marks it confirmed by hand, and your progress is not lost while the panel is up.</small>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
@@ -1109,6 +1141,21 @@ function App() {
   const rewardTimer = useRef<number | null>(null);
   const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
+  // The sheet is the only paid surface left. One definer-side RPC answers "does this
+  // account have a confirmed payment, or is it the mentor"; with Supabase missing the
+  // dev build never locks.
+  const [sheetUnlocked, setSheetUnlocked] = useState(false);
+  const [sheetChecking, setSheetChecking] = useState(true);
+  async function checkSheet() {
+    if (!supabase) { setSheetUnlocked(true); setSheetChecking(false); return; }
+    setSheetChecking(true);
+    const result = await supabase.rpc("workspace_unlocked");
+    if (!result.error) setSheetUnlocked(result.data === true);
+    setSheetChecking(false);
+  }
+  useEffect(() => { void checkSheet(); }, [userId]);
+  const sheetLocked = !sheetUnlocked;
+
   // Bootstrap-style collapse: below the expand breakpoint the view list hides behind
   // the hamburger and closes itself on every navigation.
   const [navOpen, setNavOpen] = useState(false);
@@ -2320,7 +2367,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className="roadmap-buy unlocked" onClick={() => navigateToView("mentorship")}>Book a 1:1 with Aditya · {rupees(sessionPrice)} <ArrowRight size={15}/></button>
+            <button type="button" className="roadmap-buy unlocked" onClick={() => navigateToView("mentorship")}>Unlock the 250-problem sheet · {passPriceLabel} <ArrowRight size={15}/></button>
           </header>
           <div className="roadmap-controls">
             <label>
@@ -2789,7 +2836,15 @@ function App() {
       {activeView === "patterns" && <section className="patterns-page">
         <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
       </section>}
-      {activeView === "problems" && <section className="problem-library-page">
+      {activeView === "problems" && sheetLocked && (
+        <SheetLock
+          checking={sheetChecking}
+          onOpenStore={() => navigateToView("mentorship")}
+          onRecheck={() => void checkSheet()}
+          onFreeRail={() => navigateToView("guru")}
+        />
+      )}
+      {activeView === "problems" && !sheetLocked && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> YOUR PRACTICE, WITH PURPOSE</span>

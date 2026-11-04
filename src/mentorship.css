@@ -332,3 +332,56 @@
 
 .mentorship-qr-restore { font-size: 12px; }
 .mentorship-qr-restore button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: none; color: var(--ms-accent, #7cb3fb); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* Pay what you can: the amount chooser inside the single offer panel. */
+.mentorship-amounts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.mentorship-amounts > button {
+  padding: 8px 13px;
+  border: 1px solid var(--ms-line);
+  border-radius: 999px;
+  background: var(--ms-surface);
+  color: var(--ms-ink);
+  font: 700 13px/1 "DM Mono", ui-monospace, monospace;
+  cursor: pointer;
+}
+.mentorship-amounts > button:hover { border-color: var(--ms-accent); }
+.mentorship-amounts > button.active { border-color: var(--ms-accent); background: var(--ms-accent); color: var(--ms-accent-ink); }
+.mentorship-amount-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px dashed var(--ms-line);
+  border-radius: 999px;
+  background: var(--ms-canvas);
+  color: var(--ms-muted);
+  font: 700 13px/1 "DM Mono", ui-monospace, monospace;
+}
+.mentorship-amount-custom input {
+  width: 66px;
+  border: 0;
+  background: transparent;
+  color: var(--ms-ink);
+  font: 700 13px/1 "DM Mono", ui-monospace, monospace;
+  outline: none;
+}
+.mentorship-amount-custom:focus-within { border-color: var(--ms-accent); border-style: solid; }
+.mentorship-amount-note { margin: 10px 0 0; color: var(--ms-muted); font-size: 12px; line-height: 1.55; }
+.mentorship-pay-wait { color: var(--ms-muted); font-size: 12px; line-height: 1.5; }
+
+/* WhatsApp is the screenshot lane, so it reads as a second payment action. */
+.mentorship-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--ms-good) 55%, var(--ms-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ms-good) 12%, var(--ms-canvas));
+  color: var(--ms-good);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mentorship-whatsapp:hover { filter: brightness(1.08); }

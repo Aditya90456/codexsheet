@@ -1,11 +1,12 @@
 // Mentorship pricing and the Paytm QR-only payment contract.
-// Every learning feature on CodexSheet is free — sign in and the whole workspace
-// opens, with no card and no code. The one thing money buys is Aditya's own time:
-// a single 1:1 session. It moves through his personal Paytm UPI handle, so the app
-// never touches a gateway: the page shows his own Paytm QR, which carries nothing
-// but his UPI id, so the student types the ₹199 themselves and the server rejects a
-// claim for any other figure. The UTR from the receipt is required, and the claim is
-// recorded for him to confirm against his Paytm statement.
+// CodexSheet is free except for one thing: the 250-problem DSA sheet. It is pay
+// what you can - any whole figure from ₹10 to ₹800 - and the payment is recorded
+// against a reference the student writes down here. Money moves through Aditya's
+// personal Paytm UPI handle, so the app never touches a gateway: the page shows his
+// own Paytm QR, which carries nothing but his UPI id, so the student types the
+// amount themselves and the server rejects a claim outside the band. The UTR from
+// the receipt is required, and the claim is recorded for him to confirm against his
+// Paytm statement - only then does the sheet unlock.
 export const payee = {
   phone: "8882118279",
   upiId: "8882118279@fam",
@@ -15,25 +16,44 @@ export const payee = {
 /** His real Paytm QR, saved from his own app. It encodes the payee only - no amount. */
 export const payeeQrSrc = "/paytm-qr.jpg";
 
+/** His WhatsApp. The screenshot of the Paytm receipt lands here, not in a form field. */
+export const whatsapp = { number: "918335873311", display: "+91 833587 3311" } as const;
+
+/** A wa.me link that already names the reference and the amount, so one tap sends the proof. */
+export function whatsappHref(reference: string, amount: number): string {
+  const body = `CodexSheet Sheet Pass\nReference: ${reference}\nAmount paid: ${rupees(amount)}\n(attach the Paytm receipt screenshot here)`;
+  return `https://wa.me/${whatsapp.number}?text=${encodeURIComponent(body)}`;
+}
+
 export const mentorEmail = "adityabakshi1011@gmail.com";
 
 /** The ledger keeps calling a session "family"; the id is a storage detail now. */
 export type MentorshipPlanId = "family";
 
 /**
- * One flat price for one 1:1 session. His Paytm QR encodes the payee only, so the
- * student types this figure themselves; the database insert trigger then rejects a
- * session claim that is not exactly ₹199, which is what makes the statement check
- * searchable rather than negotiable.
+ * Pay what you can. The sheet is the paid part of CodexSheet and one payment
+ * unlocks it for good, so the student picks any figure inside this band. The
+ * database insert trigger rejects an order outside it, which is what makes the
+ * band a real contract rather than a suggestion.
  */
-export const sessionPrice = 199;
+export const passBand = { min: 10, max: 800, suggested: 250 } as const;
+
+/** Whole rupees only, inside the band, and nothing the UPI app cannot type. */
+export function passAmount(value: number): number | null {
+  if (!Number.isFinite(value)) return null;
+  const amount = Math.round(value);
+  return amount >= passBand.min && amount <= passBand.max ? amount : null;
+}
+
+/** The headline every free/paid panel quotes: the sheet starts at ₹10. */
+export const passPriceLabel = `from ${rupees(passBand.min)}`;
 
 /** Everything that is free the moment a student signs in. The copy quotes its length. */
 export const freeFeatureNames = [
-  "Landing", "250-problem library", "Deva editor", "Animated DSA course",
+  "Landing", "Deva editor", "Animated DSA course",
   "Progress dashboard", "Company question sets", "Roadmap board", "Senior SDE · LLD", "LLD whiteboard",
   "Personal notes", "Concept articles", "Job search", "Group chat", "Guru the AI teacher",
-  "Practice calendar", "Interview experiences", "Leaderboard and certificates",
+  "Practice calendar", "Interview experiences", "Leaderboard",
 ];
 
 /** How many features cost nothing; every piece of copy quotes this. */
@@ -53,17 +73,17 @@ export type MentorshipPlan = {
 export const mentorshipPlans: MentorshipPlan[] = [
   {
     id: "family",
-    tag: "1:1",
-    title: "1:1 Mentorship with Aditya",
-    subtitle: `One 60-minute Google Meet session · ${rupees(sessionPrice)}`,
-    price: sessionPrice,
-    cadence: "per session · you pick the hour",
+    tag: "SHEET",
+    title: "CodexSheet Sheet Pass",
+    subtitle: `The 250-problem sheet · pay what you can (${rupees(passBand.min)}–${rupees(passBand.max)})`,
+    price: passBand.suggested,
+    cadence: "one payment · never expires",
     includes: [
-      "A 60-minute Google Meet call, booked into an hour you choose from his published slots",
-      "He reads your code line by line, on the real judged submission inside the Deva editor",
-      "A written feedback note on your solution after the call",
-      "A private chat lane with Aditya for questions between sessions",
-      `The rest of CodexSheet stays free: all ${freeFeatureCount} features, the whole 250-problem sheet`,
+      "The whole 250-problem sheet: every pattern, every difficulty, with your notes and status saved",
+      "XP, streaks, ranks and the solve milestones that make the sheet keep score",
+      "Aditya reads your code line by line on the real judged submission once he confirms you",
+      "A private chat lane with Aditya, and a 1:1 Google Meet slot when he publishes one",
+      `Everything else on CodexSheet stays free: all ${freeFeatureCount} features, no card needed`,
     ],
   },
 ];
@@ -100,23 +120,23 @@ export const curriculum: CurriculumWeek[] = [
 export const refundWindow = {
   days: 5,
   headline: "Five days to decide",
-  body: "If the session was not worth it, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
+  body: "If the sheet was not worth it, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
 };
 
-/** What happens between the Paytm QR and the call. */
-export const sessionFlow: { title: string; body: string }[] = [
-  { title: "Pay the ₹199", body: "Scan his Paytm QR. It carries his UPI id and nothing else, so type 199 in the amount field yourself and put your reference code in the note - that note is what makes the entry findable on his statement." },
+/** What happens between the Paytm QR and the sheet opening. */
+export const passFlow: { title: string; body: string }[] = [
+  { title: "Pick what you can pay", body: `Any whole figure from ${rupees(passBand.min)} to ${rupees(passBand.max)} buys the same thing: the whole sheet, forever. ${rupees(passBand.suggested)} is what he suggests if the maths works out for you.` },
+  { title: "Pay it on his Paytm QR", body: "The code carries his UPI id and nothing else, so type your amount in the Paytm app yourself and put your reference code in the note - that note is what makes the entry findable on his statement." },
   { title: "Record reference and UTR", body: "Fill the small form on this page. Your Paytm UTR is required — it is the only thing that ties your claim to a real statement entry." },
-  { title: "Aditya verifies the UTR", body: "He searches his Paytm statement for that UTR. Only a match flips the badge DUE → DONE." },
-  { title: "Book your hour", body: "Confirmed orders get a slot in his published window and a private chat lane. The Google Meet link for the call is written into your entry." },
+  { title: "Aditya verifies, the sheet opens", body: "He searches his statement for that UTR and marks the row confirmed. Only then does the badge flip DUE → DONE and /problems stop asking for money." },
 ];
 
 /** Only promises the product actually keeps — no invented résumé. */
 export const mentorCraft: string[] = [
   "He reads your solution line by line, on the real judged submission in the Deva editor — not a paragraph of advice.",
-  "You pick the hour from the slots he publishes (Mon–Fri, 11:00–18:00 IST), one session at a time.",
-  "Stuck between sessions? Message him in the private lane; there is no per-question charge.",
-  "He confirms your payment himself before the first call, so the ledger and his Paytm statement always agree.",
+  "Confirmed students get a private chat lane; he publishes 1:1 Google Meet slots and you pick the hour.",
+  "Stuck at 2am on a sliding window? Message him; there is no per-question charge.",
+  "He confirms your payment himself against his own Paytm statement, so the ledger and the money always agree.",
 ];
 
 /** Rupee display with Indian grouping, so 1000 reads as ₹1,000. */
@@ -144,7 +164,7 @@ export function utrValid(value: string): boolean {
   return /^[A-Za-z0-9]{12,30}$/.test(cleaned) && (cleaned.match(/\d/g) ?? []).length >= 11;
 }
 
-/** Names a plan for a student, including the products retired when the workspace went free. */
+/** Names a plan for a student, including the products retired before the Sheet Pass. */
 export function planLabel(plan: string): string {
   const legacy: Record<string, string> = {
     "one-to-one": "1:1 Mentorship",
@@ -211,24 +231,6 @@ export function paytmIntentUriFor(payee: UpiPayee, reference: string, amount: nu
 export function paytmAppUriFor(payee: UpiPayee, reference: string, amount: number): string {
   const query = upiUriFor(payee, reference, amount).slice("upi://pay?".length);
   return `paytmmp://pay?${query}`;
-}
-
-/**
- * The session always costs ₹199, so these three ignore whatever the caller holds
- * and stamp the fixed price plus the note reference into the intent. The scannable
- * tile on the page is his own Paytm code, which carries only the payee - these
- * links are the route that can still pre-fill the amount.
- */
-export function upiUri(plan: MentorshipPlan, reference: string): string {
-  return upiUriFor(payee, reference, plan.price);
-}
-
-export function paytmIntentUri(plan: MentorshipPlan, reference: string): string {
-  return paytmIntentUriFor(payee, reference, plan.price);
-}
-
-export function paytmAppUri(plan: MentorshipPlan, reference: string): string {
-  return paytmAppUriFor(payee, reference, plan.price);
 }
 
 /**
