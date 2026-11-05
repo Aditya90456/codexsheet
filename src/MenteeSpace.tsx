@@ -35,11 +35,26 @@ const WEEKDAYS = [
   { iso: 5, label: "Friday" },
 ];
 
-const istHour = (value: string) =>
-  new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+// A timestamp the browser cannot read must never take the page down: Intl throws
+// RangeError on an Invalid Date, and this file formats every one of them.
+const safeDate = (value: string) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
-const istDay = (value: string) =>
-  new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" }).format(new Date(value));
+const istHour = (value: string) => {
+  const date = safeDate(value);
+  return date
+    ? new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }).format(date)
+    : "--:--";
+};
+
+const istDay = (value: string) => {
+  const date = safeDate(value);
+  return date
+    ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" }).format(date)
+    : "unknown time";
+};
 
 type Claim = {
   reference: string;
@@ -57,41 +72,76 @@ type Draft = { status: string; weekly_slot: string; user_id: string };
 
 const STATUSES = ["active", "paused", "completed", "cancelled"];
 
+/**
+ * `select("*")` hands back whatever the column holds, and the live schema has
+ * changed under this page: meeting_url arrived as an ALTER, so an old row can
+ * carry null where the code expects a string, and a blank scheduled_at arrives as
+ * "" rather than null. Both are read with `.trim()` and `new Date()` during the
+ * render, so one unexpected value takes the whole page down instead of one row.
+ */
+function readableMentee(row: Mentee): Mentee {
+  return {
+    ...row,
+    meeting_url: typeof row.meeting_url === "string" ? row.meeting_url : "",
+    scheduled_at: typeof row.scheduled_at === "string" && row.scheduled_at !== "" ? row.scheduled_at : null,
+    ends_at: typeof row.ends_at === "string" && row.ends_at !== "" ? row.ends_at : null,
+  };
+}
 
 
-const shortDate = (value: string | null) =>
-  value ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value)) : "open ended";
+
+const shortDate = (value: string | null) => {
+  const date = value ? safeDate(value) : null;
+  return date ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(date) : "open ended";
+};
 
 const isEmail = (value: string) => /.+@.+\..+/.test(value);
 
-const laneTime = (value: string) =>
-  new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+const laneTime = (value: string) => {
+  const date = safeDate(value);
+  return date ? new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit" }).format(date) : "";
+};
 
-const istLabel = (value: string | null) =>
-  value
+// weekday cannot be combined with dateStyle/timeStyle: ICU rejects the bag with
+// "Invalid option : option", which used to throw on every render that had a booked
+// hour and took the whole page down. Components spelled out instead.
+const istLabel = (value: string | null) => {
+  const date = value ? safeDate(value) : null;
+  return date
     ? new Intl.DateTimeFormat("en-IN", {
         timeZone: "Asia/Kolkata",
         weekday: "short",
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(value)) + " IST"
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(date) + " IST"
     : "";
+};
 
 // datetime-local carries a wall clock, so give it one in IST rather than an instant.
 function toLocalInput(value: string) {
+  const date = safeDate(value);
+  if (!date) return "";
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Kolkata",
     year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
-  }).formatToParts(new Date(value));
+  }).formatToParts(date);
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
-const fromLocalInput = (value: string) => new Date(`${value}+05:30`).toISOString();
+const fromLocalInput = (value: string) => {
+  const date = safeDate(`${value}+05:30`);
+  if (!date) throw new Error("Pick a real date and hour for the session.");
+  return date.toISOString();
+};
 
 function googleCalendarHref(mentee: Mentee) {
-  if (!mentee.scheduled_at) return "";
-  const start = new Date(mentee.scheduled_at);
+  const start = mentee.scheduled_at ? safeDate(mentee.scheduled_at) : null;
+  if (!start) return "";
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   const utc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const link = mentee.meeting_url;
@@ -107,8 +157,8 @@ function googleCalendarHref(mentee: Mentee) {
 
 // Google Calendar and Apple Calendar both accept a plain .ics download.
 function downloadInvite(mentee: Mentee) {
-  if (!mentee.scheduled_at) return;
-  const start = new Date(mentee.scheduled_at);
+  const start = mentee.scheduled_at ? safeDate(mentee.scheduled_at) : null;
+  if (!start) return;
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   const utc = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const link = mentee.meeting_url;
@@ -436,6 +486,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
   const [sessionEdits, setSessionEdits] = useState<Record<number, { meeting: string; when: string }>>({});
   const [openLane, setOpenLane] = useState<number | null>(null);
   const [copiedRoom, setCopiedRoom] = useState<string | null>(null);
+  const [savedLane, setSavedLane] = useState<number | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
 
   const load = useCallback(async () => {
@@ -463,7 +514,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
     if (rows.error) setError(rows.error.message);
     if (pendingError) setError(pendingError);
     setIsMentor(mentor);
-    setMentees((rows.data as Mentee[]) ?? []);
+    setMentees(((rows.data as Mentee[]) ?? []).map(readableMentee));
     setClaims(pendingRows);
     setPayments(myPayments);
     setBooting(false);
@@ -507,27 +558,70 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
     setBusy(null);
   }
 
-  async function toggleSession(mentee: Mentee) {
+  /**
+   * Saving used to be one toggle: with a link it closed the session, without one
+   * it opened it, and the same press could therefore do opposite things. They are
+   * separate now, and any failure — a rejected link, a clash with another
+   * student's hour, a network throw — is reported on the row instead of leaving
+   * the button spinning and the fields cleared.
+   */
+  async function saveSession(mentee: Mentee) {
+    if (!supabase) return;
+    const edit = sessionEdits[mentee.id] ?? { meeting: "", when: "" };
+    const link = edit.meeting.trim();
+    if (!isMeetLink(link)) {
+      setError("Paste the full Google Meet link, starting https://meet.google.com/ — CodexSheet does not host the call itself.");
+      return;
+    }
+    let when: string | null = null;
+    try {
+      when = edit.when.trim() ? fromLocalInput(edit.when.trim()) : null;
+    } catch {
+      setError("That session time could not be read. Pick a real date and hour.");
+      return;
+    }
+    setRoomBusy(mentee.id);
+    setError(null);
+    try {
+      const result = await supabase.rpc("mentor_open_session", {
+        p_mentee_id: mentee.id,
+        p_meeting_url: link,
+        p_scheduled_at: when,
+      });
+      if (result.error) {
+        // The row is not saved, so the typed link must stay on screen to fix.
+        setError(`Not saved: ${result.error.message}`);
+      } else {
+        setSessionEdits((current) => {
+          const next = { ...current };
+          delete next[mentee.id];
+          return next;
+        });
+        setSavedLane(mentee.id);
+        window.setTimeout(() => setSavedLane((current) => (current === mentee.id ? null : current)), 6000);
+      }
+    } catch (cause) {
+      setError(`Not saved: ${cause instanceof Error ? cause.message : "the request did not reach the server."}`);
+    }
+    await load();
+    setRoomBusy(null);
+  }
+
+  async function endSession(mentee: Mentee) {
     if (!supabase) return;
     setRoomBusy(mentee.id);
     setError(null);
-    let result;
-    if (mentee.meeting_url) {
-      result = await supabase.rpc("mentor_close_session", { p_mentee_id: mentee.id });
-    } else {
-      const edit = sessionEdits[mentee.id] ?? { meeting: "", when: "" };
-      if (!isMeetLink(edit.meeting)) {
-        setError("Paste the Google Meet link for this session. CodexSheet does not host the call itself.");
-        setRoomBusy(null);
-        return;
-      }
-      result = await supabase.rpc("mentor_open_session", {
-        p_mentee_id: mentee.id,
-        p_meeting_url: edit.meeting.trim(),
-        p_scheduled_at: edit.when ? fromLocalInput(edit.when) : null,
+    try {
+      const result = await supabase.rpc("mentor_close_session", { p_mentee_id: mentee.id });
+      if (result.error) setError(`Not closed: ${result.error.message}`);
+      setSessionEdits((current) => {
+        const next = { ...current };
+        delete next[mentee.id];
+        return next;
       });
+    } catch (cause) {
+      setError(`Not closed: ${cause instanceof Error ? cause.message : "the request did not reach the server."}`);
     }
-    if (result.error) setError(result.error.message);
     await load();
     setRoomBusy(null);
   }
@@ -536,7 +630,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
     const edit = sessionEdits[mentee.id];
     if (edit) return edit;
     return {
-      meeting: mentee.meeting_url,
+      meeting: mentee.meeting_url ?? "",
       when: mentee.scheduled_at ? toLocalInput(mentee.scheduled_at) : "",
     };
   }
@@ -592,7 +686,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
       {!booting && isMentor && claims.length > 0 && (
         <article className="mentees-claims">
           <h2>Awaiting confirmation · {claims.length}</h2>
-          <p className="mentees-note">Match these against your Paytm statement, then confirm. Confirmation creates the mentee record and ends the payment alert.</p>
+          <p className="mentees-note">Claims self-approve now, so this list only holds the ones recorded before that change. Match these against your Paytm statement, then confirm — it creates the mentee record and ends the payment alert.</p>
           {claims.map((claim) => (
             <div className="mentees-claim" key={claim.reference}>
               <div>
@@ -650,33 +744,39 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                     {busy === String(mentee.id) ? <LoaderCircle size={15} className="mentees-spin" /> : <Check size={15} />} Save
                   </button>
                 </div>
-                {!mentee.meeting_url && (
-                  <div className="mentees-schedule">
-                    <label><span>Session time (IST)</span>
-                      <input
-                        type="datetime-local"
-                        value={editOf(mentee).when}
-                        onChange={(event) => patchEdit(mentee, { when: event.target.value })}
-                      />
-                    </label>
-                    <label><span>Google Meet link · required</span>
-                      <input
-                        value={editOf(mentee).meeting}
-                        onChange={(event) => patchEdit(mentee, { meeting: event.target.value })}
-                        placeholder="https://meet.google.com/xxx-yyyy-zzz"
-                        maxLength={300}
-                      />
-                    </label>
-                  </div>
-                )}
+                <div className="mentees-schedule">
+                  <label><span>Session time (IST)</span>
+                    <input
+                      type="datetime-local"
+                      value={editOf(mentee).when}
+                      onChange={(event) => patchEdit(mentee, { when: event.target.value })}
+                    />
+                  </label>
+                  <label><span>Google Meet link · required</span>
+                    <input
+                      value={editOf(mentee).meeting}
+                      onChange={(event) => patchEdit(mentee, { meeting: event.target.value })}
+                      placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                      maxLength={300}
+                    />
+                  </label>
+                  <span className="mentees-mailto">
+                    {mentee.email
+                      ? <>Saving this posts the invite and a Google Calendar link to <strong>{mentee.email}</strong>.</>
+                      : <>No email on this record, so saving mails nobody — add the student&apos;s address before the call.</>}
+                  </span>
+                </div>
                 <div className="mentees-actions">
                   <JoinButton mentee={mentee} />
-                  <button type="button" className="mentees-session" onClick={() => void toggleSession(mentee)} disabled={roomBusy === mentee.id}>
-                    {roomBusy === mentee.id
-                      ? <LoaderCircle size={14} className="mentees-spin" />
-                      : mentee.meeting_url ? <RotateCcw size={14} /> : <PhoneCall size={14} />}
-                    {mentee.meeting_url ? "End session" : "Save Meet link"}
+                  <button type="button" className="mentees-session" onClick={() => void saveSession(mentee)} disabled={roomBusy === mentee.id}>
+                    {roomBusy === mentee.id ? <LoaderCircle size={14} className="mentees-spin" /> : <PhoneCall size={14} />}
+                    {mentee.meeting_url ? "Update session" : "Save Meet link"}
                   </button>
+                  {mentee.meeting_url && (
+                    <button type="button" className="mentees-chat" onClick={() => void endSession(mentee)} disabled={roomBusy === mentee.id}>
+                      <RotateCcw size={14} /> End session
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={openLane === mentee.id ? "mentees-chat on" : "mentees-chat"}
@@ -689,13 +789,26 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                       <Mail size={14} /> Contact
                     </a>
                   )}
+                  {savedLane === mentee.id && (
+                    <span className="mentees-saved">
+                      <Check size={13} />
+                      {" "}{mentee.email
+                        ? `Saved — the Meet link is queued as an invite to ${mentee.email}, so the hour lands in their inbox within a few minutes.`
+                        : "Saved, but this record has no email — the invite cannot be mailed, so send the link yourself on WhatsApp."}
+                    </span>
+                  )}
                   {mentee.meeting_url || mentee.scheduled_at ? (
                     <span className="mentees-room">
-                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "No hour booked yet"}</span>
-                      {isMeetLink(mentee.meeting_url) && (
-                        <button type="button" onClick={() => copyRoom(mentee)}>
-                          {copiedRoom === mentee.reference ? "Link copied" : "Copy Meet link"}
-                        </button>
+                      <span>{mentee.scheduled_at ? istLabel(mentee.scheduled_at) : "Saved without an hour — the link still opens the call"}</span>
+                      {isMeetLink(mentee.meeting_url) ? (
+                        <>
+                          <a className="mentees-link" href={mentee.meeting_url} target="_blank" rel="noreferrer">{mentee.meeting_url}</a>
+                          <button type="button" onClick={() => copyRoom(mentee)}>
+                            {copiedRoom === mentee.reference ? "Link copied" : "Copy Meet link"}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="mentees-quiet">The stored link is not a Google Meet address — paste it above and save again.</span>
                       )}
                     </span>
                   ) : (
@@ -726,9 +839,9 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
                       <span>
                         {payment.reference}
                         {state.cls === "due"
-                          ? ` · awaiting Aditya's confirmation against his Paytm statement${payment.paytm_reference ? ` (UTR ${payment.paytm_reference})` : ""}`
+                          ? ` · never reached the server${payment.paytm_reference ? ` (UTR ${payment.paytm_reference} - send the receipt to Aditya on WhatsApp)` : ""}`
                           : state.cls === "done"
-                            ? " · confirmed by Aditya"
+                            ? " · confirmed, the sheet is open"
                             : " · cancelled"}
                       </span>
                     </div>
@@ -740,7 +853,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
           {mine.length === 0 && (
             <p className="mentees-note">
               {dues.length > 0
-                ? "Your record appears here the moment Aditya confirms the payment above against his Paytm statement."
+                ? "A claim confirms itself the moment the server accepts it, so a DUE row here means the record never arrived — send your Paytm screenshot to Aditya on WhatsApp and it will be opened by hand."
                 : <>Nothing confirmed yet. The sheet pass is pay-what-you-can from {rupees(passBand.min)} to {rupees(passBand.max)} on the <a href="/mentorship">mentorship page</a>.</>}
             </p>
           )}

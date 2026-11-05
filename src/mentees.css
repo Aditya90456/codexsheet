@@ -80,6 +80,14 @@
 
 .mentees-schedule label { display: grid; gap: 5px; font-size: 11px; color: var(--mt-muted); }
 
+.mentees-mailto {
+  grid-column: 1 / -1;
+  color: var(--mt-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.mentees-mailto strong { color: var(--mt-accent); font-weight: 700; overflow-wrap: anywhere; }
+
 .mentees-session, .mentees-chat {
   display: inline-flex;
   align-items: center;
@@ -101,9 +109,21 @@
 .mentees-chat.on { border-color: var(--mt-accent); background: var(--mt-accent); color: var(--mt-surface); }
 :root[data-theme="blue"] .mentees-chat.on { color: #131f33; }
 
-.mentees-room { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: 12px; }
+.mentees-room { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: 12px; min-width: 0; }
+.mentees-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--mt-accent);
+  border-radius: 8px;
+  color: var(--mt-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
 .mentees-room span { color: var(--mt-muted); font-weight: 700; }
 .mentees-room a { color: var(--mt-accent); font-weight: 700; text-decoration: none; }
+.mentees-room a.mentees-link { min-width: 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mentees-room a:hover { text-decoration: underline; }
 .mentees-room button {
   padding: 6px 10px;

@@ -351,7 +351,7 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
   const [aiReply, setAiReply] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
-  const challenges = useMemo(() => problems.filter((item) => !/ · Pattern \d+$/.test(item.title)), [problems]);
+  const challenges = problems;
   const trace = useMemo(() => traceCode(code), [code]);
   const sourceFlow = useMemo(() => buildSourceFlow(code), [code]);
   const playbackLength = trace.steps.length || sourceFlow.length;

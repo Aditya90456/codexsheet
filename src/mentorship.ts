@@ -5,8 +5,9 @@
 // personal Paytm UPI handle, so the app never touches a gateway: the page shows his
 // own Paytm QR, which carries nothing but his UPI id, so the student types the
 // amount themselves and the server rejects a claim outside the band. The UTR from
-// the receipt is required, and the claim is recorded for him to confirm against his
-// Paytm statement - only then does the sheet unlock.
+// the receipt is required. The claim is confirmed by the database as it lands, so
+// the sheet opens immediately and Aditya reconciles the UTR against his statement
+// afterwards.
 export const payee = {
   phone: "8882118279",
   upiId: "8882118279@fam",
@@ -93,6 +94,8 @@ export function planById(id: string): MentorshipPlan | undefined {
 }
 
 /** Twelve weeks over the sheet - patterns and interviews only, no LLD or HLD. */
+import { problems } from "./dsaSheet";
+
 export type CurriculumWeek = {
   label: string;
   title: string;
@@ -101,20 +104,34 @@ export type CurriculumWeek = {
   outcome: string;
 };
 
-export const curriculum: CurriculumWeek[] = [
-  { label: "Week 1", title: "Build the lookup reflex", focus: ["Arrays & Hashing"], pace: "21 problems", outcome: "You stop writing a loop before asking what a hash map already answers." },
-  { label: "Week 2", title: "Move two ends, not one", focus: ["Two Pointers"], pace: "21 problems", outcome: "Sorted input becomes a reflex: pair sums, containers, trapped water." },
-  { label: "Week 3", title: "Windows you can shrink", focus: ["Sliding Window"], pace: "21 problems", outcome: "Longest, shortest and at-most-K questions collapse into one template you own." },
-  { label: "Week 4", title: "What is still open", focus: ["Stack", "Monotonic Stack"], pace: "21 problems", outcome: "Next-greater, valid parentheses and histogram problems stop being guesses." },
-  { label: "Week 5", title: "Boundaries without off-by-ones", focus: ["Binary Search"], pace: "21 problems", outcome: "You write the predicate first and let the search fall out of it." },
-  { label: "Week 6", title: "Pointers that must not leak", focus: ["Linked List"], pace: "21 problems", outcome: "Fast and slow pointers, in-place reversal and cycle detection, drawn before coded." },
-  { label: "Week 7", title: "Recursion you can draw", focus: ["Trees"], pace: "21 problems", outcome: "BFS, DFS, paths and tree DP with the call stack visible on paper." },
-  { label: "Week 8", title: "Traversals on real graphs", focus: ["Graphs"], pace: "21 problems", outcome: "Islands, course schedules, shortest unweighted path - you pick the traversal from the question." },
-  { label: "Week 9", title: "Choose, explore, undo", focus: ["Backtracking"], pace: "21 problems", outcome: "Subsets, permutations and pruning, and you can explain the state you carry." },
-  { label: "Week 10", title: "Order things under pressure", focus: ["Heaps", "Intervals"], pace: "21 problems", outcome: "Top-K, merge intervals and scheduling: sort by end, then sweep." },
-  { label: "Week 11", title: "States and transitions", focus: ["1-D DP", "2-D DP"], pace: "21 problems", outcome: "You define the state before the recurrence and memoise what you actually proved." },
-  { label: "Week 12", title: "Mixed set, then a real mock", focus: ["Greedy", "Bit Manipulation"], pace: "19 problems + a timed set", outcome: "One recorded 1:1 mock interview with Aditya and a written feedback note on your code." },
+// The pace is not invented: it is what the sheet really carries for that week,
+// counted from dsaSheet.ts, so /mentorship can never promise a number the /problems
+// page does not have.
+const problemsPerWeek = problems.reduce((map, problem) => {
+  map[problem.week] = (map[problem.week] ?? 0) + 1;
+  return map;
+}, {} as Record<number, number>);
+
+const curriculumWeeks: Array<Omit<CurriculumWeek, "pace">> = [
+  { label: "Week 1", title: "Build the lookup reflex", focus: ["Arrays & Hashing"], outcome: "You stop writing a loop before asking what a hash map already answers." },
+  { label: "Week 2", title: "Move two ends, not one", focus: ["Two Pointers"], outcome: "Sorted input becomes a reflex: pair sums, containers, trapped water." },
+  { label: "Week 3", title: "Windows you can shrink", focus: ["Sliding Window"], outcome: "Longest, shortest and at-most-K questions collapse into one template you own." },
+  { label: "Week 4", title: "What is still open", focus: ["Stack", "Monotonic Stack"], outcome: "Next-greater, valid parentheses and histogram problems stop being guesses." },
+  { label: "Week 5", title: "Boundaries without off-by-ones", focus: ["Binary Search"], outcome: "You write the predicate first and let the search fall out of it." },
+  { label: "Week 6", title: "Pointers that must not leak", focus: ["Linked List"], outcome: "Fast and slow pointers, in-place reversal and cycle detection, drawn before coded." },
+  { label: "Week 7", title: "Recursion you can draw", focus: ["Trees"], outcome: "BFS, DFS, paths and tree DP with the call stack visible on paper." },
+  { label: "Week 8", title: "Traversals on real graphs", focus: ["Graphs"], outcome: "Islands, course schedules, shortest unweighted path - you pick the traversal from the question." },
+  { label: "Week 9", title: "Choose, explore, undo", focus: ["Backtracking"], outcome: "Subsets, permutations and pruning, and you can explain the state you carry." },
+  { label: "Week 10", title: "Order things under pressure", focus: ["Heaps", "Intervals"], outcome: "Top-K, merge intervals and scheduling: sort by end, then sweep." },
+  { label: "Week 11", title: "States and transitions", focus: ["1-D DP", "2-D DP"], outcome: "You define the state before the recurrence and memoise what you actually proved." },
+  { label: "Week 12", title: "Mixed set, then a real mock", focus: ["Greedy", "Bit Manipulation"], outcome: "One recorded 1:1 mock interview with Aditya and a written feedback note on your code." },
 ];
+
+export const curriculum: CurriculumWeek[] = curriculumWeeks.map((week) => {
+  const number = Number(week.label.replace(/\D+/g, ""));
+  const count = problemsPerWeek[number] ?? 0;
+  return { ...week, pace: number === 12 ? `${count} problems + a timed set` : `${count} problems` };
+});
 
 /** Five days from a confirmed payment to ask for the money back. */
 export const refundWindow = {
@@ -128,7 +145,7 @@ export const passFlow: { title: string; body: string }[] = [
   { title: "Pick what you can pay", body: `Any whole figure from ${rupees(passBand.min)} to ${rupees(passBand.max)} buys the same thing: the whole sheet, forever. ${rupees(passBand.suggested)} is what he suggests if the maths works out for you.` },
   { title: "Pay it on his Paytm QR", body: "The code carries his UPI id and nothing else, so type your amount in the Paytm app yourself and put your reference code in the note - that note is what makes the entry findable on his statement." },
   { title: "Record reference and UTR", body: "Fill the small form on this page. Your Paytm UTR is required — it is the only thing that ties your claim to a real statement entry." },
-  { title: "Aditya verifies, the sheet opens", body: "He searches his statement for that UTR and marks the row confirmed. Only then does the badge flip DUE → DONE and /problems stop asking for money." },
+  { title: "The sheet opens at once", body: "The claim is confirmed as it lands, so the badge reads DONE immediately and /problems stops asking for money. Aditya matches your UTR against his statement afterwards, so keep the receipt." },
 ];
 
 /** Only promises the product actually keeps — no invented résumé. */
@@ -136,7 +153,7 @@ export const mentorCraft: string[] = [
   "He reads your solution line by line, on the real judged submission in the Deva editor — not a paragraph of advice.",
   "Confirmed students get a private chat lane; he publishes 1:1 Google Meet slots and you pick the hour.",
   "Stuck at 2am on a sliding window? Message him; there is no per-question charge.",
-  "He confirms your payment himself against his own Paytm statement, so the ledger and the money always agree.",
+  "Your pass opens the moment the claim is recorded, and he reconciles the UTR against his own Paytm statement after the fact.",
 ];
 
 /** Rupee display with Indian grouping, so 1000 reads as ₹1,000. */

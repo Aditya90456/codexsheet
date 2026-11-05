@@ -167,12 +167,17 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
       : async () => ({ error: { message: supabaseConfigurationError ?? "Supabase is not configured." } });
     const outcome = await recordOrder(order, insert as (row: Record<string, unknown>) => Promise<{ error: { message: string } | null }>);
     setSaving(false);
+    // Auto-approval means a second claim on a paid account is rejected by the
+    // server, and that is not an error worth alarming the student about.
+    const alreadyOwns = !outcome.ok && /already has a confirmed/i.test(outcome.reason);
     setSaved(outcome.ok
-      ? { ok: true, message: `Recorded as ${reference}. Aditya searches his Paytm statement for your UTR, then /problems stops asking for money.` }
-      : { ok: false, message: `Saved on this device (${outcome.reason}). Send the reference ${reference} and your Paytm screenshot to Aditya on WhatsApp so it is not lost.` });
+      ? { ok: true, message: `Recorded as ${reference}. The pass is confirmed the moment the claim lands, so /problems is open now - Aditya matches your UTR against his statement afterwards.` }
+      : alreadyOwns
+        ? { ok: true, message: `This account already holds a Sheet Pass, so nothing more is due and /problems stays open. One payment buys the sheet for good.` }
+        : { ok: false, message: `Saved on this device (${outcome.reason}). Send the reference ${reference} and your Paytm screenshot to Aditya on WhatsApp so it is not lost.` });
     // The record is saved and the Paytm transaction is done, so show at once
     // whether the money is still due or already confirmed.
-    if (outcome.ok) void refreshWatch(reference);
+    if (outcome.ok || alreadyOwns) void refreshWatch(reference);
     else void loadLedger();
   }
 
@@ -249,7 +254,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
         <header>
           <span className="mentorship-syllabus-kicker"><GraduationCap size={15} /> THE 12-WEEK PLAN</span>
           <h2>Twelve weeks, 250 problems, one pattern at a time</h2>
-          <p>The same order the roadmap board uses, at about 21 problems a week with revision and a timed set at the end. DSA only - no LLD or HLD units in this plan.</p>
+          <p>The same order the roadmap board uses, with the real problem count for each week on the badge and a timed set at the end. DSA only - no LLD or HLD units in this plan.</p>
         </header>
         <div className="mentorship-weeks">
           {curriculum.map((week) => (
@@ -347,10 +352,10 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
                   <>
                     <span className={`mentorship-badge ${paymentBadge(watched).cls}`}>{paymentBadge(watched).label}</span>
                     <p>{paymentBadge(watched).cls === "done"
-                      ? `Aditya confirmed ${rupees(Number(watched.amount))} for ${planLabel(watched.plan)}. The whole 250-problem sheet is open on /problems, and your chat lane is live on /mentees.`
+                      ? `Your ${rupees(Number(watched.amount))} Sheet Pass is confirmed, so the whole 250-problem sheet is open on /problems and your chat lane is live on /mentees. Aditya reconciles the UTR against his statement afterwards - keep the receipt.`
                       : paymentBadge(watched).cls === "off"
                         ? "This request was cancelled. Record a new one if you still want the sheet."
-                        : `${rupees(Number(watched.amount))} is still due: Aditya has not ticked ${reference} against his Paytm statement yet. Keep the UTR and the screenshot until he does.`}</p>
+                        : `${rupees(Number(watched.amount))} is still showing as due, which means the claim did not reach the server. Refresh, or WhatsApp the reference ${reference} and your receipt to Aditya.`}</p>
                   </>
                 ) : (
                   <p className="mentorship-small">{watchNote || "Checking the record against the server…"}</p>
@@ -366,7 +371,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
           ) : (
             <div className="mentorship-form">
               <label>Name<input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} placeholder="Your name" maxLength={120} /></label>
-              <label>Email or phone<input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="where Aditya confirms the sheet is open" maxLength={160} /></label>
+              <label>Email or phone<input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="where the sheet is opened for you" maxLength={160} /></label>
               <label>Paytm UTR / transaction reference (required)<input value={paytmReference} onChange={(event) => setPaytmReference(event.target.value)} placeholder="the 12-digit reference on your Paytm receipt" maxLength={80} /></label>
               <label>What do you want to work on<textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="DSA roadmap, system design, mock interviews…" maxLength={1000} /></label>
               <p className="mentorship-summary">Plan: <strong>{plan.title}</strong> · {rupees(amount ?? passBand.suggested)} · ref {reference}</p>
@@ -431,7 +436,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
           {!userId && ledger === null && pendingOnThisDevice === 0 && (
             <p className="mentorship-small">Sign in and the page tracks your own references, so you can see which payment is still due without retyping the code.</p>
           )}
-          <p className="mentorship-small">DUE means Aditya has not found your UTR in his Paytm statement yet. DONE means he has, and the sheet is open. Nothing here charges you twice: one payment buys the sheet against one reference, and a second claim on a paid account is rejected.</p>
+          <p className="mentorship-small">DUE means the claim never reached the server - it is sitting on this device, or was cancelled. DONE means the pass is confirmed and the sheet is open. Nothing here charges you twice: one payment buys the sheet against one reference, and a second claim on a paid account is refused.</p>
         </section>
       )}
 
@@ -446,7 +451,7 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
       <section className="mentorship-faq" aria-label="How the sheet pass works">
         <article><strong>Pay what you can</strong><p>Any whole figure from {rupees(passBand.min)} to {rupees(passBand.max)} opens the same 250-problem sheet, with no expiry. {rupees(passBand.suggested)} is what he suggests, and {rupees(passBand.min)} is a real answer if that is what you have.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya once you are confirmed, no extra charge and no per-question fee.</p></article>
-        <article><strong>How payment is confirmed</strong><p>Pay your figure on Paytm, record the reference and UTR here - or WhatsApp the receipt screenshot to {whatsapp.display} - and Aditya marks it confirmed only when that entry appears in his statement. That is the moment /problems stops asking for money.</p></article>
+        <article><strong>How payment is confirmed</strong><p>Pay your figure on Paytm, then record the reference and UTR here - or WhatsApp the receipt screenshot to {whatsapp.display}. The claim is confirmed as it lands, so /problems stops asking for money straight away, and Aditya reconciles your UTR against his statement afterwards. That is why the UTR and the screenshot are both required.</p></article>
         <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if the sheet was not worth it, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>
       </section>
     </section>

@@ -98,11 +98,11 @@ import {
   patterns,
   problemByNumber,
   problems,
-  seeds,
   sheetRanks,
   sheetXp,
   sheetXpTotal,
   solveMilestones,
+  topics,
   type Problem,
 } from "./dsaSheet";
 
@@ -128,6 +128,30 @@ type RoadmapPreferences = {
   sessionsPerWeek: number;
   focusPattern: string;
 };
+type SheetGroupMode = "week" | "topic" | "pattern";
+
+const sheetModeLabels: Record<SheetGroupMode, string> = { week: "Stage", topic: "Topic", pattern: "Pattern" };
+
+/** Which rail group a sheet problem sits in for the mode being browsed. */
+function sheetGroupKey(problem: Problem, mode: SheetGroupMode) {
+  if (mode === "week") return `Week ${problem.week}`;
+  return mode === "topic" ? problem.topic : problem.pattern;
+}
+
+// The order the rail lists groups in: weeks numerically, the rest exactly as
+// dsaSheet.ts declares them, so the rail, the pattern cards and the plan agree.
+function sheetGroupOrder(mode: SheetGroupMode): string[] {
+  if (mode === "week") return Array.from({ length: 12 }, (_, index) => `Week ${index + 1}`);
+  return mode === "topic" ? [...topics] : [...patterns];
+}
+
+/** What sits under a group name in the rail - the mix it is made of. */
+function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
+  const mustKnow = group.filter((problem) => problem.tier === 1).length;
+  if (mode === "pattern") return `${group[0]?.topic ?? ""} · week ${group[0]?.week ?? 12}`;
+  const members = new Set(group.map((problem) => problem.pattern));
+  return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
+}
 type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
 
 const viewPaths: Record<WorkspaceView, string> = {
@@ -1097,7 +1121,7 @@ function SheetLock({ checking, onOpenStore, onRecheck, onFreeRail }: { checking:
           <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I already paid"}</button>
           <button type="button" className="sheet-lock-free" onClick={onFreeRail}>The free rail: Guru, the labs, the editor <ArrowRight size={15} /></button>
         </div>
-        <small>No card and no gateway. Aditya matches your UTR against his own Paytm statement and marks it confirmed by hand, and your progress is not lost while the panel is up.</small>
+        <small>No card and no gateway. Your claim is confirmed by the server as it lands, so this panel clears on the next check - and your progress is not lost while it is up.</small>
       </div>
     </section>
   );
@@ -1138,6 +1162,11 @@ function App() {
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSavedAt, setNoteSavedAt] = useState(0);
+  // The same 250 problems, browsed three ways: the twelve-week stage ladder, the
+  // twelve subject families, or the sixteen patterns the /patterns cards teach.
+  const [sheetMode, setSheetMode] = useState<SheetGroupMode>("week");
+  const [sheetGroup, setSheetGroup] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const rewardTimer = useRef<number | null>(null);
   const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
@@ -1248,7 +1277,7 @@ function App() {
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesError, setNotesError] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const problemLibraryRef = useRef<HTMLElement>(null);
+  const problemLibraryRef = useRef<HTMLDivElement>(null);
   const activeViewRef = useRef(activeView);
   activeViewRef.current = activeView;
   const currentUserIdRef = useRef<string | null>(user?.id ?? null);
@@ -1293,16 +1322,50 @@ function App() {
     const text = sheetSearch?.stripped ?? "";
     return problems.filter((problem) => {
       const current = progress[problem.number]?.status ?? "Todo";
+      if (sheetGroup && sheetGroupKey(problem, sheetMode) !== sheetGroup) return false;
       if (patternWanted.length && !patternWanted.includes(problem.pattern)) return false;
       if (difficultyWanted && problem.difficulty !== difficultyWanted) return false;
       if (statusWanted && current !== statusWanted) return false;
       if (text) {
-        const haystack = `${problem.title} ${problem.pattern} ${problem.difficulty}`.toLowerCase();
+        const haystack = `${problem.title} ${problem.pattern} ${problem.topic} ${problem.difficulty}`.toLowerCase();
         if (!haystack.includes(text) && !aliasPatterns.includes(problem.pattern)) return false;
       }
       return true;
     });
-  }, [difficulty, pattern, progress, sheetSearch, status]);
+  }, [difficulty, pattern, progress, sheetGroup, sheetMode, sheetSearch, status]);
+
+  // One entry per rail group in the mode being browsed, with what the student has
+  // already cleared inside it, so the rail doubles as a progress report.
+  const sheetGroups = useMemo(
+    () =>
+      sheetGroupOrder(sheetMode)
+        .map((key) => {
+          const group = problems.filter((problem) => sheetGroupKey(problem, sheetMode) === key);
+          const solvedCount = group.filter((problem) => progress[problem.number]?.status === "Solved").length;
+          return {
+            key,
+            total: group.length,
+            solved: solvedCount,
+            open: group.length - solvedCount,
+            hint: sheetGroupHint(group, sheetMode),
+          };
+        })
+        .filter((group) => group.total > 0),
+    [progress, sheetMode],
+  );
+
+  // The list cut into the same groups, so the page shows the structure it teaches
+  // instead of one flat run of 250 links.
+  const sheetSections = useMemo(() => {
+    const buckets = new Map<string, Problem[]>();
+    for (const problem of visibleProblems) {
+      const key = sheetGroupKey(problem, sheetMode);
+      buckets.set(key, [...(buckets.get(key) ?? []), problem]);
+    }
+    return sheetGroupOrder(sheetMode)
+      .filter((key) => buckets.has(key))
+      .map((key) => ({ key, rows: buckets.get(key) as Problem[] }));
+  }, [sheetMode, visibleProblems]);
   useEffect(() => {
     if (activeView !== "problems" || !problemLibraryRef.current) return;
     let cancelled = false;
@@ -2849,7 +2912,7 @@ function App() {
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> YOUR PRACTICE, WITH PURPOSE</span>
             <h2>Build the instincts<br/>to <em>solve anything.</em></h2>
-            <p>250 hand-picked interview problems, organized around the patterns great engineers use every day.</p>
+            <p>All 250 problems are real LeetCode questions, verified against the public problem index and grouped three ways - the twelve-week stage ladder, twelve subject topics and sixteen interview patterns - so you can plan by whichever of the three your brain works in.</p>
             <div className="problem-hero-actions"><button type="button" onClick={() => { setStatus("All status"); setPattern("All patterns"); setDifficulty("All levels"); document.querySelector(".problem-library-controls input")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>Explore the library <ArrowRight size={15}/></button><span><Check size={14}/> Progress saves as you go</span></div>
           </div>
           <div className="problem-hero-progress"><div className="problem-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties}><div><strong>{percent}%</strong><span>COMPLETE</span></div></div><span className="problem-progress-caption"><strong>{solved} <small>/ 250</small></strong> problems solved</span><div className="problem-progress-track"><i style={{ width: `${percent}%` }}/></div><span className="problem-progress-rank"><strong>LEVEL {sheetRank.level}</strong><span>{sheetRank.title}</span><i className="problem-rank-track"><b style={{ width: `${sheetRank.percent}%` }}/></i><em>{sheetRank.toNext ? `${sheetRank.toNext} XP to ${sheetRanks[sheetRank.level]?.title ?? sheetRank.title}` : `${sheetRank.xp} XP - top rank`}</em></span><span className="problem-progress-foot">Every problem makes you sharper.</span><span className="problem-progress-spark">✳</span></div>
@@ -2860,17 +2923,35 @@ function App() {
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-pattern"><Target size={16}/></span><span className="problem-stat-label">CORE PATTERNS</span><strong>{patterns.length}<small> to explore</small></strong><span className="problem-stat-note">Learn how problems connect</span></div>
         </div>
         <div className="problem-library-section-heading"><div><span>THE PRACTICE LIBRARY</span><h3>Find your next <em>challenge.</em></h3></div><div className="problem-library-heading-actions"><span className="problem-sync-state"><Check size={13}/>{user ? "Progress synced" : "Progress saved locally"}</span><button type="button" disabled={pattern === "All patterns"} onClick={() => setPatternTestOpen(pattern)} title={pattern === "All patterns" ? "Choose a pattern to start its test" : `Take the ${pattern} test`}>Take 4-question test <ArrowRight size={13}/></button></div></div>
-        <div className="problem-pattern-shortcuts" aria-label="Popular problem patterns">
-          <span>POPULAR PATTERNS</span>
-          {["Two Pointers", "Sliding Window", "Binary Search", "Trees", "Graphs", "1-D DP"].map((topic) => <button key={topic} type="button" className={pattern === topic ? "active" : ""} onClick={() => { setPattern(topic); setStatus("All status"); document.querySelector(".problem-library-controls input")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>{topic}<span>{problems.filter((problem) => problem.pattern === topic).length}</span></button>)}
-        </div>
+        <div className="sheet-browser">
+          <aside className="sheet-rail-card">
+            <div className="nav nav-pills sheet-mode-switch" role="tablist" aria-label="Browse the sheet by">
+              {(["week", "topic", "pattern"] as SheetGroupMode[]).map((mode) => <button key={mode} type="button" role="tab" aria-selected={sheetMode === mode} className={`nav-link${sheetMode === mode ? " active" : ""}`} onClick={() => { setSheetMode(mode); setSheetGroup(""); }}>{sheetModeLabels[mode]}<small>{mode === "week" ? "12 stages" : mode === "topic" ? "12 topics" : "16 patterns"}</small></button>)}
+            </div>
+            <nav className="sheet-rail" aria-label={`${sheetModeLabels[sheetMode]} rail`}>
+              <button type="button" className={`sheet-rail-item${sheetGroup === "" ? " active" : ""}`} onClick={() => setSheetGroup("")}>
+                <span className="sheet-rail-name">Whole sheet</span>
+                <span className="sheet-rail-meta">{problems.length} problems · {patterns.length} patterns · {topics.length} topics</span>
+                <span className="progress sheet-rail-progress" role="progressbar" aria-label="Whole sheet progress" aria-valuenow={solved} aria-valuemin={0} aria-valuemax={problems.length}><span className="progress-bar" style={{ width: `${percent}%` }}/></span>
+                <span className="badge sheet-rail-count">{solved}/{problems.length}</span>
+              </button>
+              {sheetGroups.map((group) => <button key={group.key} type="button" className={`sheet-rail-item${sheetGroup === group.key ? " active" : ""}`} onClick={() => setSheetGroup(sheetGroup === group.key ? "" : group.key)}>
+                <span className="sheet-rail-name">{group.key}</span>
+                <span className="sheet-rail-meta">{group.hint}</span>
+                <span className="progress sheet-rail-progress" role="progressbar" aria-label={`${group.key} progress`} aria-valuenow={group.solved} aria-valuemin={0} aria-valuemax={group.total}><span className="progress-bar" style={{ width: `${Math.round((group.solved / group.total) * 100)}%` }}/></span>
+                <span className="badge sheet-rail-count">{group.solved}/{group.total}</span>
+                <span className="sheet-rail-open">{group.open} open</span>
+              </button>)}
+            </nav>
+            <p className="sheet-rail-foot">{sheetGroup ? <><span>Filtered to <strong>{sheetGroup}</strong></span><button type="button" className="sheet-rail-clear" onClick={() => setSheetGroup("")}>Show all 250</button></> : <span>Pick a {sheetModeLabels[sheetMode].toLowerCase()} to narrow the list - or search what you feel weak in.</span>}</p>
+          </aside>
         <div className="problem-learning-layout">
         <div className="problem-library-panel">
           <div className="problem-library-controls">
-            <label className="problem-search"><Search size={17}/><input placeholder="Search problems or patterns" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search problems or patterns"/>{query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search">×</button>}</label>
-            <label className="problem-filter-select"><span>PATTERN</span><select value={pattern} onChange={(event) => setPattern(event.target.value)}><option>All patterns</option>{patterns.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14}/></label>
-            <label className="problem-filter-select"><span>DIFFICULTY</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select><ChevronDown size={14}/></label>
-            <label className="problem-filter-select"><span>STATUS</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option>All status</option><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={14}/></label>
+            <label className="problem-search"><Search size={17}/><input className="form-control" placeholder="Search problems, patterns or topics" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search problems, patterns or topics"/>{query && <button type="button" onClick={() => setQuery("")} aria-label="Clear search">×</button>}</label>
+            <label className="problem-filter-select"><span>PATTERN</span><select className="form-select" value={pattern} onChange={(event) => setPattern(event.target.value)}><option>All patterns</option>{patterns.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14}/></label>
+            <label className="problem-filter-select"><span>DIFFICULTY</span><select className="form-select" value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option>All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select><ChevronDown size={14}/></label>
+            <label className="problem-filter-select"><span>STATUS</span><select className="form-select" value={status} onChange={(event) => setStatus(event.target.value)}><option>All status</option><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={14}/></label>
           </div>
           {sheetSearch ? (
             <div className="sheet-recognition" role="status" aria-live="polite">
@@ -2888,14 +2969,26 @@ function App() {
               <span className="sheet-recognition-tally">the sheet reads patterns, level and status as you type - and every solve pays XP</span>
             </div>
           )}
-          <div className="problem-list-toolbar"><span><strong>{visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> Curated for interview prep</span><span><span className="problem-live-dot"/> UPDATED FOR YOUR JOURNEY</span></div>
-          <div className="problem-list">{visibleProblems.length ? visibleProblems.map((problem) => {
+          <div className="problem-list-toolbar"><span><strong>{visibleProblems.length}</strong> {visibleProblems.length === 1 ? "problem" : "problems"} <i/> {sheetGroup || `all ${sheetModeLabels[sheetMode].toLowerCase()}s`}</span><span><span className="problem-live-dot"/> TITLES, SLUGS AND LEVELS VERIFIED AGAINST LEETCODE</span></div>
+          <div className="problem-list" ref={problemLibraryRef}>{visibleProblems.length ? sheetSections.map((section) => {
+            const collapsed = collapsedGroups[section.key] === true;
+            const sectionSolved = section.rows.filter((problem) => progress[problem.number]?.status === "Solved").length;
+            const sectionPercent = Math.round((sectionSolved / section.rows.length) * 100);
+            return <section className={`sheet-section${collapsed ? " collapsed" : ""}`} key={section.key}>
+              <button type="button" className="sheet-section-head" aria-expanded={!collapsed} onClick={() => setCollapsedGroups((state) => ({ ...state, [section.key]: !collapsed }))}>
+                <span className="sheet-section-caret">{collapsed ? <ChevronRight size={15}/> : <ChevronDown size={15}/>}</span>
+                <span className="sheet-section-name"><strong>{section.key}</strong><small>{sheetGroupHint(section.rows, sheetMode)}</small></span>
+                <span className="progress sheet-section-progress" role="progressbar" aria-label={`${section.key} solved`} aria-valuenow={sectionSolved} aria-valuemin={0} aria-valuemax={section.rows.length}><span className="progress-bar" style={{ width: `${sectionPercent}%` }}/></span>
+                <span className="badge sheet-section-count">{sectionSolved}/{section.rows.length}</span>
+              </button>
+              {!collapsed && <div className="sheet-section-body">{section.rows.map((problem) => {
             const current = progress[problem.number]?.status ?? "Todo";
             const statusClass = current.toLowerCase().replace(" ", "-");
             const savedNote = progress[problem.number]?.notes ?? "";
             const noteOpen = noteFor === problem.number;
-            return <article className={`problem-list-row${savedNote ? " has-note" : ""}`} key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a><span>{problem.pattern}</span><button type="button" className={`problem-note-toggle${savedNote ? " filled" : ""}${noteOpen ? " open" : ""}`} aria-expanded={noteOpen} aria-label={`${savedNote ? "Edit" : "Add"} your note for ${problem.title}`} onClick={() => { const next = noteOpen ? null : problem.number; setNoteFor(next); setNoteDraft(next === null ? "" : savedNote); setNoteSavedAt(0); }}>{savedNote ? "✎" : "+"}</button></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label>{noteOpen && <div className="problem-note-panel"><textarea className="problem-note-input" rows={3} placeholder={`The one line about ${problem.title} you want to remember under pressure.`} value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} onBlur={() => { if (savedNote !== noteDraft.trim()) setProblemNote(problem.number, noteDraft.trim()); }} aria-label={`Note for ${problem.title}`}/><div className="problem-note-foot"><span className="problem-note-count">{noteWordCount} {noteWordCount === 1 ? "word" : "words"}</span><span className="problem-note-praise">{noteWordCount >= 12 ? "Interview-ready note." : noteWordCount > 0 ? "Good - future you will read this fast." : "Type the trick, not the whole solution."}</span><span className="problem-note-saved">{noteSavedAt ? `Saved ${new Date(noteSavedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Saves when you leave the box"}</span><button type="button" onClick={() => setProblemNote(problem.number, noteDraft.trim())}>Save note</button><button type="button" className="problem-note-close" onClick={() => { setNoteFor(null); setNoteDraft(""); }}>Close</button></div></div>}</article>;
-          }) : <div className="problem-library-empty"><Search size={21}/><strong>No problems found</strong><span>Try another search or adjust your filters.</span><button type="button" onClick={() => {setQuery("");setPattern("All patterns");setDifficulty("All levels");setStatus("All status");}}>Clear filters</button></div>}</div>
+            return <article className={`problem-list-row library-row tier-${problem.tier}${savedNote ? " has-note" : ""}`} id={problem.slug} key={problem.number}><span className="problem-row-number">{String(problem.number).padStart(3,"0")}</span><span className={`problem-row-state ${statusClass}`}><span/></span><div className="problem-row-title"><a href={problem.link} target="_blank" rel="noreferrer" aria-label={`${problem.title} on LeetCode`}><span className="leetcode-mark" aria-hidden="true">LC</span>{problem.title}<ExternalLink size={13}/></a>{problem.premium && <a className="problem-free-mirror" href={problem.freeLink} target="_blank" rel="noreferrer">free version</a>}<span>{problem.topic} · week {problem.week}</span><button type="button" className={`problem-note-toggle${savedNote ? " filled" : ""}${noteOpen ? " open" : ""}`} aria-expanded={noteOpen} aria-label={`${savedNote ? "Edit" : "Add"} your note for ${problem.title}`} onClick={() => { const next = noteOpen ? null : problem.number; setNoteFor(next); setNoteDraft(next === null ? "" : savedNote); setNoteSavedAt(0); }}>{savedNote ? "✎" : "+"}</button></div><span className="pattern-pill problem-row-pattern">{problem.pattern}</span><span className={`badge problem-row-tier tier-${problem.tier}`}>{tierLabels[problem.tier]}</span><span className={`difficulty ${problem.difficulty.toLowerCase()}`}>{problem.difficulty}</span><label className={`problem-row-status ${statusClass}`}><select aria-label={`Status for ${problem.title}`} value={current} onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}><option>Todo</option><option>In progress</option><option>Solved</option></select><ChevronDown size={12}/></label>{noteOpen && <div className="problem-note-panel"><textarea className="problem-note-input" rows={3} placeholder={`The one line about ${problem.title} you want to remember under pressure.`} value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} onBlur={() => { if (savedNote !== noteDraft.trim()) setProblemNote(problem.number, noteDraft.trim()); }} aria-label={`Note for ${problem.title}`}/><div className="problem-note-foot"><span className="problem-note-count">{noteWordCount} {noteWordCount === 1 ? "word" : "words"}</span><span className="problem-note-praise">{noteWordCount >= 12 ? "Interview-ready note." : noteWordCount > 0 ? "Good - future you will read this fast." : "Type the trick, not the whole solution."}</span><span className="problem-note-saved">{noteSavedAt ? `Saved ${new Date(noteSavedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}` : "Saves when you leave the box"}</span><button type="button" onClick={() => setProblemNote(problem.number, noteDraft.trim())}>Save note</button><button type="button" className="problem-note-close" onClick={() => { setNoteFor(null); setNoteDraft(""); }}>Close</button></div></div>}</article>;
+                })}</div>}</section>;
+          }) : <div className="problem-library-empty"><Search size={21}/><strong>No problems found</strong><span>Try another search, or clear the {sheetModeLabels[sheetMode].toLowerCase()} filter.</span><button type="button" onClick={() => {setQuery("");setPattern("All patterns");setDifficulty("All levels");setStatus("All status");setSheetGroup("");}}>Clear filters</button></div>}</div>
           <div className="problem-library-footer"><span><Target size={14}/> Showing {visibleProblems.length} matching problems</span><span><Check size={14}/>{user ? "Synced to your account" : "Sign in to sync across devices"}</span></div>
         </div>
         <aside className="free-dsa-video" aria-label="Free Love Babbar DSA course">
@@ -2905,6 +2998,7 @@ function App() {
           <div className="free-dsa-video-footer"><span><Play size={13}/> 149-lesson playlist</span><a href="https://www.youtube.com/playlist?list=PLDzeHZWIZsTryvtXdMr6rPh4IDexB5NIA" target="_blank" rel="noreferrer">Open playlist <ExternalLink size={12}/></a></div>
           <div className="free-dsa-course-note"><strong>Practice as you learn</strong><span>Watch a lesson, then solve a matching problem in the library.</span></div>
         </aside>
+        </div>
         </div>
         {sheetReward && <div className={`sheet-reward${sheetReward.milestone ? " milestone" : ""}`} key={sheetReward.id} role="status" aria-live="polite"><span className="sheet-reward-icon"><Sparkles size={18}/></span><div className="sheet-reward-copy"><strong>{sheetReward.headline}</strong><span>{sheetReward.detail}</span></div><em className="sheet-reward-xp">+{sheetReward.xp} XP</em><button type="button" className="sheet-reward-close" onClick={() => setSheetReward(null)} aria-label="Dismiss"><X size={14}/></button></div>}
       </section>}

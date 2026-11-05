@@ -2473,4 +2473,358 @@ $$;
 revoke all on function public.market_order_status(text) from public;
 grant execute on function public.market_order_status(text) to anon, authenticated;
 
+-- ── Automatic approval ─────────────────────────────────────────────────────
+-- A Sheet Pass claim lands confirmed, so /problems opens on the next fetch instead
+-- of waiting for Aditya to tick a UTR against his Paytm statement. notified_at
+-- stays NULL, so the payment alert still reaches him and he reconciles afterwards.
+create or replace function public.mentorship_orders_auto_approve()
+returns trigger
+language plpgsql
+as $fn$
+begin
+  if new.plan = 'family' and new.status = 'awaiting' then
+    new.status := 'confirmed';
+  end if;
+  return new;
+end;
+$fn$;
+
+revoke all on function public.mentorship_orders_auto_approve() from public;
+grant execute on function public.mentorship_orders_auto_approve() to anon, authenticated;
+
+drop trigger if exists mentorship_orders_auto_approve on public.mentorship_orders;
+create trigger mentorship_orders_auto_approve
+  before insert on public.mentorship_orders
+  for each row execute function public.mentorship_orders_auto_approve();
+
+-- The confirmed claim also becomes the mentee lane, which is what carries the
+-- private chat and the Google Meet link. auth.jwt() belongs to the student inside
+-- a trigger, so the lane is owned by the caller when the caller is a mentor and by
+-- the seeded mentor account otherwise.
+create or replace function public.mentorship_orders_open_lane()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_mentor text;
+begin
+  if new.plan <> 'family' or new.status <> 'confirmed' then
+    return null;
+  end if;
+
+  select into v_mentor coalesce(
+    (select mentor.user_id from public.workspace_mentors mentor
+      where mentor.user_id = coalesce(auth.jwt() ->> 'sub', '')),
+    (select mentor.user_id from public.workspace_mentors mentor order by mentor.added_at limit 1)
+  );
+
+  if v_mentor is null then
+    return null;
+  end if;
+
+  insert into public.mentees (
+    reference, user_id, email, mentor_user_id, plan, status, student_name, contact,
+    weekly_slot, notes, started_at, ends_at
+  )
+  values (
+    new.reference, coalesce(new.user_id, ''), coalesce(new.buyer_email, ''), v_mentor, new.plan, 'active',
+    new.buyer_name, coalesce(new.buyer_contact, ''), '', coalesce(new.note, ''), now(),
+    case new.plan
+      when 'ltm-3-months' then now() + interval '3 months'
+      when 'ltm-6-months' then now() + interval '6 months'
+    end
+  )
+  -- A lane Aditya has already edited keeps his slot, status and notes.
+  on conflict (reference) do update
+    set user_id = coalesce(nullif(excluded.user_id, ''), public.mentees.user_id),
+        email = coalesce(nullif(excluded.email, ''), public.mentees.email),
+        contact = coalesce(nullif(excluded.contact, ''), public.mentees.contact),
+        updated_at = now();
+
+  return null;
+end;
+$fn$;
+
+revoke all on function public.mentorship_orders_open_lane() from public;
+grant execute on function public.mentorship_orders_open_lane() to anon, authenticated;
+
+drop trigger if exists mentorship_orders_open_lane on public.mentorship_orders;
+create trigger mentorship_orders_open_lane
+  after insert on public.mentorship_orders
+  for each row execute function public.mentorship_orders_open_lane();
+
+-- Both session functions used to re-check lane.mentor_user_id against the caller
+-- after already passing is_workspace_mentor(), so a lane written by the other
+-- mentor id - or by the trigger above - failed with 'No such mentee' and the Meet
+-- link was never stored. The last definition in this file wins.
+create or replace function public.mentor_open_session(
+  p_mentee_id bigint,
+  p_meeting_url text default '',
+  p_scheduled_at timestamptz default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_meet text := btrim(coalesce(p_meeting_url, ''));
+  v_when timestamptz;
+begin
+  if not public.is_workspace_mentor() then
+    raise exception 'Only mentors can open a session' using errcode = '42501';
+  end if;
+
+  if v_meet !~* '^https://meet\.google\.com/[a-z0-9/?=&%._-]+$' then
+    raise exception 'A session needs a https://meet.google.com link'
+      using errcode = '22023', hint = v_meet;
+  end if;
+
+  select into v_when coalesce(p_scheduled_at, lane.scheduled_at)
+  from public.mentees lane where lane.id = p_mentee_id;
+
+  if v_when is not null and exists (
+    select 1 from public.mentees other
+    where other.id <> p_mentee_id
+      and other.scheduled_at = v_when
+      and other.mentor_user_id in (select mentor.user_id from public.workspace_mentors mentor)
+  ) then
+    raise exception '%', format('Another student already holds %s IST - pick another time.',
+      to_char(v_when at time zone 'Asia/Kolkata', 'DD Mon YYYY HH24:MI'))
+      using errcode = '23505';
+  end if;
+
+  update public.mentees lane
+    set meeting_url = v_meet,
+        scheduled_at = v_when,
+        live_room_id = null,
+        updated_at = now()
+    where lane.id = p_mentee_id;
+
+  if not found then
+    raise exception 'No such mentee' using errcode = 'P0002';
+  end if;
+
+  return jsonb_build_object('meeting_url', v_meet, 'scheduled_at', v_when);
+end;
+$fn$;
+
+revoke all on function public.mentor_open_session(bigint, text, timestamptz) from public, anon;
+grant execute on function public.mentor_open_session(bigint, text, timestamptz) to authenticated;
+
+create or replace function public.mentor_close_session(p_mentee_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_room uuid;
+begin
+  if not public.is_workspace_mentor() then
+    raise exception 'Only mentors can close a session' using errcode = '42501';
+  end if;
+
+  update public.mentees lane
+    set live_room_id = null, meeting_url = '', scheduled_at = null, updated_at = now()
+  where lane.id = p_mentee_id
+  returning lane.live_room_id into v_room;
+
+  if v_room is not null then
+    delete from public.call_rooms room where room.id = v_room;
+  end if;
+end;
+$fn$;
+
+revoke all on function public.mentor_close_session(bigint) from public, anon;
+grant execute on function public.mentor_close_session(bigint) to authenticated;
+
+notify pgrst, 'reload schema';
+
+-- ═══ 20261105_session_invite_mail.sql ═══
+
+-- A session save mails the student. Attaching a Meet link used to be a database
+-- write only: the student had to open /mentees and notice that the hour and the
+-- link had appeared, so Aditya booked the call, went to the hour, and nobody joined.
+-- Now the same UPDATE that stores the link also queues the invite letter, and the
+-- notification job that already sends mentor offer letters delivers it.
+--
+-- Nothing new is installed for delivery: email_outbox is drained by the deployed
+-- mentorship-notify edge function every five minutes, so the student has the link
+-- in their inbox within one scheduler tick of the save.
+--
+-- Paste the whole file in Supabase Dashboard > SQL Editor and run it.
+
+-- ── 1. The outbox accepts session letters ──────────────────────────────────
+alter table public.email_outbox
+  drop constraint if exists email_outbox_kind_check;
+
+alter table public.email_outbox
+  add constraint email_outbox_kind_check
+    check (kind in ('offer_letter', 'session_note', 'note'));
+
+-- ── 2. The student's email is validated by the database ────────────────────
+-- The invite has exactly one address to go to, so an address that cannot receive
+-- mail is the failure worth catching at the form. Rows already in the table are
+-- blanked first so the constraint can land on a live database.
+update public.mentees
+  set email = ''
+where email is not null
+  and email <> ''
+  and email !~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$';
+
+alter table public.mentees
+  drop constraint if exists mentees_email_is_an_address;
+
+alter table public.mentees
+  add constraint mentees_email_is_an_address
+    check (email is null or email = '' or email ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$');
+
+-- ── 3. Saving the link queues the invite ───────────────────────────────────
+create or replace function public.mentees_session_mail()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_link text := btrim(coalesce(new.meeting_url, ''));
+  v_when timestamptz := new.scheduled_at;
+  v_to text := lower(btrim(coalesce(new.email, '')));
+  v_name text := btrim(coalesce(nullif(new.student_name, ''), 'there'));
+  v_safe_name text;
+  v_when_label text;
+  v_cal text;
+  v_subject text;
+  v_html text;
+  v_text text;
+  v_mentor_mail text;
+begin
+  -- Only a real Meet link is worth a letter, and closing a session (the link
+  -- going blank) must stay quiet: the student sees the lane empty, no inbox noise.
+  if v_link !~* '^https://meet\.google\.com/[a-z0-9/?=&%._-]+$' then
+    return null;
+  end if;
+
+  -- "Update session" with nothing changed must not mail the student again.
+  if v_link = btrim(coalesce(old.meeting_url, ''))
+    and v_when is not distinct from old.scheduled_at then
+    return null;
+  end if;
+
+  v_safe_name := replace(replace(replace(v_name, '&', '&amp;'), '<', '&lt;'), '>', '&gt;');
+  v_when_label := case
+    when v_when is null then ''
+    else to_char(v_when at time zone 'Asia/Kolkata', 'Dy, DD Mon YYYY, HH12:MI AM') || ' IST'
+  end;
+
+  -- Both calendar providers accept this render URL, so the hour lands in the
+  -- student's own calendar without an .ics attachment.
+  v_cal := case
+    when v_when is null then ''
+    else 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+      || '&text=CodexSheet%20mentorship%20with%20Aditya%20Bakshi'
+      || '&dates=' || to_char(v_when at time zone 'UTC', 'YYYYMMDD"T"HH24MISS"Z"')
+      || '%2F' || to_char((v_when + interval '60 minutes') at time zone 'UTC', 'YYYYMMDD"T"HH24MISS"Z"')
+      || '&location=' || replace(v_link, ':', '%3A')
+      || '&details=CodexSheet%20mentorship%20-%20reference%20'
+      || replace(coalesce(new.reference, ''), '-', '') || '%20'
+  end;
+
+  v_subject := case
+    when v_when is null then 'Your CodexSheet session link is ready'
+    else 'CodexSheet session ' || replace(v_when_label, ' IST', '') || ' - join link inside'
+  end;
+
+  v_html := '<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;">'
+    || '<p style="margin:0 0 14px;font-size:15px;">Hi ' || v_safe_name || ',</p>'
+    || '<p style="margin:0 0 14px;font-size:15px;">Your CodexSheet 1:1 session is booked.'
+    || case when v_when_label = '' then ' Aditya will confirm the hour with you on WhatsApp.'
+       else ' It is at <strong>' || v_when_label || '</strong>, about an hour long.' end
+    || '</p>'
+    || '<p style="margin:0 0 18px;font-size:15px;">Reference <strong>'
+    || replace(coalesce(new.reference, ''), '&', '&amp;') || '</strong>.</p>'
+    || '<p style="margin:0 0 16px;">'
+    || '<a href="' || v_link || '" style="display:inline-block;background:#1152d0;color:#ffffff;'
+    || 'padding:12px 22px;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none;">'
+    || 'Join on Google Meet</a></p>'
+    || '<p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Or open it directly: '
+    || '<a href="' || v_link || '" style="color:#1152d0;">' || replace(v_link, '&', '&amp;') || '</a></p>'
+    || case when v_cal = '' then ''
+      else '<p style="margin:14px 0 0;font-size:13px;">'
+        || '<a href="' || replace(v_cal, '&', '&amp;') || '" style="color:#1152d0;">Add it to Google Calendar</a></p>'
+    end
+    || '<p style="margin:20px 0 0;font-size:13px;color:#4b5563;">Join a few minutes early. '
+    || 'If the time needs to move, reply to this mail or message Aditya on WhatsApp at +91 833587 3311.</p>'
+    || '<p style="margin:16px 0 0;font-size:14px;">Aditya Bakshi<br/>CodexSheet - codexsheet.in/mentees</p>'
+    || '</div>';
+
+  v_text := 'Hi ' || v_name || ',' || E'\n\n'
+    || 'Your CodexSheet 1:1 session is booked.' || E'\n'
+    || (case when v_when_label = '' then 'Aditya will confirm the hour with you on WhatsApp.'
+        else 'When: ' || v_when_label end) || E'\n'
+    || 'Reference: ' || coalesce(new.reference, '') || E'\n\n'
+    || 'Join on Google Meet: ' || v_link || E'\n'
+    || (case when v_cal = '' then '' else 'Add to Google Calendar: ' || v_cal || E'\n' end) || E'\n'
+    || 'Join a few minutes early. To move the time, reply to this mail or message '
+    || 'Aditya on WhatsApp at +91 833587 3311.' || E'\n\n'
+    || 'Aditya Bakshi' || E'\n'
+    || 'CodexSheet - codexsheet.in/mentees';
+
+  if v_to ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
+    insert into public.email_outbox (to_address, recipient_name, subject, body_html, body_text, kind, ref)
+    values (v_to, left(v_name, 120), left(v_subject, 200), v_html, v_text, 'session_note',
+      'MENTEE-' || new.id || '-' || extract(epoch from coalesce(new.updated_at, now()))::bigint);
+  end if;
+
+  -- The mentor always gets the same link he just stored, and a warning when the
+  -- record has no address to mail it to. His two workspace ids are one person, so
+  -- the copy resolves through profiles and falls back to the address the notifier
+  -- already uses.
+  select coalesce(
+    nullif(lower(btrim(profile.email)), ''),
+    'adityabakshi1011@gmail.com'
+  ) into v_mentor_mail
+  from (select coalesce(new.mentor_user_id, '') as mentor_id) owner
+  left join public.profiles profile on profile.user_id = owner.mentor_id;
+
+  if v_mentor_mail ~* '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'
+    and v_mentor_mail <> v_to then
+    insert into public.email_outbox (to_address, recipient_name, subject, body_html, body_text, kind, ref)
+    values (
+      v_mentor_mail, 'Aditya Bakshi',
+      left(case when v_to = '' then 'CodexSheet - no mail address for ' || v_name || ', link not mailed'
+        else 'CodexSheet - session invite mailed to ' || v_name || ' at ' || v_to end, 200),
+      '<div style="font-family:ui-sans-serif,system-ui;color:#111827;font-size:14px;">'
+        || '<p>' || (case when v_to = ''
+            then 'This session has no email on the record, so the student was not mailed. Send the link yourself on WhatsApp (+91 833587 3311).'
+            else 'The invite below went to <strong>' || v_to || '</strong> and leaves with the next notification run.' end)
+        || '</p><p>Student: ' || v_safe_name || ' (' || replace(coalesce(new.reference, ''), '&', '&amp;') || ')</p>'
+        || '<p>When: ' || (case when v_when_label = '' then 'no hour stored' else v_when_label end) || '</p>'
+        || '<p>Link: <a href="' || v_link || '">' || replace(v_link, '&', '&amp;') || '</a></p>'
+        || '</div>',
+      'CodexSheet session record' || E'\n\n'
+        || 'Student: ' || v_name || ' (' || coalesce(new.reference, '') || ')' || E'\n'
+        || 'When: ' || (case when v_when_label = '' then 'no hour stored' else v_when_label end) || E'\n'
+        || 'Mailed to: ' || (case when v_to = '' then 'NOTHING - no address on the record' else v_to end) || E'\n'
+        || 'Link: ' || v_link,
+      'session_note',
+      'MENTEE-' || new.id || '-MENTOR-' || extract(epoch from coalesce(new.updated_at, now()))::bigint
+    );
+  end if;
+
+  return null;
+end;
+$fn$;
+
+revoke all on function public.mentees_session_mail() from public;
+grant execute on function public.mentees_session_mail() to anon, authenticated;
+
+drop trigger if exists mentees_session_mail on public.mentees;
+create trigger mentees_session_mail
+  after update of meeting_url, scheduled_at on public.mentees
+  for each row execute function public.mentees_session_mail();
+
 notify pgrst, 'reload schema';

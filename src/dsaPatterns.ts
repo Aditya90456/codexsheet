@@ -463,29 +463,16 @@ export const patternCards: PatternCard[] = [
 
 export const patternCardByName = new Map(patternCards.map((card) => [card.name, card]));
 
-// The 50 canonical titles in dsaSheet.ts. The sheet repeats them as numbered
-// reps, so a canonical problem is what an interviewer actually asks and a rep is
-// practice volume on top of that. The tiers follow that split.
-export const mustKnowTitles: string[] = [
-  "Two Sum", "Valid Anagram", "Group Anagrams", "Top K Frequent Elements", "Product of Array Except Self",
-  "Valid Palindrome", "3Sum", "Container With Most Water", "Trapping Rain Water", "Best Time to Buy and Sell Stock",
-  "Longest Repeating Character Replacement", "Longest Substring Without Repeating Characters", "Minimum Window Substring",
-  "Valid Parentheses", "Min Stack",
-  "Daily Temperatures", "Binary Search", "Koko Eating Bananas", "Reverse Linked List", "Merge Two Sorted Lists",
-  "Remove Nth Node From End of List", "LRU Cache", "Invert Binary Tree", "Maximum Depth of Binary Tree",
-  "Binary Tree Level Order Traversal", "Validate Binary Search Tree", "Kth Smallest Element in a BST",
-  "Subsets", "Combination Sum", "Permutations",
-  "Number of Islands", "Clone Graph", "Rotting Oranges", "Course Schedule", "Climbing Stairs", "House Robber",
-  "Coin Change", "Longest Increasing Subsequence", "Word Break", "Unique Paths", "Longest Common Subsequence",
-];
-
-const mustKnow = new Set(mustKnowTitles);
-
 export type InterviewTier = 1 | 2 | 3;
 
+/**
+ * Which interview tier a sheet problem belongs to, read from the sheet itself:
+ * tier 1 is the Blind 75 list, tier 2 the NeetCode 150, tier 3 the long tail that
+ * buys practice volume. `scripts/build-dsa-sheet.mjs` derives all three from the
+ * index, so the counts on /patterns are the real counts and not a hand-kept list.
+ */
 export function interviewTier(problem: Problem): InterviewTier {
-  if (problem.title.includes(" · Pattern ")) return 3;
-  return mustKnow.has(problem.title) ? 1 : 2;
+  return problem.tier;
 }
 
 export const tierLabels: Record<InterviewTier, string> = {
