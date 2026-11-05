@@ -9,7 +9,7 @@ import {
   mentorshipPlans,
   refundWindow,
   orderReference,
-  freeFeatureCount,
+  workspaceFeatureCount,
   passAmount,
   passBand,
   passFlow,
@@ -200,8 +200,8 @@ export default function MentorshipPayments({ userId = null, userName = "", userE
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
         <span className="mentorship-kicker">PAY WHAT YOU CAN · {rupees(passBand.min)}–{rupees(passBand.max)}</span>
-        <h1>The workspace is free. <em>The sheet costs what you can.</em></h1>
-        <p>All {freeFeatureCount} features — the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat and Guru — open the moment you sign in. No card, no code. The one thing that still costs money is the 250-problem sheet: pay any whole figure from {rupees(passBand.min)} to {rupees(passBand.max)}, once, and it stays open. Paytm QR only, no card forms, no gateway.</p>
+        <h1>One pass. <em>The sheet and everything around it.</em></h1>
+        <p>Your Sheet Pass covers all {workspaceFeatureCount} rails — the Deva editor with judged submissions, the animated course, the roadmap board, notes, chat and Guru — and the 250-problem sheet is the part you pay for: any whole figure from {rupees(passBand.min)} to {rupees(passBand.max)}, once, and it stays open. Paytm QR only, no card forms, no gateway.</p>
       </header>
 
       <div className="mentorship-plans">

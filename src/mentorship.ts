@@ -49,16 +49,16 @@ export function passAmount(value: number): number | null {
 /** The headline every free/paid panel quotes: the sheet starts at ₹10. */
 export const passPriceLabel = `from ${rupees(passBand.min)}`;
 
-/** Everything that is free the moment a student signs in. The copy quotes its length. */
-export const freeFeatureNames = [
-  "Landing", "Deva editor", "Animated DSA course",
-  "Progress dashboard", "Company question sets", "Roadmap board", "Senior SDE · LLD", "LLD whiteboard",
-  "Personal notes", "Concept articles", "Job search", "Group chat", "Guru the AI teacher",
-  "Practice calendar", "Interview experiences", "Leaderboard",
+/** The rails a pass covers around the sheet itself — every view a signed-in student can reach. */
+export const workspaceFeatureNames = [
+  "Progress dashboard", "Practice calendar", "Pattern library", "Deva editor",
+  "Animated DSA course", "Guru the AI teacher", "Algorithm Labs", "Roadmap board",
+  "Personal notes", "Concept articles", "Group chat", "Interview experiences",
+  "Leaderboard", "Certificate and public verify", "Mentor marketplace", "Company question sets",
 ];
 
-/** How many features cost nothing; every piece of copy quotes this. */
-export const freeFeatureCount = freeFeatureNames.length;
+/** How many rails the pass covers; every piece of copy quotes this. */
+export const workspaceFeatureCount = workspaceFeatureNames.length;
 
 export type MentorshipPlan = {
   id: MentorshipPlanId;
@@ -82,9 +82,9 @@ export const mentorshipPlans: MentorshipPlan[] = [
     includes: [
       "The whole 250-problem sheet: every pattern, every difficulty, with your notes and status saved",
       "XP, streaks, ranks and the solve milestones that make the sheet keep score",
-      "Aditya reads your code line by line on the real judged submission once he confirms you",
-      "A private chat lane with Aditya, and a 1:1 Google Meet slot when he publishes one",
-      `Everything else on CodexSheet stays free: all ${freeFeatureCount} features, no card needed`,
+      `The workspace around the sheet comes with it too: all ${workspaceFeatureCount} rails - the judged Deva editor, Guru, the Algorithm Labs, the animated course, notes, chat, calendar, leaderboard and your certificate`,
+      "Aditya reads your code line by line on the real judged submission, from the moment the claim is recorded",
+      "A private chat lane with Aditya and a 1:1 Google Meet slot - he saves the link and it arrives in your inbox",
     ],
   },
 ];

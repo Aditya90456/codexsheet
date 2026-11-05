@@ -91,7 +91,7 @@ import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT, type MessageKey } from "./i18n";
-import { freeFeatureCount, passBand, passPriceLabel, rupees } from "./mentorship";
+import { passBand, passPriceLabel, rupees, workspaceFeatureCount } from "./mentorship";
 import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import {
   getSheetRank,
@@ -228,7 +228,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
     title: "CodexSheet Sheet Pass — pay what you can, ₹10 to ₹800",
-    description: "The 250-problem DSA sheet is the one thing CodexSheet charges for. Pay any whole figure from ₹10 to ₹800 on Aditya's Paytm QR, he confirms it against his own statement, and the sheet stays open for good. Everything else is free, and there is a 5-day refund.",
+    description: "One Sheet Pass covers the 250-problem DSA sheet and the workspace around it — the judged Deva editor, Guru, the Algorithm Labs, the animated course, notes, chat, calendar and your certificate. Pay any whole figure from ₹10 to ₹800 on Aditya's Paytm QR and it stays open for good, with a 5-day refund.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -454,22 +454,22 @@ function HomePage({
 
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">FREE, THEN ONE THING YOU CAN PAY FOR</span><h2 id="home-services-title">Everything is free <em>except the sheet.</em></h2></div>
-          <p>All {freeFeatureCount} features open the moment you sign in — no card, no code. The one thing that costs money is the 250-problem sheet, and you choose the figure.</p>
+          <div><span className="home-section-kicker">ONE PASS · THE WHOLE WORKSPACE</span><h2 id="home-services-title">Your pass covers the sheet <em>and everything around it.</em></h2></div>
+          <p>All {workspaceFeatureCount} rails come with the Sheet Pass — the Deva editor with real judged submissions, Guru, the Algorithm Labs, the animated course, notes, chat, the calendar, the leaderboard and your certificate. Sign in with Google and they are open; the 250-problem sheet is the part you pay for, at the figure you choose.</p>
         </div>
-        <div className="home-offer-grid" aria-label="What is free and what costs money">
+        <div className="home-offer-grid" aria-label="What your pass covers">
           <article className="home-offer-card home-offer-free">
-            <div className="home-offer-top"><span className="home-offer-icon">{freeFeatureCount}</span><span className="home-offer-price">FREE</span></div>
-            <span className="home-offer-label">EVERY FEATURE BUT THE SHEET</span>
+            <div className="home-offer-top"><span className="home-offer-icon">{workspaceFeatureCount}</span><span className="home-offer-price">IN YOUR PASS</span></div>
+            <span className="home-offer-label">EVERY RAIL AROUND THE SHEET</span>
             <h3>The rest of CodexSheet</h3>
             <p>The Deva editor with real judged submissions, the animated course, the roadmap board, algorithm labs, notes, group chat, the practice calendar and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
             <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
           </article>
           <article className="home-offer-card home-offer-session">
             <div className="home-offer-top"><span className="home-offer-icon">250</span><span className="home-offer-price">{passPriceLabel}</span></div>
-            <span className="home-offer-label">THE ONE THING CODEXSHEET SELLS</span>
+            <span className="home-offer-label">THE SHEET YOUR PASS UNLOCKS</span>
             <h3>The 250-problem DSA sheet</h3>
-            <p>Every pattern, every difficulty, with your notes, status, XP and streak kept. Pay what you can - anything from {rupees(passBand.min)} to {rupees(passBand.max)} on Aditya&apos;s Paytm QR, once, no expiry. A confirmed payment also opens his chat lane and his 1:1 Google Meet slots, and it is refundable for 5 days.</p>
+            <p>Every pattern, every difficulty, with your notes, status, XP and streak kept. Pay what you can - anything from {rupees(passBand.min)} to {rupees(passBand.max)} on Aditya&apos;s Paytm QR, once, no expiry. Your pass also opens his chat lane and his 1:1 Google Meet slots, the link lands in your inbox when he saves it, and it is refundable for 5 days.</p>
             <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Unlock the sheet {passPriceLabel} <ArrowRight size={15}/></a>
           </article>
         </div>
@@ -1104,7 +1104,7 @@ function SheetLock({ checking, onOpenStore, onRecheck, onFreeRail }: { checking:
       <div className="sheet-lock-card">
         <span className="sheet-lock-kicker"><Lock size={13} /> THE 250-PROBLEM SHEET · PAY WHAT YOU CAN</span>
         <h2>{rupees(passBand.min)} to {rupees(passBand.max)}. <em>Your figure, not his.</em></h2>
-        <p>Everything else opens the moment you sign in — all {freeFeatureCount} free features, the judged Deva editor, the animated course, the labs, Guru and the roadmap board. The one thing CodexSheet charges for is the sheet: 250 interview problems across the patterns, with your notes, status, XP and streak kept against your account. Pay any whole figure inside the band on Aditya&apos;s Paytm QR, once, and it stays open forever.</p>
+        <p>The 250-problem sheet is what your pass unlocks: every pattern, every difficulty, with your notes, status, XP and streak kept against your account. It covers the workspace around the sheet too — all {workspaceFeatureCount} rails, from the judged Deva editor and Guru to the labs, the animated course, notes, chat, calendar, leaderboard and your certificate. Pay any whole figure inside the band on Aditya&apos;s Paytm QR, once, and it stays open forever.</p>
         <div className="sheet-lock-band">
           <span>{rupees(passBand.min)}<small>minimum</small></span>
           <span className="suggest">{rupees(passBand.suggested)}<small>he suggests</small></span>
@@ -1113,13 +1113,13 @@ function SheetLock({ checking, onOpenStore, onRecheck, onFreeRail }: { checking:
         <ul className="sheet-lock-list">
           <li><Check size={14} /> All 250 problems, every pattern filter and the 4-question pattern tests</li>
           <li><Check size={14} /> Notes, status, XP, ranks and solve milestones saved to your account</li>
-          <li><Check size={14} /> A confirmed payment also opens Aditya&apos;s chat lane and his 1:1 Google Meet slots</li>
+          <li><Check size={14} /> Your pass opens Aditya&apos;s chat lane and his 1:1 Google Meet slots - he saves the link and it arrives in your inbox</li>
           <li><Check size={14} /> Refund inside 5 days of confirmation if the sheet was not worth it</li>
         </ul>
         <div className="sheet-lock-actions">
           <button type="button" className="primary-button" onClick={onOpenStore}>Unlock the sheet {passPriceLabel} <ArrowRight size={16} /></button>
           <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I already paid"}</button>
-          <button type="button" className="sheet-lock-free" onClick={onFreeRail}>The free rail: Guru, the labs, the editor <ArrowRight size={15} /></button>
+          <button type="button" className="sheet-lock-free" onClick={onFreeRail}>Not ready to pay? Guru, the labs and the editor are open <ArrowRight size={15} /></button>
         </div>
         <small>No card and no gateway. Your claim is confirmed by the server as it lands, so this panel clears on the next check - and your progress is not lost while it is up.</small>
       </div>
