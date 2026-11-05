@@ -398,3 +398,58 @@ export function isUpcoming(startsAt: string | null | undefined): boolean {
   const time = new Date(startsAt).getTime();
   return Number.isNaN(time) || time > Date.now();
 }
+
+/** An approved storefront, whether or not the shelf has anything on it yet. */
+export type MarketSeller = {
+  mentor_user_id: string;
+  mentor_name: string;
+  mentor_headline: string;
+  mentor_city: string;
+  mentor_bio: string;
+  mentor_expertise: string[] | null;
+  listings: number;
+  from_price: number | null;
+};
+
+/**
+ * The mentors behind the shop window. The product catalog cannot answer this:
+ * it joins onto mentor_products, so a storefront that has not published a listing
+ * yet disappears from the marketplace entirely.
+ */
+export async function loadSellers(): Promise<MarketSeller[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("marketplace_sellers");
+  if (error) return [];
+  return ((data ?? []) as Array<MarketSeller & { listings: string | number }>).map((row) => ({
+    ...row,
+    listings: Number(row.listings ?? 0),
+  }));
+}
+
+/** A letter the app queued and Resend refused to post. */
+export type FailedLetter = {
+  id: number;
+  kind: string;
+  recipient_name: string;
+  to_address: string;
+  subject: string;
+  attempts: number;
+  reason: string;
+  queued_at: string;
+};
+
+/** Platform mentors only; the anonymous key is refused by the function itself. */
+export async function loadFailedLetters(): Promise<FailedLetter[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("mentor_failed_letters", { p_limit: 20 });
+  if (error) return [];
+  return (data ?? []) as FailedLetter[];
+}
+
+/** Put every refused letter back in the queue so the scheduler sends it again. */
+export async function requeueLetters(): Promise<{ ok: boolean; count: number; reason?: string }> {
+  if (!supabase) return { ok: false, count: 0, reason: "Supabase is not configured." };
+  const { data, error } = await supabase.rpc("mentor_requeue_letters");
+  if (error) return { ok: false, count: 0, reason: error.message };
+  return { ok: true, count: Number(data ?? 0) };
+}

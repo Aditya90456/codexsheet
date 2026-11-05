@@ -7,6 +7,7 @@ import {
   Copy,
   LoaderCircle,
   Lock,
+  Mail,
   Package,
   Plus,
   RefreshCw,
@@ -23,6 +24,7 @@ import {
   deleteMarketProduct,
   emptyProduct,
   istWhen,
+  loadFailedLetters,
   loadMentorApplications,
   loadMentorAccount,
   loadMySales,
@@ -31,6 +33,7 @@ import {
   marketReference,
   marketStatusBadge,
   qrImageUrl,
+  requeueLetters,
   reviewMentorApplication,
   rupees,
   saveMarketProduct,
@@ -38,6 +41,7 @@ import {
   sellerUpiUri,
   slugify,
   startsAtInputValue,
+  type FailedLetter,
   type MarketKind,
   type MarketOrderRow,
   type MarketProduct,
@@ -125,7 +129,8 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
   const [sales, setSales] = useState<MarketOrderRow[]>([]);
   const [applications, setApplications] = useState<MentorProfile[]>([]);
   const [stories, setStories] = useState<ExperienceRow[]>([]);
-  const [busy, setBusy] = useState<"save" | "product" | "sale" | "review" | "delete" | null>(null);
+  const [letters, setLetters] = useState<FailedLetter[]>([]);
+  const [busy, setBusy] = useState<"save" | "product" | "sale" | "review" | "delete" | "letter" | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [saleNotes, setSaleNotes] = useState<Record<string, string>>({});
@@ -153,8 +158,14 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
     setProducts(ownProducts);
     setSales(ownSales);
     if (nextAccount?.platform_mentor) {
-      setApplications(await loadMentorApplications());
-      setStories((await loadExperienceQueue()).rows);
+      const [nextApplications, nextStories, nextLetters] = await Promise.all([
+        loadMentorApplications(),
+        loadExperienceQueue(),
+        loadFailedLetters(),
+      ]);
+      setApplications(nextApplications);
+      setStories(nextStories.rows);
+      setLetters(nextLetters);
     }
     setLoading(false);
   }
@@ -220,8 +231,37 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
   async function decide(application: MentorProfile, status: "approved" | "suspended") {
     setBusy("review");
     const error = await reviewMentorApplication(application.user_id, status);
+    if (error) {
+      setBusy(null);
+      setNotice({ ok: false, text: error });
+      void refresh();
+      return;
+    }
+    // The offer letter is written by the same call, so whether it posted is only
+    // knowable a second later — and an applicant who never gets it never learns
+    // their storefront is open.
+    if (status === "approved") {
+      const failed = await loadFailedLetters();
+      setLetters(failed);
+      const fresh = failed.find((letter) => letter.kind === "offer_letter" && Date.now() - new Date(letter.queued_at).getTime() < 120000);
+      setBusy(null);
+      setNotice(fresh
+        ? { ok: false, text: `${application.display_name} is approved and their storefront is open on /marketplace — but the offer letter did not post to ${fresh.to_address}. ${fresh.reason || "Resend refused it."}` }
+        : { ok: true, text: `${application.display_name} approved. Storefront live and the offer letter is queued.` });
+    } else {
+      setBusy(null);
+      setNotice({ ok: true, text: `${application.display_name} ${status}.` });
+    }
+    void refresh();
+  }
+
+  async function resendLetters() {
+    setBusy("letter");
+    const result = await requeueLetters();
     setBusy(null);
-    setNotice(error ? { ok: false, text: error } : { ok: true, text: `${application.display_name} ${status}.` });
+    setNotice(result.ok
+      ? { ok: true, text: `${result.count} letter${result.count === 1 ? "" : "s"} back in the queue. The scheduler posts them within five minutes - only after the Resend sender domain is verified will they actually leave.` }
+      : { ok: false, text: result.reason ?? "The letters could not be requeued." });
     void refresh();
   }
 
@@ -278,7 +318,7 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
       {account?.platform_mentor && (
         <section className="mkt-panel" aria-label="Applications to review">
           <h2><UserRoundSearch size={16} /> Applications {applications.length > 0 && <span className="mkt-count">{applications.length}</span>}</h2>
-          <p className="mkt-small">Approving does two things: the storefront goes live on <a href="/marketplace">the marketplace</a> and a formal offer letter is queued to the applicant&apos;s email. It posts within five minutes, and CodexSheet pays them nothing — their own UPI id collects everything.</p>
+          <p className="mkt-small">Approving does two things: the storefront goes live on <a href="/marketplace">the marketplace</a> — listed under Approved mentors even before they publish their first product — and a formal offer letter is queued to the applicant&apos;s email. Check <strong>Letters that did not go out</strong> below: a letter sitting there means the mentor never got the news. CodexSheet pays them nothing, their own UPI id collects everything.</p>
           {applications.length === 0 ? (
             <p className="mkt-empty">Nobody is waiting. New mentor applications land here.</p>
           ) : (
@@ -300,6 +340,40 @@ export default function MentorStudio({ userId = null, userName = "", userEmail =
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+      )}
+
+      {account?.platform_mentor && (
+        <section className="mkt-panel" aria-label="Letters that did not go out">
+          <h2><Mail size={16} /> Letters that did not go out {letters.length > 0 && <span className="mkt-count">{letters.length}</span>}</h2>
+          <p className="mkt-small">Approving a mentor queues their offer letter, and the scheduler posts it within five minutes. A letter back here means the applicant was never told their storefront is open: the sender address is still one Resend only allows for testing, so it refuses anyone outside Aditya&apos;s own inbox until a domain is verified at resend.com/domains and the function secrets point at it. Until then, mail them yourself.</p>
+          {letters.length === 0 ? (
+            <p className="mkt-empty">Nothing is stuck - every letter the app queued left the outbox.</p>
+          ) : (
+            <>
+              <ul className="mkt-app-list">
+                {letters.map((letter) => (
+                  <li key={`letter-${letter.id}`}>
+                    <div>
+                      <strong>{letter.recipient_name || letter.to_address}</strong>
+                      <span className="mkt-mono">{letter.to_address} · {letter.kind} · tried {letter.attempts}×</span>
+                      <span>{letter.subject}</span>
+                      <p>{letter.reason || "No reason came back from the mailer."}</p>
+                    </div>
+                    <div className="mkt-app-actions">
+                      <span className="mkt-state suspended">not delivered</span>
+                      <button type="button" className="mkt-ghost" onClick={() => void copy(`mail-${letter.id}`, letter.to_address)}>
+                        {copied === `mail-${letter.id}` ? <Check size={14} /> : <Copy size={14} />} Copy the address
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className="mkt-primary" onClick={() => void resendLetters()} disabled={busy === "letter"}>
+                {busy === "letter" ? <LoaderCircle size={15} className="mkt-spin" /> : <RefreshCw size={15} />} Put them back in the queue
+              </button>
+            </>
           )}
         </section>
       )}

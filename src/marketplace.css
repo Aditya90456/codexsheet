@@ -387,6 +387,18 @@
 .mkt-state.pending { color: var(--mk-warn); }
 .mkt-state.suspended { color: #f3a3a3; }
 
+/* Expertise chips on an approved storefront. */
+.mkt-sellers .mkt-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.mkt-sellers .mkt-tags em {
+  font: 600 11px/1 "DM Mono", ui-monospace, monospace;
+  font-style: normal;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--mk-soft);
+  color: var(--mk-accent);
+}
+.mkt-sellers p { margin: 6px 0 0; color: var(--mk-ink); font-size: 12.5px; line-height: 1.55; }
+
 /* ── Checkout rail ────────────────────────────────────────────────────────── */
 .mkt-checkout .mkt-form label {
   display: grid;

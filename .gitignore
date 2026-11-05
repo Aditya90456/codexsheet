@@ -10,3 +10,7 @@ supabase/.temp/
 __pycache__/
 *.pyc
 tsconfig.tsbuildinfo
+
+# Generated PPTX study packs and their SSR build, local only.
+.study-packs/
+.study-pack-ssr/

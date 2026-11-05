@@ -24,6 +24,7 @@
     "gsap": "^3.15.0",
     "jose": "^6.2.12",
     "lucide-react": "latest",
+    "pptxgenjs": "^4.0.1",
     "react": "latest",
     "react-dom": "latest",
     "typescript": "latest",

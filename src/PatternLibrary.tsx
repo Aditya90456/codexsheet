@@ -4,11 +4,12 @@
 // the author ever recording a voice. Under each caption the real DSA kernel runs
 // the algorithm step by step - no canned animation.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, CirclePlay, Download, ExternalLink, Layers, Pause, RotateCcw, ScrollText, Timer, Volume2, VolumeX } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CirclePlay, Download, ExternalLink, Layers, Pause, Presentation, RotateCcw, ScrollText, Timer, Volume2, VolumeX } from "lucide-react";
 import type { Problem } from "./dsaSheet";
 import { dsaMetrics } from "./dsa-labs-kernels";
 import { renderDsaFrame } from "./DsaLabViews";
 import { filmLength, interviewPlan, interviewTier, patternCards, tierLabels, vttFor, type PatternCard } from "./dsaPatterns";
+import { downloadPatternDeck } from "./studyPack";
 import { filmNarration, patternSimByName, patternSimFrames, patternSimHeading, simCut } from "./pattern-sims";
 import { speak, stopSpeaking, voiceSupported, onVoiceStateChange } from "./mentor-voice";
 import { useUiLanguage, uiLanguages, type UiLanguage } from "./i18n";
@@ -48,6 +49,9 @@ export default function PatternLibrary({ problems, progress, onPractice }: Props
   // Re-clicking the same card restarts the film, so the scroll is keyed on the
   // viewing session rather than the card alone.
   const [session, setSession] = useState(0);
+  // A .pptx is assembled in the browser, so the card that started it owns the notice.
+  const [deckFor, setDeckFor] = useState<string | null>(null);
+  const [deckNote, setDeckNote] = useState<{ pattern: string; ok: boolean; text: string } | null>(null);
   const filmRef = useRef<HTMLElement | null>(null);
   const speakToken = useRef(0);
 
@@ -171,6 +175,26 @@ export default function PatternLibrary({ problems, progress, onPractice }: Props
     URL.revokeObjectURL(url);
   };
 
+  async function downloadDeck(card: PatternCard) {
+    setDeckFor(card.name);
+    try {
+      const meta = await downloadPatternDeck(card);
+      setDeckNote({
+        pattern: card.name,
+        ok: true,
+        text: `${meta.fileName} - ${meta.slides} slides with speaker notes on every one, and all ${meta.assignments} ${card.name} problems from the sheet as the assignments.`,
+      });
+    } catch (error) {
+      setDeckNote({
+        pattern: card.name,
+        ok: false,
+        text: `${card.name}: the deck did not build - ${error instanceof Error ? error.message : String(error)}`,
+      });
+    } finally {
+      setDeckFor(null);
+    }
+  }
+
   return (
     <div className="pattern-library">
       <header className="pattern-summary">
@@ -212,12 +236,16 @@ export default function PatternLibrary({ problems, progress, onPractice }: Props
             <p className="pattern-cue">{card.cue}</p>
             <footer>
               <button type="button" className="primary-button" onClick={() => openFilm(card)}><CirclePlay size={15} /> Watch the film</button>
+              <button type="button" className="secondary-button" onClick={() => void downloadDeck(card)} disabled={deckFor === card.name}>
+                <Presentation size={15} /> {deckFor === card.name ? "Building…" : "Deck .pptx"}
+              </button>
               <button type="button" className="secondary-button" onClick={() => downloadCaptions(card)}><Download size={15} /> Captions</button>
             </footer>
           </article>
         ))}
       </div>
 
+      {deckNote && <p className={`pattern-deck-note${deckNote.ok ? "" : " bad"}`}>{deckNote.text}</p>}
       {openCard && (() => {
         const step = openCard.film[stepIndex];
         const sim = patternSimByName[openCard.name];

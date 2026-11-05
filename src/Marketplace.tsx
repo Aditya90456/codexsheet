@@ -20,6 +20,7 @@ import {
   istWhen,
   loadCatalog,
   loadMyPurchases,
+  loadSellers,
   lookupMarketOrder,
   marketKindLabel,
   marketReference,
@@ -32,6 +33,7 @@ import {
   type CatalogItem,
   type MarketClaim,
   type MarketOrderRow,
+  type MarketSeller,
 } from "./mentorMarket";
 import { paytmAppUriFor, paytmIntentUriFor } from "./mentorship";
 import PaymentQr from "./PaymentQr";
@@ -65,6 +67,7 @@ export default function Marketplace({
   onNavigateHome?: () => void;
 }) {
   const [items, setItems] = useState<CatalogItem[]>([]);
+  const [mentorSellers, setMentorSellers] = useState<MarketSeller[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -91,8 +94,13 @@ export default function Marketplace({
 
   async function refresh() {
     setLoading(true);
-    const [catalog, mine] = await Promise.all([loadCatalog(), userId || userEmail ? loadMyPurchases() : Promise.resolve([])]);
+    const [catalog, mentors, mine] = await Promise.all([
+      loadCatalog(),
+      loadSellers(),
+      userId || userEmail ? loadMyPurchases() : Promise.resolve([]),
+    ]);
     setItems(catalog);
+    setMentorSellers(mentors);
     setPurchases(mine);
     setLoading(false);
   }
@@ -111,7 +119,7 @@ export default function Marketplace({
     });
   }, [items, filter, query]);
 
-  const sellers = useMemo(() => new Set(items.map((item) => item.mentor_user_id)).size, [items]);
+  const sellers = useMemo(() => mentorSellers.length, [mentorSellers]);
 
   function openCheckout(item: CatalogItem) {
     const code = marketReference(item);
@@ -255,7 +263,7 @@ export default function Marketplace({
       {!loading && shown.length === 0 && (
         <p className="mkt-empty">
           {items.length === 0
-            ? "No mentor has published yet. Approved storefronts show up here - the first one is a form away."
+            ? "No mentor has put a price on the shelf yet. The approved storefronts are listed under the grid - their first listing lands here."
             : "Nothing matches that search."}
         </p>
       )}
@@ -435,6 +443,32 @@ export default function Marketplace({
           )}
         </aside>
       </div>
+
+      {!loading && mentorSellers.length > 0 && (
+        <section className="mkt-panel mkt-sellers" aria-label="Approved mentors">
+          <h2><Store size={16} /> Approved mentors <span className="mkt-count">{mentorSellers.length}</span></h2>
+          <p className="mkt-small">Every storefront Aditya has approved, whether or not it has put a price on the shelf yet. A mentor with no listings is still open - their first listing is what you buy.</p>
+          <ul className="mkt-app-list">
+            {mentorSellers.map((seller) => (
+              <li key={seller.mentor_user_id}>
+                <div>
+                  <strong>{seller.mentor_name}</strong>
+                  <span>{seller.mentor_headline || "no headline"}{seller.mentor_city ? ` · ${seller.mentor_city}` : ""}</span>
+                  {(seller.mentor_expertise ?? []).length > 0 && (
+                    <span className="mkt-tags">{(seller.mentor_expertise ?? []).map((field) => <em key={field}>{field}</em>)}</span>
+                  )}
+                  {seller.mentor_bio && <p>{seller.mentor_bio}</p>}
+                </div>
+                <span className={`mkt-state ${seller.listings > 0 ? "approved" : "pending"}`}>
+                  {seller.listings > 0
+                    ? `${seller.listings} listing${seller.listings > 1 ? "s" : ""} · from ${rupees(Number(seller.from_price ?? 0))}`
+                    : "storefront open · nothing published yet"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {(purchases.length > 0 || queuedMarketOrders().length > 0) && (
         <section className="mkt-ledger" aria-label="Your marketplace purchases">
