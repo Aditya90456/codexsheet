@@ -54,7 +54,8 @@ export const workspaceFeatureNames = [
   "Progress dashboard", "Practice calendar", "Pattern library", "Deva editor",
   "Animated DSA course", "Guru the AI teacher", "Algorithm Labs", "Roadmap board",
   "Personal notes", "Concept articles", "Group chat", "Interview experiences",
-  "Leaderboard", "Certificate and public verify", "Mentor marketplace", "Company question sets",
+  "2027 interview radar", "Leaderboard", "Certificate and public verify",
+  "Mentor marketplace", "Company question sets",
 ];
 
 /** How many rails the pass covers; every piece of copy quotes this. */

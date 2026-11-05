@@ -61,6 +61,7 @@ import {
   Lock,
   MousePointer2,
   Store,
+  Radar,
   Package,
   Trash2,
   Sparkles,
@@ -82,6 +83,7 @@ import MenteeSpace from "./MenteeSpace";
 import Marketplace from "./Marketplace";
 import MentorStudio from "./MentorStudio";
 import InterviewExperiences from "./InterviewExperiences";
+import InterviewRadar from "./InterviewRadar";
 import Leaderboard from "./Leaderboard";
 import Certificates, { VerifyPage } from "./Certificates";
 import PatternLibrary from "./PatternLibrary";
@@ -152,7 +154,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences";
+type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -180,6 +182,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   marketplace: "/marketplace",
   studio: "/mentor-studio",
   experiences: "/experiences",
+  radar: "/radar",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -240,6 +243,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "Real company interview experiences — CodexSheet",
     description: "Round by round, in the candidate's own words: which company, which role, what they actually asked. Every card was written here and read by a mentor before it was published - nothing is scraped.",
   },
+  radar: {
+    title: "2027 interview questions, by round — CodexSheet Radar",
+    description: "What the 2027 hiring cycle is actually asking: the AI-pairing round, reading code you did not write, defending your own project, designing around a model, behavioural answers and the DSA that still gates. 27 questions across 7 rounds, each linked to the write-up it came from.",
+  },
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -268,6 +275,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
     label: "Learn",
     items: [
       { view: "patterns", label: "Pattern library", icon: Layers },
+      { view: "radar", label: "2027 interview radar", icon: Radar },
       { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
       { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
@@ -2090,7 +2098,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns");
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2108,6 +2116,9 @@ function App() {
     }
     if (activeView === "experiences") {
       return <main className="exp-public"><InterviewExperiences /><StudentFooter /></main>;
+    }
+    if (activeView === "radar") {
+      return <main className="rad-public"><InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} /><StudentFooter /></main>;
     }
     if (activeView === "patterns") {
       return <main className="patterns-public"><PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} /><StudentFooter /></main>;
@@ -2281,6 +2292,7 @@ function App() {
       {activeView === "marketplace" && <Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => navigateToView("studio")} onNavigateHome={() => navigateToView("mentorship")} />}
       {activeView === "studio" && <MentorStudio userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
       {activeView === "experiences" && <InterviewExperiences userId={user?.id ?? ""} />}
+      {activeView === "radar" && <InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} />}
       {activeView === "leaderboard" && <Leaderboard userId={user?.id ?? ""} />}
       {activeView === "certificate" && <Certificates userId={user?.id ?? ""} />}
       {activeView === "verify" && <VerifyPage />}
