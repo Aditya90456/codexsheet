@@ -96,6 +96,7 @@ import { useT, type MessageKey } from "./i18n";
 import { rupees, workspaceFeatureCount } from "./mentorship";
 import { codexSheetProducts, productById, railLabel, type CodexSheetProduct, type ProductId } from "./products";
 import { unlocksRail, useUnlocks } from "./entitlements";
+import { gitLogCommand, parseCommitSubjects, studentRepoCloneCommand, studentRepoUrl, topicFolderFor } from "./studentRepo";
 import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import {
   getSheetRank,
@@ -1141,6 +1142,73 @@ function ProductLock({ product, checking, onOpenStore, onRecheck, onFreeRail }: 
   );
 }
 
+// The sheet as a repository students clone. The paths here come from
+// src/studentRepo.ts, the same module scripts/build-student-repo.mjs builds the repo
+// from, so a folder a student reads on this page is a folder in the clone.
+function StudentRepoCard({ group, onImportGit }: {
+  group: string;
+  onImportGit: (text: string) => { added: number; skipped: number; parsed: number };
+}) {
+  const [copiedClone, setCopiedClone] = useState(false);
+  const [copiedLog, setCopiedLog] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [log, setLog] = useState("");
+  const [summary, setSummary] = useState("");
+  const parsed = useMemo(() => parseCommitSubjects(log), [log]);
+  const copy = (value: string, setFlag: (value: boolean) => void) => {
+    void navigator.clipboard?.writeText(value).then(() => {
+      setFlag(true);
+      window.setTimeout(() => setFlag(false), 1800);
+    }).catch(() => undefined);
+  };
+  const importLog = () => {
+    const outcome = onImportGit(log);
+    setSummary(outcome.parsed === 0
+      ? "Nothing in the recognised format - the subject has to start with the number, like `014: Binary Search`."
+      : outcome.added === 0
+        ? `All ${outcome.parsed} of those are already marked solved here.`
+        : `${outcome.added} marked solved${outcome.skipped ? `, ${outcome.skipped} already counted` : ""} - XP, streak and the leaderboard have them.`);
+    setLog("");
+  };
+  const topic = topicFolderFor(group);
+  return (
+    <div className="problem-repo-card">
+      <span className="problem-repo-icon"><GitBranch size={17} /></span>
+      <div className="problem-repo-copy">
+        <strong>The sheet is a git repo - and your commits count here.</strong>
+        <p>250 folders, one per problem, each with the brief and runnable Python, JavaScript, Java and C++ starters - the same starter the editor hands you. Commit with the problem number in front, then paste your log here: the solves, the XP, the streak, the leaderboard and the certificate all pick it up.</p>
+        {open && (
+          <div className="problem-repo-import">
+            <label className="problem-repo-log">
+              <span>PASTE <code>git log --pretty=%s</code></span>
+              <textarea rows={4} spellCheck={false} value={log} onChange={(event) => setLog(event.target.value)} placeholder={"001: Two Sum\n014: Binary Search"} aria-label="Paste your git log commit subjects"/>
+            </label>
+            <div className="problem-repo-import-actions">
+              <button type="button" className="problem-repo-ghost" onClick={() => copy(gitLogCommand, setCopiedLog)}>
+                {copiedLog ? <Check size={12}/> : <Copy size={12}/>} <code>{gitLogCommand}</code>
+              </button>
+              <button type="button" className="problem-repo-import-go" onClick={importLog} disabled={!log.trim()}>
+                Mark {parsed.length || 0} as solved <ArrowRight size={13}/>
+              </button>
+            </div>
+            {summary && <p className="problem-repo-summary" role="status">{summary}</p>}
+          </div>
+        )}
+      </div>
+      <div className="problem-repo-actions">
+        <button type="button" className="problem-repo-clone" onClick={() => copy(studentRepoCloneCommand, setCopiedClone)} title="Copy the clone command">
+          {copiedClone ? <Check size={13}/> : <Copy size={13}/>}<code>{studentRepoCloneCommand}</code>
+        </button>
+        <button type="button" className="problem-repo-toggle" onClick={() => setOpen((value) => !value)}>
+          {open ? <X size={13}/> : <Check size={13}/>} {open ? "Close" : "Import my commits"}
+        </button>
+        <a className="problem-repo-link" href={studentRepoUrl} target="_blank" rel="noreferrer">Browse the repo <ExternalLink size={13} /></a>
+        <span className="problem-repo-path">{topic ? `problems/${topic}/` : "problems/"}</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const { getToken, isLoaded, isSignedIn, userId } = useAuth();
   const { user: clerkUser } = useUser();
@@ -2045,6 +2113,44 @@ function App() {
       return next;
     });
     setNoteSavedAt(Date.now());
+  }
+
+  // A student who solved offline still owns the same sheet, so the commits are
+  // applied through the progress map in one write: the XP, rank, streak and
+  // certificate are all derived from it. The per-keystroke effect above only
+  // upserts the last row, so these rows go up together in one batch.
+  function importFromGit(text: string) {
+    const numbers = parseCommitSubjects(text);
+    const fresh = numbers.filter((number) => progress[number]?.status !== "Solved" && problemByNumber.has(number));
+    if (fresh.length) {
+      setProgress((current) => {
+        const next = { ...current };
+        for (const number of fresh) next[number] = { status: "Solved", notes: current[number]?.notes ?? "" };
+        return next;
+      });
+      const today = localDateKey(new Date());
+      setPracticeDays((current) => current.includes(today) ? current : [...current, today]);
+      if (isLoaded && supabase && user) {
+        void supabase.from("dsa_progress").upsert(fresh.map((number) => ({
+          user_id: user.id,
+          problem_number: number,
+          status: "Solved",
+          notes: progress[number]?.notes ?? "",
+          updated_at: new Date().toISOString(),
+        })), { onConflict: "user_id,problem_number" });
+      }
+      const xp = fresh.reduce((total, number) => total + sheetXp[problemByNumber.get(number)!.difficulty], 0);
+      setSheetReward({
+        id: Date.now(),
+        xp,
+        headline: `${fresh.length} imported from git`,
+        detail: `${xp} XP across the log - the leaderboard and your certificate see them now.`,
+        milestone: false,
+      });
+      if (rewardTimer.current) window.clearTimeout(rewardTimer.current);
+      rewardTimer.current = window.setTimeout(() => setSheetReward(null), 5200);
+    }
+    return { added: fresh.length, skipped: numbers.length - fresh.length, parsed: numbers.length };
   }
 
   async function sendGroupMessage(event: FormEvent<HTMLFormElement>) {
@@ -2958,6 +3064,7 @@ function App() {
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-progress"><Clock3 size={16}/></span><span className="problem-stat-label">IN PROGRESS</span><strong>{inProgress}<small> active</small></strong><span className="problem-stat-note">Keep your momentum</span></div>
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-pattern"><Target size={16}/></span><span className="problem-stat-label">CORE PATTERNS</span><strong>{patterns.length}<small> to explore</small></strong><span className="problem-stat-note">Learn how problems connect</span></div>
         </div>
+        <StudentRepoCard group={sheetGroup} onImportGit={importFromGit} />
         <div className="problem-library-section-heading"><div><span>THE PRACTICE LIBRARY</span><h3>Find your next <em>challenge.</em></h3></div><div className="problem-library-heading-actions"><span className="problem-sync-state"><Check size={13}/>{user ? "Progress synced" : "Progress saved locally"}</span><button type="button" disabled={pattern === "All patterns"} onClick={() => setPatternTestOpen(pattern)} title={pattern === "All patterns" ? "Choose a pattern to start its test" : `Take the ${pattern} test`}>Take 4-question test <ArrowRight size={13}/></button></div></div>
         <div className="sheet-browser">
           <aside className="sheet-rail-card">

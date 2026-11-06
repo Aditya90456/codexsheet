@@ -45,6 +45,7 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     oneLine: "The 250-problem DSA sheet, every pattern and every difficulty.",
     includes: [
       "All 250 problems with your notes, status, XP and streak saved to your account",
+      "The sheet as a git repo - clone it, commit your solves, paste the log back for credit",
       "Every pattern filter, the 12-week stage ladder and the timed sets",
       "Solve milestones that feed the leaderboard and your certificate",
       "Refund inside 5 days of the confirmed payment if it was not worth it",
