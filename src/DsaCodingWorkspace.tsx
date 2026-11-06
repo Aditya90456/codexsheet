@@ -307,7 +307,7 @@ function traceCode(source: string) {
   return { steps: [] as TraceStep[], values, message: "Array found. Add a simple indexed or for-each loop to animate it." };
 }
 
-export default function DsaCodingWorkspace({ problems, userId }: { problems: Problem[]; userId: string | null }) {
+export default function DsaCodingWorkspace({ problems, userId, focusProblem }: { problems: Problem[]; userId: string | null; focusProblem?: number | null }) {
   const [tab, setTab] = useState<"code" | "lessons">("code");
   const [page, setPage] = useState<"workspace" | "dashboard">("workspace");
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -522,6 +522,13 @@ export default function DsaCodingWorkspace({ problems, userId }: { problems: Pro
       setRunningCode(false);
     }
   }
+
+  useEffect(() => {
+    if (!focusProblem) return;
+    setPage("workspace");
+    setTab("code");
+    setProblemNumber(focusProblem);
+  }, [focusProblem]);
 
   useEffect(() => {
     const key = `codexsheet-live-code:${userId ?? "local"}:${problemNumber}:${language}`;
