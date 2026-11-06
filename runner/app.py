@@ -72,17 +72,36 @@ const stable = (value, unordered) => {
   return value;
 };
 const resultPrefix = "__DEVA_TEST_RESULT__";
+const report = (payload) => process.stdout.write(resultPrefix + JSON.stringify(payload) + "\n");
+const brief = (error) => (error instanceof Error ? error.message : String(error)).split("\n").slice(0, 6).join("\n");
+const total = data.cases.length;
+let makeSolution;
 try {
-  const fn = new Function(data.code + "\n; return typeof " + data.fn + " === 'function' ? " + data.fn + " : null;")();
-  if (!fn) throw new Error("Define the requested function: " + data.fn + ".");
-  const details = data.cases.map((test, index) => {
-    const actual = fn(...JSON.parse(JSON.stringify(test.args)));
-    const pass = JSON.stringify(stable(actual, data.unordered)) === JSON.stringify(stable(test.expected, data.unordered));
-    return { pass, label: "Test " + (index + 1), actual: JSON.stringify(actual), expected: JSON.stringify(test.expected) };
-  });
-  process.stdout.write(resultPrefix + JSON.stringify({ passed: details.filter(test => test.pass).length, total: details.length, details: details.map(test => test.pass ? test.label + ": passed" : test.label + ": expected " + test.expected + ", received " + test.actual) }) + "\n");
+  makeSolution = new Function(data.code + "\n; return typeof " + data.fn + " === 'function' ? " + data.fn + " : null;");
 } catch (error) {
-  process.stdout.write(resultPrefix + JSON.stringify({ passed: 0, total: data.cases.length, details: [], error: error instanceof Error ? error.message : "Could not run this solution." }) + "\n");
+  report({ passed: 0, total, details: [], verdict: "Compile Error", error: brief(error) });
+}
+if (makeSolution) {
+  let fn = null;
+  let loadError = null;
+  try { fn = makeSolution(); } catch (error) { loadError = brief(error); }
+  if (loadError) report({ passed: 0, total, details: [], verdict: "Runtime Error", error: loadError });
+  else if (!fn) report({ passed: 0, total, details: [], verdict: "Compile Error", error: "Define the requested function: " + data.fn + "." });
+  else {
+    const details = [];
+    let passed = 0;
+    let crashed = 0;
+    data.cases.forEach((test, index) => {
+      const label = "Test " + (index + 1);
+      const want = JSON.stringify(stable(test.expected, data.unordered));
+      try {
+        const got = JSON.stringify(stable(fn(...JSON.parse(JSON.stringify(test.args))), data.unordered));
+        if (got === want) { passed += 1; details.push(label + ": passed"); }
+        else details.push(label + ": expected " + want + ", received " + got);
+      } catch (error) { crashed += 1; details.push(label + ": " + brief(error)); }
+    });
+    report({ passed, total, details, verdict: crashed > 0 ? "Runtime Error" : passed === total ? "Accepted" : "Wrong Answer" });
+  }
 }
 '''
 
