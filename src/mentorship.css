@@ -333,41 +333,47 @@
 .mentorship-qr-restore { font-size: 12px; }
 .mentorship-qr-restore button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: none; color: var(--ms-accent, #7cb3fb); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
 
-/* Pay what you can: the amount chooser inside the single offer panel. */
-.mentorship-amounts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
-.mentorship-amounts > button {
-  padding: 8px 13px;
+/* The catalogue shelf: one card per product, and the chosen card drives the
+   checkout below it. The price on the card is the price the server accepts. */
+.mentorship-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 12px;
+  max-width: 1080px;
+  margin: 0 auto 18px;
+}
+.mentorship-shelf-card {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px 15px;
   border: 1px solid var(--ms-line);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--ms-surface);
   color: var(--ms-ink);
-  font: 700 13px/1 "DM Mono", ui-monospace, monospace;
+  text-align: left;
   cursor: pointer;
 }
-.mentorship-amounts > button:hover { border-color: var(--ms-accent); }
-.mentorship-amounts > button.active { border-color: var(--ms-accent); background: var(--ms-accent); color: var(--ms-accent-ink); }
-.mentorship-amount-custom {
+.mentorship-shelf-card:hover { border-color: var(--ms-accent); }
+.mentorship-shelf-card.selected { border-color: var(--ms-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ms-accent) 35%, transparent); }
+.mentorship-shelf-tag { color: var(--ms-muted); font: 600 10px/1 "DM Mono", ui-monospace, monospace; letter-spacing: .14em; }
+.mentorship-shelf-price { font-size: 23px; font-weight: 700; letter-spacing: -.02em; }
+.mentorship-shelf-card.selected .mentorship-shelf-price { color: var(--ms-accent); }
+.mentorship-shelf-card strong { font-size: 14px; }
+.mentorship-shelf-line { color: var(--ms-muted); font-size: 12px; line-height: 1.5; }
+.mentorship-shelf-owned {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 10px;
-  border: 1px dashed var(--ms-line);
+  justify-self: start;
+  padding: 3px 8px;
   border-radius: 999px;
-  background: var(--ms-canvas);
-  color: var(--ms-muted);
-  font: 700 13px/1 "DM Mono", ui-monospace, monospace;
+  background: color-mix(in srgb, var(--ms-good) 18%, transparent);
+  color: var(--ms-good);
+  font: 700 10px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .08em;
 }
-.mentorship-amount-custom input {
-  width: 66px;
-  border: 0;
-  background: transparent;
-  color: var(--ms-ink);
-  font: 700 13px/1 "DM Mono", ui-monospace, monospace;
-  outline: none;
-}
-.mentorship-amount-custom:focus-within { border-color: var(--ms-accent); border-style: solid; }
 .mentorship-amount-note { margin: 10px 0 0; color: var(--ms-muted); font-size: 12px; line-height: 1.55; }
-.mentorship-pay-wait { color: var(--ms-muted); font-size: 12px; line-height: 1.5; }
 
 /* WhatsApp is the screenshot lane, so it reads as a second payment action. */
 .mentorship-whatsapp {

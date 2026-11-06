@@ -1,13 +1,11 @@
-// Mentorship pricing and the Paytm QR-only payment contract.
-// CodexSheet is free except for one thing: the 250-problem DSA sheet. It is pay
-// what you can - any whole figure from ₹10 to ₹800 - and the payment is recorded
-// against a reference the student writes down here. Money moves through Aditya's
-// personal Paytm UPI handle, so the app never touches a gateway: the page shows his
-// own Paytm QR, which carries nothing but his UPI id, so the student types the
-// amount themselves and the server rejects a claim outside the band. The UTR from
-// the receipt is required. The claim is confirmed by the database as it lands, so
-// the sheet opens immediately and Aditya reconciles the UTR against his statement
-// afterwards.
+// CodexSheet sells five named products, priced in src/products.ts and enforced by
+// a CHECK constraint on public.mentorship_orders. Each one is one exact figure,
+// paid once to Aditya's personal Paytm UPI handle, so the app never touches a
+// gateway: his own QR carries the payee only, the UPI intent carries the figure,
+// and the server refuses a claim that does not match the price on the card. The
+// UTR from the receipt is required. The claim is confirmed by the database as it
+// lands, so the rail opens immediately and Aditya reconciles the UTR against his
+// statement afterwards.
 export const payee = {
   phone: "8882118279",
   upiId: "8882118279@fam",
@@ -20,34 +18,22 @@ export const payeeQrSrc = "/paytm-qr.jpg";
 /** His WhatsApp. The screenshot of the Paytm receipt lands here, not in a form field. */
 export const whatsapp = { number: "918335873311", display: "+91 833587 3311" } as const;
 
-/** A wa.me link that already names the reference and the amount, so one tap sends the proof. */
-export function whatsappHref(reference: string, amount: number): string {
-  const body = `CodexSheet Sheet Pass\nReference: ${reference}\nAmount paid: ${rupees(amount)}\n(attach the Paytm receipt screenshot here)`;
+/** A wa.me link that already names the reference, the product and the figure, so one tap sends the proof. */
+export function whatsappHref(reference: string, product: string, amount: number): string {
+  const body = `${product}\nReference: ${reference}\nAmount paid: ${rupees(amount)}\n(attach the Paytm receipt screenshot here)`;
   return `https://wa.me/${whatsapp.number}?text=${encodeURIComponent(body)}`;
 }
 
 export const mentorEmail = "adityabakshi1011@gmail.com";
 
-/** The ledger keeps calling a session "family"; the id is a storage detail now. */
-export type MentorshipPlanId = "family";
+/** The plan id written on a claim is the product id - the ledger has no separate vocabulary. */
+export type MentorshipPlanId = ProductId;
 
 /**
- * Pay what you can. The sheet is the paid part of CodexSheet and one payment
- * unlocks it for good, so the student picks any figure inside this band. The
- * database insert trigger rejects an order outside it, which is what makes the
- * band a real contract rather than a suggestion.
+ * Every figure a student can pay lives in src/products.ts, and this module reads
+ * from it, so the page and the database can never disagree about a price.
  */
-export const passBand = { min: 10, max: 800, suggested: 250 } as const;
-
-/** Whole rupees only, inside the band, and nothing the UPI app cannot type. */
-export function passAmount(value: number): number | null {
-  if (!Number.isFinite(value)) return null;
-  const amount = Math.round(value);
-  return amount >= passBand.min && amount <= passBand.max ? amount : null;
-}
-
-/** The headline every free/paid panel quotes: the sheet starts at ₹10. */
-export const passPriceLabel = `from ${rupees(passBand.min)}`;
+import { productById, type ProductId } from "./products";
 
 /** The rails a pass covers around the sheet itself — every view a signed-in student can reach. */
 export const workspaceFeatureNames = [
@@ -60,39 +46,6 @@ export const workspaceFeatureNames = [
 
 /** How many rails the pass covers; every piece of copy quotes this. */
 export const workspaceFeatureCount = workspaceFeatureNames.length;
-
-export type MentorshipPlan = {
-  id: MentorshipPlanId;
-  tag: string;
-  title: string;
-  subtitle: string;
-  price: number;
-  cadence: string;
-  includes: string[];
-  highlight?: boolean;
-};
-
-export const mentorshipPlans: MentorshipPlan[] = [
-  {
-    id: "family",
-    tag: "SHEET",
-    title: "CodexSheet Sheet Pass",
-    subtitle: `The 250-problem sheet · pay what you can (${rupees(passBand.min)}–${rupees(passBand.max)})`,
-    price: passBand.suggested,
-    cadence: "one payment · never expires",
-    includes: [
-      "The whole 250-problem sheet: every pattern, every difficulty, with your notes and status saved",
-      "XP, streaks, ranks and the solve milestones that make the sheet keep score",
-      `The workspace around the sheet comes with it too: all ${workspaceFeatureCount} rails - the judged Deva editor, Guru, the Algorithm Labs, the animated course, notes, chat, calendar, leaderboard and your certificate`,
-      "Aditya reads your code line by line on the real judged submission, from the moment the claim is recorded",
-      "A private chat lane with Aditya and a 1:1 Google Meet slot - he saves the link and it arrives in your inbox",
-    ],
-  },
-];
-
-export function planById(id: string): MentorshipPlan | undefined {
-  return mentorshipPlans.find((plan) => plan.id === id);
-}
 
 /** Twelve weeks over the sheet - patterns and interviews only, no LLD or HLD. */
 import { problems } from "./dsaSheet";
@@ -138,16 +91,8 @@ export const curriculum: CurriculumWeek[] = curriculumWeeks.map((week) => {
 export const refundWindow = {
   days: 5,
   headline: "Five days to decide",
-  body: "If the sheet was not worth it, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
+  body: "If it was not worth it, tell Aditya within 5 days of the confirmed payment and he refunds the full {price} on Paytm, straight back to the UPI id you paid from. No form, no clawback call.",
 };
-
-/** What happens between the Paytm QR and the sheet opening. */
-export const passFlow: { title: string; body: string }[] = [
-  { title: "Pick what you can pay", body: `Any whole figure from ${rupees(passBand.min)} to ${rupees(passBand.max)} buys the same thing: the whole sheet, forever. ${rupees(passBand.suggested)} is what he suggests if the maths works out for you.` },
-  { title: "Pay it on his Paytm QR", body: "The code carries his UPI id and nothing else, so type your amount in the Paytm app yourself and put your reference code in the note - that note is what makes the entry findable on his statement." },
-  { title: "Record reference and UTR", body: "Fill the small form on this page. Your Paytm UTR is required — it is the only thing that ties your claim to a real statement entry." },
-  { title: "The sheet opens at once", body: "The claim is confirmed as it lands, so the badge reads DONE immediately and /problems stops asking for money. Aditya matches your UTR against his statement afterwards, so keep the receipt." },
-];
 
 /** Only promises the product actually keeps — no invented résumé. */
 export const mentorCraft: string[] = [
@@ -182,15 +127,15 @@ export function utrValid(value: string): boolean {
   return /^[A-Za-z0-9]{12,30}$/.test(cleaned) && (cleaned.match(/\d/g) ?? []).length >= 11;
 }
 
-/** Names a plan for a student, including the products retired before the Sheet Pass. */
+/** Names a plan for a student, including the passes retired before the catalogue. */
 export function planLabel(plan: string): string {
   const legacy: Record<string, string> = {
-    "one-to-one": "1:1 Mentorship",
-    "ltm-3-months": "Long-Term Mentorship · 3 months",
-    "ltm-6-months": "Long-Term Mentorship · 6 months",
-    roadmap: "250-Pattern DSA Roadmap",
+    family: "CodexSheet Sheet Pass (retired)",
+    "one-to-one": "1:1 Mentorship (retired)",
+    "ltm-3-months": "Long-Term Mentorship · 3 months (retired)",
+    "ltm-6-months": "Long-Term Mentorship · 6 months (retired)",
   };
-  return planById(plan)?.title ?? legacy[plan] ?? plan;
+  return productById(plan)?.name ?? legacy[plan] ?? plan;
 }
 
 /** DUE = Aditya has not ticked the money against his Paytm statement. DONE = he has. */
@@ -215,8 +160,10 @@ export function referenceCode(tag: string): string {
   return `CS-${tag}-${random}`;
 }
 
-export function orderReference(plan: MentorshipPlan): string {
-  return referenceCode(plan.tag);
+export function orderReference(product: { tag: string }): string {
+  // Marketplace tags are free text, and a colon or space in the UPI note makes
+  // the code painful to retype - only letters and digits survive into it.
+  return referenceCode(product.tag.toUpperCase().replace(/[^A-Z0-9]/g, ""));
 }
 
 /** NPCI UPI intent URI — every UPI app (Paytm, PhonePe, GPay, BHIM) resolves this. */

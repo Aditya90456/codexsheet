@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, Check, Download, LoaderCircle, Mail, MessageSquare, PhoneCall, RotateCcw, Send, Users } from "lucide-react";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
-import { isMeetLink, mentorEmail, passBand, paymentBadge, planLabel, rupees } from "./mentorship";
+import { isMeetLink, mentorEmail, paymentBadge, planLabel, rupees } from "./mentorship";
+import { codexSheetProducts } from "./products";
 
 type Mentee = {
   id: number;
@@ -854,7 +855,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <p className="mentees-note">
               {dues.length > 0
                 ? "A claim confirms itself the moment the server accepts it, so a DUE row here means the record never arrived — send your Paytm screenshot to Aditya on WhatsApp and it will be opened by hand."
-                : <>Nothing confirmed yet. The sheet pass is pay-what-you-can from {rupees(passBand.min)} to {rupees(passBand.max)} on the <a href="/mentorship">mentorship page</a>.</>}
+                : <>Nothing confirmed yet. {codexSheetProducts.map((product) => `${product.name} ${rupees(product.price)}`).join(" · ")} — bought on the <a href="/mentorship">mentorship page</a>. A mentor session is what opens this lane.</>}
             </p>
           )}
           {mine.map((mentee) => {

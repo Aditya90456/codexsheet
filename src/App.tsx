@@ -93,7 +93,9 @@ import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT, type MessageKey } from "./i18n";
-import { passBand, passPriceLabel, rupees, workspaceFeatureCount } from "./mentorship";
+import { rupees, workspaceFeatureCount } from "./mentorship";
+import { codexSheetProducts, productById, railLabel, type CodexSheetProduct, type ProductId } from "./products";
+import { unlocksRail, useUnlocks } from "./entitlements";
 import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import {
   getSheetRank,
@@ -230,8 +232,8 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
-    title: "CodexSheet Sheet Pass — pay what you can, ₹10 to ₹800",
-    description: "One Sheet Pass covers the 250-problem DSA sheet and the workspace around it — the judged Deva editor, Guru, the Algorithm Labs, the animated course, notes, chat, calendar and your certificate. Pay any whole figure from ₹10 to ₹800 on Aditya's Paytm QR and it stays open for good, with a 5-day refund.",
+    title: "CodexSheet products — sheet ₹100, roadmap ₹159, pattern course ₹200, mentor session ₹100",
+    description: "Four CodexSheet products, each with one fixed price and its own rail: the 250-problem DSA sheet for ₹100, the 12-week roadmap board for ₹159, the 16-film pattern course with PPT decks for ₹200 and a 45-minute 1:1 Google Meet with Aditya for ₹100. Pay on his Paytm QR, confirmed the moment the claim lands, refundable within 5 days. The rest of the workspace is free, and anyone who paid for the old Sheet Pass keeps every rail.",
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -314,6 +316,7 @@ function HomePage({
   percent,
   patterns,
   onNavigate,
+  onOpenProduct,
 }: {
   solved: number;
   inProgress: number;
@@ -321,6 +324,8 @@ function HomePage({
   percent: number;
   patterns: Array<{ name: string; completed: number; total: number }>;
   onNavigate: (view: WorkspaceView, plan?: string) => void;
+  /** The catalogue card a visitor taps - lands the checkout on that product. */
+  onOpenProduct: (product: ProductId) => void;
 }) {
   const pageRef = useRef<HTMLElement>(null);
   const tr = useT();
@@ -462,24 +467,26 @@ function HomePage({
 
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">ONE PASS · THE WHOLE WORKSPACE</span><h2 id="home-services-title">Your pass covers the sheet <em>and everything around it.</em></h2></div>
-          <p>All {workspaceFeatureCount} rails come with the Sheet Pass — the Deva editor with real judged submissions, Guru, the Algorithm Labs, the animated course, notes, chat, the calendar, the leaderboard and your certificate. Sign in with Google and they are open; the 250-problem sheet is the part you pay for, at the figure you choose.</p>
+          <div><span className="home-section-kicker">FOUR PRODUCTS · ONE PAYMENT EACH</span><h2 id="home-services-title">CodexSheet products. <em>Pick exactly what you need.</em></h2></div>
+          <p>Everything the workspace does — the Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, group chat, the calendar, the leaderboard, your certificate and the 2027 radar — is free with a Google sign-in. {codexSheetProducts.length} things have a price, and each one opens only its own rail. Pay on Aditya&apos;s Paytm QR; no card form, no gateway.</p>
         </div>
-        <div className="home-offer-grid" aria-label="What your pass covers">
+        <div className="home-offer-grid" aria-label="What CodexSheet sells">
           <article className="home-offer-card home-offer-free">
-            <div className="home-offer-top"><span className="home-offer-icon">{workspaceFeatureCount}</span><span className="home-offer-price">IN YOUR PASS</span></div>
-            <span className="home-offer-label">EVERY RAIL AROUND THE SHEET</span>
+            <div className="home-offer-top"><span className="home-offer-icon">{workspaceFeatureCount}</span><span className="home-offer-price">FREE</span></div>
+            <span className="home-offer-label">EVERY RAIL THAT IS NOT FOR SALE</span>
             <h3>The rest of CodexSheet</h3>
-            <p>The Deva editor with real judged submissions, the animated course, the roadmap board, algorithm labs, notes, group chat, the practice calendar and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
+            <p>The Deva editor with real judged submissions, the animated course, algorithm labs, notes, group chat, the practice calendar, the leaderboard, your certificate and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
             <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
           </article>
-          <article className="home-offer-card home-offer-session">
-            <div className="home-offer-top"><span className="home-offer-icon">250</span><span className="home-offer-price">{passPriceLabel}</span></div>
-            <span className="home-offer-label">THE SHEET YOUR PASS UNLOCKS</span>
-            <h3>The 250-problem DSA sheet</h3>
-            <p>Every pattern, every difficulty, with your notes, status, XP and streak kept. Pay what you can - anything from {rupees(passBand.min)} to {rupees(passBand.max)} on Aditya&apos;s Paytm QR, once, no expiry. Your pass also opens his chat lane and his 1:1 Google Meet slots, the link lands in your inbox when he saves it, and it is refundable for 5 days.</p>
-            <a href="/mentorship" onClick={(event) => { event.preventDefault(); onNavigate("mentorship"); }}>Unlock the sheet {passPriceLabel} <ArrowRight size={15}/></a>
-          </article>
+          {codexSheetProducts.map((item) => (
+            <article className="home-offer-card home-offer-session" key={item.id}>
+              <div className="home-offer-top"><span className="home-offer-icon tag">{item.tag}</span><span className="home-offer-price">{rupees(item.price)}</span></div>
+              <span className="home-offer-label">{item.cadence.toUpperCase()}</span>
+              <h3>{item.name}</h3>
+              <p>{item.oneLine} {item.includes[0]}</p>
+              <a href="/mentorship" onClick={(event) => { event.preventDefault(); onOpenProduct(item.id); }}>Unlock {item.name} · {rupees(item.price)} <ArrowRight size={15}/></a>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -1103,31 +1110,30 @@ function recognizeSheetQuery(raw: string) {
   return { patterns: found, difficulty, status, matched: found.length > 0 || Boolean(difficulty) || Boolean(status) };
 }
 
-// The sheet is the paid part of CodexSheet, so this is the only lock left in the
-// workspace: one panel, in one view, driven by the same RPC that minting a
-// certificate reads.
-function SheetLock({ checking, onOpenStore, onRecheck, onFreeRail }: { checking: boolean; onOpenStore: () => void; onRecheck: () => void; onFreeRail: () => void }) {
+// Every paid rail shows the same panel with its own product in it. The name, the
+// figure, the promise and the rail it opens all come from src/products.ts, so a
+// lock can never advertise a price the database would refuse - and a student who
+// bought the roadmap is not offered the sheet again by a copy-pasted headline.
+function ProductLock({ product, checking, onOpenStore, onRecheck, onFreeRail }: {
+  product: CodexSheetProduct;
+  checking: boolean;
+  onOpenStore: () => void;
+  onRecheck: () => void;
+  onFreeRail?: () => void;
+}) {
   return (
-    <section className="sheet-lock" aria-label="The 250-problem sheet is locked">
+    <section className="sheet-lock" aria-label={`${product.name} is locked`}>
       <div className="sheet-lock-card">
-        <span className="sheet-lock-kicker"><Lock size={13} /> THE 250-PROBLEM SHEET · PAY WHAT YOU CAN</span>
-        <h2>{rupees(passBand.min)} to {rupees(passBand.max)}. <em>Your figure, not his.</em></h2>
-        <p>The 250-problem sheet is what your pass unlocks: every pattern, every difficulty, with your notes, status, XP and streak kept against your account. It covers the workspace around the sheet too — all {workspaceFeatureCount} rails, from the judged Deva editor and Guru to the labs, the animated course, notes, chat, calendar, leaderboard and your certificate. Pay any whole figure inside the band on Aditya&apos;s Paytm QR, once, and it stays open forever.</p>
-        <div className="sheet-lock-band">
-          <span>{rupees(passBand.min)}<small>minimum</small></span>
-          <span className="suggest">{rupees(passBand.suggested)}<small>he suggests</small></span>
-          <span>{rupees(passBand.max)}<small>maximum</small></span>
-        </div>
+        <span className="sheet-lock-kicker"><Lock size={13} /> {product.tag} · {rupees(product.price)}</span>
+        <h2>{product.name} for {rupees(product.price)}. <em>{product.cadence}.</em></h2>
+        <p>{product.oneLine} It opens {railLabel(product)} and nothing else — the Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, chat, the calendar, the leaderboard and the 2027 radar stay open for everyone, and anyone who paid for the old Sheet Pass keeps every rail.</p>
         <ul className="sheet-lock-list">
-          <li><Check size={14} /> All 250 problems, every pattern filter and the 4-question pattern tests</li>
-          <li><Check size={14} /> Notes, status, XP, ranks and solve milestones saved to your account</li>
-          <li><Check size={14} /> Your pass opens Aditya&apos;s chat lane and his 1:1 Google Meet slots - he saves the link and it arrives in your inbox</li>
-          <li><Check size={14} /> Refund inside 5 days of confirmation if the sheet was not worth it</li>
+          {product.includes.map((line) => <li key={line}><Check size={14} /> {line}</li>)}
         </ul>
         <div className="sheet-lock-actions">
-          <button type="button" className="primary-button" onClick={onOpenStore}>Unlock the sheet {passPriceLabel} <ArrowRight size={16} /></button>
+          <button type="button" className="primary-button" onClick={onOpenStore}>Unlock {product.name} · {rupees(product.price)} <ArrowRight size={16} /></button>
           <button type="button" className="secondary-button" onClick={onRecheck} disabled={checking}>{checking ? "Checking…" : "I already paid"}</button>
-          <button type="button" className="sheet-lock-free" onClick={onFreeRail}>Not ready to pay? Guru, the labs and the editor are open <ArrowRight size={15} /></button>
+          {onFreeRail && <button type="button" className="sheet-lock-free" onClick={onFreeRail}>Not ready to pay? Guru, the labs and the editor are open <ArrowRight size={15} /></button>}
         </div>
         <small>No card and no gateway. Your claim is confirmed by the server as it lands, so this panel clears on the next check - and your progress is not lost while it is up.</small>
       </div>
@@ -1178,20 +1184,18 @@ function App() {
   const rewardTimer = useRef<number | null>(null);
   const [patternTestOpen, setPatternTestOpen] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
-  // The sheet is the only paid surface left. One definer-side RPC answers "does this
-  // account have a confirmed payment, or is it the mentor"; with Supabase missing the
-  // dev build never locks.
-  const [sheetUnlocked, setSheetUnlocked] = useState(false);
-  const [sheetChecking, setSheetChecking] = useState(true);
-  async function checkSheet() {
-    if (!supabase) { setSheetUnlocked(true); setSheetChecking(false); return; }
-    setSheetChecking(true);
-    const result = await supabase.rpc("workspace_unlocked");
-    if (!result.error) setSheetUnlocked(result.data === true);
-    setSheetChecking(false);
+  // One definer-side RPC answers all four entitlements for this account, and
+  // tells us whether it is a mentor: mentors and the grandfathered Sheet Pass
+  // payers see every rail. With Supabase missing the dev build never locks.
+  const unlocks = useUnlocks(userId ?? null);
+  // A lock panel sends the checkout to the card the student was looking at, so
+  // the page does not open on the sheet when they wanted the roadmap.
+  const [checkoutProduct, setCheckoutProduct] = useState<ProductId>("dsa250");
+  const lockedFor = (product: ProductId) => !unlocksRail(unlocks, product);
+  function openCheckout(product: ProductId) {
+    setCheckoutProduct(product);
+    navigateToView("mentorship");
   }
-  useEffect(() => { void checkSheet(); }, [userId]);
-  const sheetLocked = !sheetUnlocked;
 
   // Bootstrap-style collapse: below the expand breakpoint the view list hides behind
   // the hamburger and closes itself on every navigation.
@@ -2284,10 +2288,11 @@ function App() {
         percent={percent}
         patterns={patternStats}
         onNavigate={navigateToView}
+        onOpenProduct={openCheckout}
       />}
       {activeView === "articles" && <ArticlesPage onOpenIde={() => navigateToView("dsa-ide")} />}
       {activeView === "jobs" && <JobsPage />}
-      {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
+      {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} initialProduct={checkoutProduct} unlocks={unlocks} />}
       {activeView === "mentees" && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
       {activeView === "marketplace" && <Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => navigateToView("studio")} onNavigateHome={() => navigateToView("mentorship")} />}
       {activeView === "studio" && <MentorStudio userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
@@ -2433,7 +2438,16 @@ function App() {
           </section>
         </>
       )}
-      {activeView === "roadmap" && (
+      {activeView === "roadmap" && lockedFor("roadmap") && (
+        <ProductLock
+          product={productById("roadmap")!}
+          checking={!unlocks.loaded}
+          onOpenStore={() => openCheckout("roadmap")}
+          onRecheck={() => void unlocks.refresh()}
+          onFreeRail={() => navigateToView("guru")}
+        />
+      )}
+      {activeView === "roadmap" && !lockedFor("roadmap") && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
@@ -2442,7 +2456,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className="roadmap-buy unlocked" onClick={() => navigateToView("mentorship")}>Unlock the 250-problem sheet · {passPriceLabel} <ArrowRight size={15}/></button>
+            <button type="button" className="roadmap-buy unlocked" onClick={() => openCheckout("dsa250")}>Unlock the 250-problem sheet · {rupees(productById("dsa250")!.price)} <ArrowRight size={15}/></button>
           </header>
           <div className="roadmap-controls">
             <label>
@@ -2908,18 +2922,28 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "patterns" && <section className="patterns-page">
-        <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
-      </section>}
-      {activeView === "problems" && sheetLocked && (
-        <SheetLock
-          checking={sheetChecking}
-          onOpenStore={() => navigateToView("mentorship")}
-          onRecheck={() => void checkSheet()}
+      {activeView === "patterns" && lockedFor("patterns") && (
+        <ProductLock
+          product={productById("patterns")!}
+          checking={!unlocks.loaded}
+          onOpenStore={() => openCheckout("patterns")}
+          onRecheck={() => void unlocks.refresh()}
           onFreeRail={() => navigateToView("guru")}
         />
       )}
-      {activeView === "problems" && !sheetLocked && <section className="problem-library-page">
+      {activeView === "patterns" && !lockedFor("patterns") && <section className="patterns-page">
+        <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
+      </section>}
+      {activeView === "problems" && lockedFor("dsa250") && (
+        <ProductLock
+          product={productById("dsa250")!}
+          checking={!unlocks.loaded}
+          onOpenStore={() => openCheckout("dsa250")}
+          onRecheck={() => void unlocks.refresh()}
+          onFreeRail={() => navigateToView("guru")}
+        />
+      )}
+      {activeView === "problems" && !lockedFor("dsa250") && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> YOUR PRACTICE, WITH PURPOSE</span>

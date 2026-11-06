@@ -3523,6 +3523,7 @@ tbody tr:hover  { background: #f4f8ff; }
 .home-offer-card  { display:grid; grid-template-rows:auto auto auto 1fr auto; gap:10px; min-height:250px; padding:23px; border:1px solid #d7e1cf; border-radius:16px; color:#263d32; background:linear-gradient(135deg,#fbfcf8 0%,#edf3e7 100%); box-shadow:0 10px 28px rgba(38,65,50,.05); }
 .home-offer-top  { display:flex; align-items:center; justify-content:space-between; }
 .home-offer-icon  { display:grid; place-items:center; width:42px; height:42px; border:1px solid #d9e2d2; border-radius:12px; color:#42644a; background:#e8efe1; font-size:16px; font-weight:800; }
+.home-offer-icon.tag  { width:auto; padding:0 10px; font:600 10px 'DM Mono',monospace; letter-spacing:.1em; }
 .home-offer-price  { color:#537047; font-size:19px; font-weight:800; letter-spacing:-.04em; }
 .home-offer-label  { margin-top:3px; color:#758674; font:600 9px 'DM Mono',monospace; letter-spacing:.11em; }
 .home-offer-card h3  { margin:0; color:#25392f; font-size:21px; letter-spacing:-.04em; }
