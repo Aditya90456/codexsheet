@@ -47,11 +47,11 @@ function TandavScene({ onReady, onProgress }: { onReady: () => void; onProgress:
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
       camera.position.set(0, 0.15, 7.4);
-      scene.add(new THREE.HemisphereLight(0xb9d9ff, 0x27110b, 2.1));
+      scene.add(new THREE.HemisphereLight(0xffb9c4, 0x27110b, 2.1));
       const key = new THREE.PointLight(0xffad57, 34, 18);
       key.position.set(2.4, 2.3, 4.5);
       scene.add(key);
-      const rim = new THREE.PointLight(0x4c80d9, 28, 16);
+      const rim = new THREE.PointLight(0xd94c56, 28, 16);
       rim.position.set(-3, 1, -2);
       scene.add(rim);
 

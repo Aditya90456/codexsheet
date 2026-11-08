@@ -20,7 +20,7 @@ const lockedHtml = renderToString(createElement(LessonVideoRail, { problems, pat
 const count = (re) => (html.match(re) ?? []).length;
 
 const failures = [];
-if (!lockedHtml.includes(`${lessonLectures.length} free video lessons`)) failures.push("a student who has not paid the ₹100 sees no lessons at all");
+if (!lockedHtml.includes(`${lessonLectures.length} free video lessons`)) failures.push("a student who has not bought the ₹10 pass sees no lessons at all");
 if (lockedHtml.includes("lesson-video-jump")) failures.push("the locked rail offers a jump into a sheet it will not open");
 if (!html.includes(`${lessonLectures.length} free video lessons`)) failures.push("the heading does not count the lectures");
 if (!html.includes("96 ghante")) failures.push(`the heading lost the hours (${lessonLectures.reduce((t, v) => t + v.seconds, 0) / 3600}h raw)`);

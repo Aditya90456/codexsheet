@@ -1,7 +1,7 @@
 // LessonVideoRail.tsx — the Love Babbar lessons that sit under the 250-problem
 // sheet. One row per lecture of the real CodeHelp placement series, each opening
 // in the player on this page instead of the old playlist block that pointed
-// somewhere else. Free: nothing here is behind the ₹100 sheet gate, and the
+// somewhere else. Free: nothing here is behind the ₹10 pass, and the
 // player stays empty until a lecture is picked, so YouTube loads nothing on its
 // own.
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +15,7 @@ type Props = {
   problems: Problem[];
   /** The sheet's current pattern filter, so the rail lands where the student is. */
   pattern: string;
-  /** The ₹100 sheet is what the rail sits under; when it is still locked there is
+  /** The sheet is what the rail sits under; when it is still locked there is
    * no problem list to jump into. */
   sheetLocked: boolean;
   onOpenTopic: (topic: string) => void;

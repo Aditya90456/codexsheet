@@ -2,11 +2,11 @@
    light, midnight and forest shells each keep their own palette. */
 .mentees {
   --mt-surface: #fff;
-  --mt-canvas: #f6f9fe;
-  --mt-ink: #183153;
-  --mt-muted: #71869f;
-  --mt-line: #dfe8f5;
-  --mt-accent: #3478df;
+  --mt-canvas: #fef6f7;
+  --mt-ink: #261517;
+  --mt-muted: #9f7178;
+  --mt-line: #f5dfe1;
+  --mt-accent: #df3445;
   --mt-good: #2f9c62;
   --mt-warn: #c2622c;
   color: var(--mt-ink);
@@ -14,15 +14,15 @@
   padding: 22px clamp(16px, 3vw, 34px) 46px;
 }
 
-:root[data-theme="blue"] .mentees {
-  --mt-surface: #131f33;
-  --mt-canvas: #0c1526;
-  --mt-ink: #e6eefb;
-  --mt-muted: #8ea5c3;
-  --mt-line: #22354f;
-  --mt-accent: #7cb3fb;
+:root[data-theme="red"] .mentees {
+  --mt-surface: #180e0f;
+  --mt-canvas: #120a0a;
+  --mt-ink: #fbe6e8;
+  --mt-muted: #c38e95;
+  --mt-line: #26181a;
+  --mt-accent: #fb7c8d;
   --mt-good: #74c08c;
-  --mt-warn: #7dd3fc;
+  --mt-warn: #fc7dad;
 }
 
 
@@ -107,7 +107,7 @@
 .mentees-session:hover, .mentees-chat:hover { border-color: var(--mt-accent); color: var(--mt-accent); }
 .mentees-session:disabled { opacity: .55; cursor: not-allowed; }
 .mentees-chat.on { border-color: var(--mt-accent); background: var(--mt-accent); color: var(--mt-surface); }
-:root[data-theme="blue"] .mentees-chat.on { color: #131f33; }
+:root[data-theme="red"] .mentees-chat.on { color: #180e0f; }
 
 .mentees-room { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: 12px; min-width: 0; }
 .mentees-saved {
@@ -177,7 +177,7 @@
   cursor: pointer;
 }
 
-:root[data-theme="blue"] .mentees-primary { color: #131f33; }
+:root[data-theme="red"] .mentees-primary { color: #180e0f; }
 
 .mentees-primary:disabled { opacity: .55; cursor: not-allowed; }
 .mentees-contact { display: inline-flex; align-items: center; gap: 6px; color: var(--mt-accent); font-size: 12px; font-weight: 700; text-decoration: none; }
@@ -204,7 +204,7 @@
 .mentees-mine-card a:hover { text-decoration: underline; }
 .mentees-mine-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px; }
 .mentees-mine-actions a.mentees-primary { color: var(--mt-surface); text-decoration: none; }
-:root[data-theme="blue"] .mentees-mine-actions a.mentees-primary { color: #131f33; }
+:root[data-theme="red"] .mentees-mine-actions a.mentees-primary { color: #180e0f; }
 .mentees-quiet { color: var(--mt-muted); font-size: 12px; }
 .mentees-mine-card .mentees-when { color: var(--mt-ink); font-size: 12px; font-weight: 700; }
 .mentees-mine-actions a.mentees-chat { color: var(--mt-ink); text-decoration: none; }

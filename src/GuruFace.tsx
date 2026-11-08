@@ -154,17 +154,17 @@ export default function GuruFace({ mood, speaking, moodLabel, className }: GuruF
         <svg viewBox="-70 -80 140 160" className="guru-face-svg" role="img" aria-label={`Guru is ${moodLabel}`}>
           <defs>
             <radialGradient id="guru-head" cx="35%" cy="22%" r="88%">
-              <stop offset="0%" stopColor="#24374f" />
-              <stop offset="45%" stopColor="#16233a" />
-              <stop offset="100%" stopColor="#0a1220" />
+              <stop offset="0%" stopColor="#26191b" />
+              <stop offset="45%" stopColor="#1b1111" />
+              <stop offset="100%" stopColor="#0f0809" />
             </radialGradient>
             <radialGradient id="guru-cheek" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#ffffff" stopOpacity="0.16" />
               <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
             </radialGradient>
             <linearGradient id="guru-lip" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#20304a" />
-              <stop offset="100%" stopColor="#08101c" />
+              <stop offset="0%" stopColor="#241718" />
+              <stop offset="100%" stopColor="#0d0707" />
             </linearGradient>
             <filter id="guru-halo" x="-60%" y="-60%" width="220%" height="220%">
               <feGaussianBlur stdDeviation="7" />
@@ -172,22 +172,22 @@ export default function GuruFace({ mood, speaking, moodLabel, className }: GuruF
           </defs>
           <ellipse className="guru-halo" cx="0" cy="-4" rx="62" ry="66" fill={glow} opacity={0.2 + breath * 0.05} filter="url(#guru-halo)" />
           <path d="M -8 -74 Q 0 -86 8 -74" stroke={glow} strokeWidth="5" strokeLinecap="round" fill="none" />
-          <rect x="-52" y="-66" width="104" height="118" rx="42" fill="url(#guru-head)" stroke="#243449" strokeWidth="2.5" />
+          <rect x="-52" y="-66" width="104" height="118" rx="42" fill="url(#guru-head)" stroke="#24181a" strokeWidth="2.5" />
           <ellipse cx="-14" cy="-44" rx="30" ry="18" fill="url(#guru-cheek)" />
-          <ellipse cx="-54" cy="0" rx="7" ry="11" fill="#131f33" stroke="#243449" strokeWidth="2" />
-          <ellipse cx="54" cy="0" rx="7" ry="11" fill="#131f33" stroke="#243449" strokeWidth="2" />
-          <g className="guru-brows" stroke="#e8eff9" strokeWidth="5" strokeLinecap="round" fill="none">
+          <ellipse cx="-54" cy="0" rx="7" ry="11" fill="#180e0f" stroke="#24181a" strokeWidth="2" />
+          <ellipse cx="54" cy="0" rx="7" ry="11" fill="#180e0f" stroke="#24181a" strokeWidth="2" />
+          <g className="guru-brows" stroke="#f9e8ea" strokeWidth="5" strokeLinecap="round" fill="none">
             <path d={`M -34 ${browY} L -12 ${browY - pose.browAngle * 0.55}`} />
             <path d={`M 12 ${browY - pose.browAngle * 0.55} L 34 ${browY}`} />
           </g>
           <g className="guru-eyes">
             {[-23, 23].map((x) => (
               <g key={x} transform={`translate(${x} ${lidY}) scale(1 ${Math.max(0.08, eyeSquint)})`}>
-                <ellipse cx="0" cy="0" rx="13" ry="12" fill="#e8eff9" opacity="0.94" />
-                <circle className="guru-pupil" cx={gaze.x} cy={gaze.y} r="6" fill="#0a1220" />
-                <circle cx={gaze.x} cy={gaze.y} r="2.6" fill="#1f3a5c" />
+                <ellipse cx="0" cy="0" rx="13" ry="12" fill="#f9e8ea" opacity="0.94" />
+                <circle className="guru-pupil" cx={gaze.x} cy={gaze.y} r="6" fill="#0f0809" />
+                <circle cx={gaze.x} cy={gaze.y} r="2.6" fill="#2b191b" />
                 <circle className="guru-spark" cx={gaze.x - 2} cy={gaze.y - 2.4} r="1.8" fill="#ffffff" />
-                <path d="M -12 -4 Q 0 -12 12 -4" stroke="#0a1220" strokeWidth={blink ? 3 : 1.4} fill="none" strokeLinecap="round" opacity="0.55" />
+                <path d="M -12 -4 Q 0 -12 12 -4" stroke="#0f0809" strokeWidth={blink ? 3 : 1.4} fill="none" strokeLinecap="round" opacity="0.55" />
               </g>
             ))}
           </g>
@@ -201,16 +201,16 @@ export default function GuruFace({ mood, speaking, moodLabel, className }: GuruF
           {[-30, 30].map((x) => (
             <ellipse key={x} className="guru-blush" cx={x} cy="16" rx="10" ry="6" fill="#f87171" opacity={pose.blush * 0.55} />
           ))}
-          <path d="M 0 6 L -3 16 L 3 16" stroke="#3b5173" strokeWidth="2.4" strokeLinecap="round" fill="none" />
+          <path d="M 0 6 L -3 16 L 3 16" stroke="#733b40" strokeWidth="2.4" strokeLinecap="round" fill="none" />
           <g transform="translate(0 32)">
-            <path d={mouthPath} fill="url(#guru-lip)" stroke={mood === "angry" ? "#f87171" : "#60a5fa"} strokeWidth="2.2" strokeLinejoin="round" />
-            {open > 3 && <rect x={-halfWidth * 0.62} y={cornerY - 0.6} width={halfWidth * 1.24} height={Math.min(4, open * 0.34)} rx="1.4" fill="#e8eff9" opacity="0.9" />}
+            <path d={mouthPath} fill="url(#guru-lip)" stroke={mood === "angry" ? "#f87171" : "#fa6077"} strokeWidth="2.2" strokeLinejoin="round" />
+            {open > 3 && <rect x={-halfWidth * 0.62} y={cornerY - 0.6} width={halfWidth * 1.24} height={Math.min(4, open * 0.34)} rx="1.4" fill="#f9e8ea" opacity="0.9" />}
             {open > 5 && <ellipse cx="0" cy={open * 0.55} rx={halfWidth * 0.42} ry={open * 0.3} fill="#e0596b" opacity="0.85" />}
-            <path d={`M ${-halfWidth} ${cornerY} Q 0 ${cornerY - 5 - pose.mouthCurve * 3} ${halfWidth} ${cornerY}`} stroke="#3b5173" strokeWidth="1.6" fill="none" opacity="0.7" />
+            <path d={`M ${-halfWidth} ${cornerY} Q 0 ${cornerY - 5 - pose.mouthCurve * 3} ${halfWidth} ${cornerY}`} stroke="#733b40" strokeWidth="1.6" fill="none" opacity="0.7" />
           </g>
-          <path d="M -20 56 Q 0 64 20 56" stroke="#243449" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.7" />
-          <path d="M -26 46 Q -30 38 -26 30" stroke="#1d2f4c" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.6" />
-          <path d="M 26 46 Q 30 38 26 30" stroke="#1d2f4c" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.6" />
+          <path d="M -20 56 Q 0 64 20 56" stroke="#24181a" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.7" />
+          <path d="M -26 46 Q -30 38 -26 30" stroke="#241617" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.6" />
+          <path d="M 26 46 Q 30 38 26 30" stroke="#241617" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.6" />
         </svg>
       </div>
       <span className="guru-mood-chip" data-mood={mood}>{moodLabel}</span>

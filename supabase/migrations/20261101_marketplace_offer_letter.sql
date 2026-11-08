@@ -232,7 +232,7 @@ begin
 
   if p_status = 'approved' and v_mentor.status <> 'approved' and v_mentor.email <> '' then
     v_body_html := format(
-      '<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;">'
+      '<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#130c0c;">'
       || '<p style="margin:0 0 14px;font-size:15px;">Dear %s,</p>'
       || '<p style="margin:0 0 14px;font-size:15px;">You have been <strong>selected as a CodexSheet mentor</strong>. Your storefront is open, and you decide everything on it: what you teach, what you sell and what it costs.</p>'
       || '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%%;border-collapse:collapse;border:1px solid #e3e8f0;border-radius:10px;margin:0 0 16px;">'
@@ -241,8 +241,8 @@ begin
       || '<tr><td style="padding:10px 12px;border-bottom:1px solid #eef1f6;font-size:14px;"><strong>What you may sell</strong><br/>Services (your time), webinars (a scheduled session) and digital products (a file), priced by you between &#8377;10 and &#8377;25,000.</td></tr>'
       || '<tr><td style="padding:10px 12px;font-size:14px;"><strong>Open your studio</strong><br/><a href="https://www.codexsheet.in/mentor-studio">codexsheet.in/mentor-studio</a></td></tr>'
       || '</table>'
-      || '<p style="margin:0 0 14px;font-size:14px;color:#4b5563;"><strong>Payment terms.</strong> CodexSheet never pays you and never holds your money. Students pay your UPI id directly, you tick their reference against your own statement, and the app keeps only the record. There is no payout, no invoice and no share to wait for.</p>'
-      || '<p style="margin:0;font-size:14px;color:#4b5563;">Your storefront stays live while it follows the rules: real delivery, honest pricing, and no contact details sold on.</p>'
+      || '<p style="margin:0 0 14px;font-size:14px;color:#634b4e;"><strong>Payment terms.</strong> CodexSheet never pays you and never holds your money. Students pay your UPI id directly, you tick their reference against your own statement, and the app keeps only the record. There is no payout, no invoice and no share to wait for.</p>'
+      || '<p style="margin:0;font-size:14px;color:#634b4e;">Your storefront stays live while it follows the rules: real delivery, honest pricing, and no contact details sold on.</p>'
       || '<p style="margin:18px 0 0;font-size:14px;">Aditya Bakshi<br/>CodexSheet</p>'
       || '</div>',
       v_mentor.display_name,

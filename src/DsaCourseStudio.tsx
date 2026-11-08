@@ -22,8 +22,8 @@ const editorTheme = EditorView.theme({
   ".cm-content": { caretColor: "#ffb37a", fontFamily: "'DM Mono', Consolas, monospace", lineHeight: "1.75" },
   ".cm-cursor": { borderLeftColor: "#ffb37a" },
   ".cm-gutters": { backgroundColor: "#0c0c0c", color: "#5d5560", border: "none" },
-  ".cm-activeLine": { backgroundColor: "#1b1720" },
-  ".cm-activeLineGutter": { backgroundColor: "#1b1720", color: "#c8b8a6" },
+  ".cm-activeLine": { backgroundColor: "#10100e" },
+  ".cm-activeLineGutter": { backgroundColor: "#10100e", color: "#c8b8a6" },
   ".cm-selectionBackground, ::selection": { backgroundColor: "#805336aa" },
 }, { dark: true });
 

@@ -78,6 +78,7 @@ import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supaba
 import DsaIde from "./DsaIde";
 import ProblemStudyPanel from "./ProblemStudyPanel";
 import LessonVideoRail from "./LessonVideoRail";
+import DailyTaskRail from "./DailyTaskRail";
 import { lessonLectures } from "./love-babbar-lessons";
 import DsaCourseStudio from "./DsaCourseStudio";
 import RoadmapBoard from "./RoadmapBoard";
@@ -97,7 +98,7 @@ import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { useT, type MessageKey } from "./i18n";
 import { rupees, workspaceFeatureCount } from "./mentorship";
-import { codexSheetProducts, productById, railLabel, type CodexSheetProduct, type ProductId } from "./products";
+import { accessPass, productById, railLabel, soldProducts, type CodexSheetProduct, type ProductId } from "./products";
 import { unlocksRail, useUnlocks } from "./entitlements";
 import { gitLogCommand, parseCommitSubjects, studentRepoCloneCommand, studentRepoUrl, topicFolderFor } from "./studentRepo";
 import { hauslaLine, rewardVoice, sheetModeVoice, sheetVoice } from "./sheetVoice";
@@ -245,8 +246,8 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
   jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
   mentorship: {
-    title: "CodexSheet products — sheet ₹100, roadmap ₹159, pattern course ₹200, mentor session ₹100",
-    description: "Four CodexSheet products, each with one fixed price and its own rail: the 250-problem DSA sheet for ₹100, the 12-week roadmap board for ₹159, the 16-film pattern course with PPT decks for ₹200 and a 45-minute 1:1 Google Meet with Aditya for ₹100. Pay on his Paytm QR, confirmed the moment the claim lands, refundable within 5 days. The rest of the workspace is free, and anyone who paid for the old Sheet Pass keeps every rail.",
+    title: `CodexSheet ${rupees(accessPass.price)} All Access — every paid rail, plus 1:1 mentor sessions`,
+    description: `One ${rupees(accessPass.price)} CodexSheet All Access payment opens all three paid rails: the 250-problem DSA sheet with its 84-day task plan, the 12-week roadmap board and the 16 pattern films with their PPT decks. A 45-minute 1:1 Google Meet with Aditya is ${rupees(productById("session")!.price)} and bought per session. Pay on his Paytm QR, confirmed the moment the claim lands, refundable within 5 days. The rest of the workspace is free, and anyone who paid for an older rail keeps every rail.`,
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -484,8 +485,8 @@ function HomePage({
 
       <section className="home-services" aria-labelledby="home-services-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">FOUR PRODUCTS · ONE PAYMENT EACH</span><h2 id="home-services-title">CodexSheet products. <em>Pick exactly what you need.</em></h2></div>
-          <p>Everything the workspace does — the Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, group chat, the calendar, the leaderboard, your certificate and the 2027 radar — is free with a Google sign-in. {codexSheetProducts.length} things have a price, and each one opens only its own rail. Pay on Aditya&apos;s Paytm QR; no card form, no gateway.</p>
+          <div><span className="home-section-kicker">{rupees(accessPass.price)} PASS · EVERY PAID RAIL</span><h2 id="home-services-title">CodexSheet products. <em>One pass, then Aditya&apos;s time.</em></h2></div>
+          <p>Everything the workspace does — the Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, group chat, the calendar, the leaderboard, your certificate and the 2027 radar — is free with a Google sign-in. The {accessPass.gate.length} paid rails — the 250-problem sheet, the roadmap board and the 16 pattern films — are one {rupees(accessPass.price)} payment that never expires. A 1:1 session is bought separately because it buys a human hour. Pay on Aditya&apos;s Paytm QR; no card form, no gateway.</p>
         </div>
         <div className="home-offer-grid" aria-label="What CodexSheet sells">
           <article className="home-offer-card home-offer-free">
@@ -495,7 +496,7 @@ function HomePage({
             <p>The Deva editor with real judged submissions, the animated course, algorithm labs, notes, group chat, the practice calendar, the leaderboard, your certificate and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
             <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
           </article>
-          {codexSheetProducts.map((item) => (
+          {soldProducts.map((item) => (
             <article className="home-offer-card home-offer-session" key={item.id}>
               <div className="home-offer-top"><span className="home-offer-icon tag">{item.tag}</span><span className="home-offer-price">{rupees(item.price)}</span></div>
               <span className="home-offer-label">{item.cadence.toUpperCase()}</span>
@@ -1250,6 +1251,17 @@ function App() {
     () => JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[],
   );
   const practiceStreak = getPracticeStreak(practiceDays);
+  // Plan day 1 is the day the student first actually practised, so the daily task
+  // describes the sheet they have already started rather than a fresh 84-day promise.
+  const [planStart, setPlanStart] = useState<string>(() => {
+    const saved = localStorage.getItem("codexsheet-plan-start");
+    if (saved) return saved;
+    const days = JSON.parse(localStorage.getItem("codexsheet-practice-days") ?? "[]") as string[];
+    const start = days.length ? days.reduce((earliest, day) => (day < earliest ? day : earliest)) : localDateKey(new Date());
+    localStorage.setItem("codexsheet-plan-start", start);
+    return start;
+  });
+
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -1492,6 +1504,27 @@ function App() {
     setCursorNumber(next.number);
     setStudyNumber(next.number);
     window.setTimeout(() => document.querySelector<HTMLElement>(`[data-row="${next.number}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 40);
+  }
+
+  /** Opens a row today's task is asking for. The browse mode switches to weeks -
+      the axis the plan itself is cut on - and every filter is cleared, so the row
+      is guaranteed to be in the DOM before the page scrolls to it. */
+  function openDailyTask(problem: Problem) {
+    setSheetMode("week");
+    setSheetGroup("");
+    setStatus("All status");
+    setPattern("All patterns");
+    setDifficulty("All levels");
+    setQuery("");
+    setCursorNumber(problem.number);
+    setStudyNumber(problem.number);
+    window.setTimeout(() => document.querySelector<HTMLElement>(`[data-row="${problem.number}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
+  }
+
+  function restartPlan() {
+    const today = localDateKey(new Date());
+    localStorage.setItem("codexsheet-plan-start", today);
+    setPlanStart(today);
   }
 
   // Every row currently in the DOM, in the order it is read top to bottom. The
@@ -2664,9 +2697,9 @@ function App() {
       )}
       {activeView === "roadmap" && lockedFor("roadmap") && (
         <ProductLock
-          product={productById("roadmap")!}
+          product={accessPass}
           checking={!unlocks.loaded}
-          onOpenStore={() => openCheckout("roadmap")}
+          onOpenStore={() => openCheckout("dsa250")}
           onRecheck={() => void unlocks.refresh()}
           onFreeRail={() => navigateToView("guru")}
         />
@@ -2680,7 +2713,7 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>A focused plan built around your progress and weekly availability.</p>
             </div>
-            <button type="button" className="roadmap-buy unlocked" onClick={() => openCheckout("dsa250")}>Unlock the 250-problem sheet · {rupees(productById("dsa250")!.price)} <ArrowRight size={15}/></button>
+            <button type="button" className="roadmap-buy unlocked" onClick={() => openCheckout("dsa250")}>Unlock everything · {rupees(accessPass.price)} <ArrowRight size={15}/></button>
           </header>
           <div className="roadmap-controls">
             <label>
@@ -3148,9 +3181,9 @@ function App() {
       )}
       {activeView === "patterns" && lockedFor("patterns") && (
         <ProductLock
-          product={productById("patterns")!}
+          product={accessPass}
           checking={!unlocks.loaded}
-          onOpenStore={() => openCheckout("patterns")}
+          onOpenStore={() => openCheckout("dsa250")}
           onRecheck={() => void unlocks.refresh()}
           onFreeRail={() => navigateToView("guru")}
         />
@@ -3189,6 +3222,7 @@ function App() {
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-progress"><Clock3 size={16}/></span><span className="problem-stat-label">{sheetVoice.stats.progress}</span><strong>{inProgress}<small> active</small></strong><span className="problem-stat-note">{sheetVoice.statsNote.progress}</span></div>
           <div className="problem-stat-card"><span className="problem-stat-icon problem-stat-pattern"><Target size={16}/></span><span className="problem-stat-label">{sheetVoice.stats.patterns}</span><strong>{patterns.length}<small> to explore</small></strong><span className="problem-stat-note">{sheetVoice.statsNote.patterns}</span></div>
         </div>
+        <DailyTaskRail startKey={planStart} nowKey={todayDateKey} statusOf={(number) => progress[number]?.status ?? "Todo"} onOpen={openDailyTask} onToggleSolved={(problem) => setProblemStatus(problem.number, progress[problem.number]?.status === "Solved" ? "Todo" : "Solved")} onRestart={restartPlan} />
         <StudentRepoCard group={sheetGroup} onImportGit={importFromGit} />
         <div className="problem-library-section-heading"><div><span>{sheetVoice.heading}</span><h3>Agle challenge pe <em>jaari rakho.</em></h3></div><div className="problem-library-heading-actions"><span className="problem-sync-state"><Check size={13}/>{user ? sheetVoice.syncCloud : sheetVoice.syncLocal}</span><button type="button" disabled={pattern === "All patterns"} onClick={() => setPatternTestOpen(pattern)} title={pattern === "All patterns" ? sheetVoice.headingTestIdle : sheetVoice.headingTest(pattern)}>{pattern === "All patterns" ? "4-sawal test" : sheetVoice.headingTest(pattern)} <ArrowRight size={13}/></button></div></div>
         <div className="sheet-browser">

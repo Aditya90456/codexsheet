@@ -23,7 +23,7 @@ import {
   whatsappHref,
   type MentorshipOrder,
 } from "./mentorship";
-import { codexSheetProducts, productById, railLabel, type ProductId } from "./products";
+import { accessPass, productById, railLabel, soldProducts, type ProductId } from "./products";
 import { useUnlocks, type Unlocks } from "./entitlements";
 
 type Order = { reference: string; plan: string; amount: number; status: string; filed_at: string; paytm_reference?: string };
@@ -78,7 +78,7 @@ export default function MentorshipPayments({
   const own = useUnlocks(fromApp ? null : (userId ?? null));
   const entitlements = fromApp ?? own;
   const [productId, setProductId] = useState<ProductId>(initialProduct);
-  const product = productById(productId) ?? codexSheetProducts[0]!;
+  const product = productById(productId) ?? accessPass;
   const [reference, setReference] = useState(() => orderReference(product));
   const [superseded, setSuperseded] = useState("");
   const [buyerName, setBuyerName] = useState(userName);
@@ -242,13 +242,13 @@ export default function MentorshipPayments({
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">FOUR PRODUCTS · ONE PAYMENT EACH</span>
-        <h1>CodexSheet products. <em>Pick exactly what you need.</em></h1>
-        <p>Each rail has its own price and its own lock: {codexSheetProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(", ")}. Pay one and only that one opens — the Deva editor, notes, chat, Guru and /radar stay free for everyone, and anyone who bought the old Sheet Pass keeps every rail forever. Paytm QR only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">{rupees(accessPass.price)} PASS · EVERY PAID RAIL</span>
+        <h1>CodexSheet products. <em>One pass, then Aditya&apos;s time.</em></h1>
+        <p>{soldProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(" and ")}. The pass opens all three paid rails at once — the 250-problem sheet, the roadmap board and the pattern course with its decks — and a session is priced apart because it buys an hour of a person. The Deva editor, notes, chat, Guru, labs and /radar stay free for everyone, and anyone who paid for a single rail before the pass keeps every rail. Paytm QR only, no card forms, no gateway.</p>
       </header>
 
       <div className="mentorship-shelf" role="group" aria-label="Choose a product">
-        {codexSheetProducts.map((item) => {
+        {soldProducts.map((item) => {
           const isOwned = entitlements.mentor || entitlements.owned[item.id];
           return (
             <button
@@ -493,9 +493,9 @@ export default function MentorshipPayments({
         </div>
       </section>
       <section className="mentorship-faq" aria-label="How the products work">
-        <article><strong>Four products, four fixed prices</strong><p>{codexSheetProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(", ")}. Each one opens its own rail and nothing else, and the server refuses a claim that does not carry the exact figure on the card.</p></article>
-        <article><strong>What stayed free</strong><p>The Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, chat, the calendar, the leaderboard, your certificate and /radar. You never need to pay to open the workspace - only those four rails have a price.</p></article>
-        <article><strong>If you paid before</strong><p>Anyone with a confirmed order placed before this catalogue keeps every rail open, free, forever - including the old pay-what-you-can Sheet Pass. Nothing you already bought is taken back, and the ledger still reads those receipts.</p></article>
+        <article><strong>One price for the workspace</strong><p>{soldProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(", ")}. The pass opens all three paid rails and the server refuses a claim that does not carry the exact figure on the card, so what you read here is what unlocks.</p></article>
+        <article><strong>What stayed free</strong><p>The Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, chat, the calendar, the leaderboard, your certificate and /radar. You never need to pay to open the workspace - only the sheet, the roadmap board and the pattern films have a price, and one {rupees(accessPass.price)} payment covers all three.</p></article>
+        <article><strong>If you paid before</strong><p>Anyone with a confirmed order placed before the pass - the ₹100 sheet, the ₹159 roadmap, the ₹200 course or the old pay-what-you-can Sheet Pass - keeps every rail open, free, forever. Nothing you already bought is taken back, and the ledger still reads those receipts.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya once your session claim is confirmed - no per-question fee, and the 1:1 Google Meet slot is one you pick yourself.</p></article>
         <article><strong>How payment is confirmed</strong><p>Pay the figure on Paytm, then record the reference and UTR here - or WhatsApp the receipt screenshot to {whatsapp.display}. The claim is confirmed as it lands, so the rail stops asking for money straight away, and Aditya reconciles your UTR against his statement afterwards. That is why the UTR and the screenshot are both required.</p></article>
         <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if it was not worth it, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>

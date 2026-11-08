@@ -91,7 +91,7 @@ begin
     else 'CodexSheet session ' || replace(v_when_label, ' IST', '') || ' - join link inside'
   end;
 
-  v_html := '<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;">'
+  v_html := '<div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#130c0c;">'
     || '<p style="margin:0 0 14px;font-size:15px;">Hi ' || v_safe_name || ',</p>'
     || '<p style="margin:0 0 14px;font-size:15px;">Your CodexSheet 1:1 session is booked.'
     || case when v_when_label = '' then ' Aditya will confirm the hour with you on WhatsApp.'
@@ -100,16 +100,16 @@ begin
     || '<p style="margin:0 0 18px;font-size:15px;">Reference <strong>'
     || replace(coalesce(new.reference, ''), '&', '&amp;') || '</strong>.</p>'
     || '<p style="margin:0 0 16px;">'
-    || '<a href="' || v_link || '" style="display:inline-block;background:#1152d0;color:#ffffff;'
+    || '<a href="' || v_link || '" style="display:inline-block;background:#d01119;color:#ffffff;'
     || 'padding:12px 22px;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none;">'
     || 'Join on Google Meet</a></p>'
-    || '<p style="margin:0 0 6px;font-size:13px;color:#4b5563;">Or open it directly: '
-    || '<a href="' || v_link || '" style="color:#1152d0;">' || replace(v_link, '&', '&amp;') || '</a></p>'
+    || '<p style="margin:0 0 6px;font-size:13px;color:#634b4e;">Or open it directly: '
+    || '<a href="' || v_link || '" style="color:#d01119;">' || replace(v_link, '&', '&amp;') || '</a></p>'
     || case when v_cal = '' then ''
       else '<p style="margin:14px 0 0;font-size:13px;">'
-        || '<a href="' || replace(v_cal, '&', '&amp;') || '" style="color:#1152d0;">Add it to Google Calendar</a></p>'
+        || '<a href="' || replace(v_cal, '&', '&amp;') || '" style="color:#d01119;">Add it to Google Calendar</a></p>'
     end
-    || '<p style="margin:20px 0 0;font-size:13px;color:#4b5563;">Join a few minutes early. '
+    || '<p style="margin:20px 0 0;font-size:13px;color:#634b4e;">Join a few minutes early. '
     || 'If the time needs to move, reply to this mail or message Aditya on WhatsApp at +91 833587 3311.</p>'
     || '<p style="margin:16px 0 0;font-size:14px;">Aditya Bakshi<br/>CodexSheet - codexsheet.in/mentees</p>'
     || '</div>';
@@ -150,7 +150,7 @@ begin
       v_mentor_mail, 'Aditya Bakshi',
       left(case when v_to = '' then 'CodexSheet - no mail address for ' || v_name || ', link not mailed'
         else 'CodexSheet - session invite mailed to ' || v_name || ' at ' || v_to end, 200),
-      '<div style="font-family:ui-sans-serif,system-ui;color:#111827;font-size:14px;">'
+      '<div style="font-family:ui-sans-serif,system-ui;color:#130c0c;font-size:14px;">'
         || '<p>' || (case when v_to = ''
             then 'This session has no email on the record, so the student was not mailed. Send the link yourself on WhatsApp (+91 833587 3311).'
             else 'The invite below went to <strong>' || v_to || '</strong> and leaves with the next notification run.' end)

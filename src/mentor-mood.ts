@@ -19,9 +19,11 @@ export type MoodProfile = {
   stepSeconds: number;
 };
 
+// The glows follow the red theme except `think`: that violet is what separates
+// "working it out" from the warm moods, not brand colour, so it stayed.
 export const moodProfiles: Record<MentorMood, MoodProfile> = {
-  calm: { label: "calm", browAngle: 0, browLift: 0, mouthCurve: 0.22, mouthWidth: 0.62, eyeOpen: 1, blush: 0, headTilt: -2, glow: "#3b82f6", rate: 0.95, pitch: 0.98, stepSeconds: 6.5 },
-  happy: { label: "smiling", browAngle: -4, browLift: 2, mouthCurve: 0.72, mouthWidth: 0.74, eyeOpen: 0.86, blush: 0.35, headTilt: 3, glow: "#60a5fa", rate: 1.04, pitch: 1.12, stepSeconds: 6 },
+  calm: { label: "calm", browAngle: 0, browLift: 0, mouthCurve: 0.22, mouthWidth: 0.62, eyeOpen: 1, blush: 0, headTilt: -2, glow: "#f63b4a", rate: 0.95, pitch: 0.98, stepSeconds: 6.5 },
+  happy: { label: "smiling", browAngle: -4, browLift: 2, mouthCurve: 0.72, mouthWidth: 0.74, eyeOpen: 0.86, blush: 0.35, headTilt: 3, glow: "#fa6077", rate: 1.04, pitch: 1.12, stepSeconds: 6 },
   laugh: { label: "laughing", browAngle: -8, browLift: 4, mouthCurve: 1, mouthWidth: 0.9, eyeOpen: 0.34, blush: 0.75, headTilt: 6, glow: "#fbbf24", rate: 1.14, pitch: 1.32, stepSeconds: 5 },
   angry: { label: "annoyed", browAngle: 16, browLift: -3, mouthCurve: -0.5, mouthWidth: 0.5, eyeOpen: 0.78, blush: 0, headTilt: -6, glow: "#f87171", rate: 1.22, pitch: 0.82, stepSeconds: 5.5 },
   think: { label: "thinking", browAngle: -10, browLift: 3, mouthCurve: 0.05, mouthWidth: 0.42, eyeOpen: 0.92, blush: 0, headTilt: 8, glow: "#a78bfa", rate: 0.86, pitch: 0.94, stepSeconds: 7.5 },

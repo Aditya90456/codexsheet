@@ -2,13 +2,13 @@
    this page is served to signed-in students and to strangers alike. */
 .rad,
 .rad-public {
-  --rad-ink: #e6eefb;
-  --rad-dim: #8ea5c3;
-  --rad-line: #22354f;
-  --rad-surface: #131f33;
-  --rad-canvas: #0c1526;
-  --rad-soft: #17263d;
-  --rad-accent: #7cb3fb;
+  --rad-ink: #fbe6e8;
+  --rad-dim: #c38e95;
+  --rad-line: #26181a;
+  --rad-surface: #180e0f;
+  --rad-canvas: #120a0a;
+  --rad-soft: #1d1112;
+  --rad-accent: #fb7c8d;
   --rad-good: #4ade80;
   --rad-bad: #f3a3a3;
   --rad-warn: #f6b26b;
@@ -45,7 +45,7 @@
   cursor: pointer;
   transition: transform .12s ease, border-color .12s ease, background .12s ease;
 }
-.rad-primary { border: 0; background: var(--rad-accent); color: #06101f; }
+.rad-primary { border: 0; background: var(--rad-accent); color: #0e0607; }
 .rad-primary:hover { transform: translateY(-1px); }
 .rad-ghost { border: 1px solid var(--rad-line); background: transparent; color: var(--rad-ink); }
 .rad-ghost:hover { border-color: var(--rad-accent); color: var(--rad-accent); }
@@ -106,7 +106,7 @@
   cursor: pointer;
 }
 .rad-chips button:hover { color: var(--rad-ink); border-color: var(--rad-accent); }
-.rad-chips button.on { background: var(--rad-accent); border-color: var(--rad-accent); color: #06101f; }
+.rad-chips button.on { background: var(--rad-accent); border-color: var(--rad-accent); color: #0e0607; }
 
 .rad-blurb { margin: 14px 0 0; font-size: 13px; line-height: 1.6; color: var(--rad-dim); }
 .rad-blurb strong { color: var(--rad-ink); }

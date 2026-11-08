@@ -2,13 +2,13 @@
    served to a signed-in student or to a stranger who scanned a flyer. */
 .exp,
 .exp-public {
-  --exp-ink: #e6eefb;
-  --exp-dim: #8ea5c3;
-  --exp-line: #22354f;
-  --exp-surface: #131f33;
-  --exp-canvas: #0c1526;
-  --exp-soft: #17263d;
-  --exp-accent: #7cb3fb;
+  --exp-ink: #fbe6e8;
+  --exp-dim: #c38e95;
+  --exp-line: #26181a;
+  --exp-surface: #180e0f;
+  --exp-canvas: #120a0a;
+  --exp-soft: #1d1112;
+  --exp-accent: #fb7c8d;
   --exp-good: #4ade80;
   --exp-bad: #f3a3a3;
   --exp-warn: #f6b26b;
@@ -45,7 +45,7 @@
   font: 700 13px/1 "Inter", system-ui, sans-serif;
   cursor: pointer;
 }
-.exp-primary { border: 0; background: var(--exp-accent); color: #0c1526; }
+.exp-primary { border: 0; background: var(--exp-accent); color: #120a0a; }
 .exp-primary:hover { filter: brightness(1.07); }
 .exp-primary:disabled { opacity: .6; cursor: progress; }
 .exp-ghost { border: 1px dashed var(--exp-line); background: transparent; color: var(--exp-dim); }

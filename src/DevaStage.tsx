@@ -71,19 +71,19 @@ export default function DevaStage({ lesson, step, stepIndex, playing }: Props) {
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
       const scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x0d0b12, 0.05);
+      scene.fog = new THREE.FogExp2(0x090807, 0.05);
       const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
       camera.position.set(0, 2.2, 11);
 
-      scene.add(new THREE.HemisphereLight(0x8fa6d9, 0x1a1016, 1.5));
+      scene.add(new THREE.HemisphereLight(0xd98f90, 0x1a1016, 1.5));
       const key = new THREE.DirectionalLight(0xffb066, 2.3);
       key.position.set(3.2, 5.5, 4.5);
       scene.add(key);
-      const rim = new THREE.PointLight(0x5b8cff, 24, 24);
+      const rim = new THREE.PointLight(0xff5b5b, 24, 24);
       rim.position.set(-4, 1.8, -3);
       scene.add(rim);
 
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(44, 26), new THREE.MeshStandardMaterial({ color: 0x120f16, roughness: 0.95, metalness: 0.05 }));
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(44, 26), new THREE.MeshStandardMaterial({ color: 0x0b0b09, roughness: 0.95, metalness: 0.05 }));
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -0.78;
       scene.add(floor);

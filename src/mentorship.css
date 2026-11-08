@@ -3,13 +3,13 @@
    Everything is coloured through the --ms-* variables. */
 .mentorship {
   --ms-surface: #fff;
-  --ms-canvas: #f6f9fe;
-  --ms-ink: #183153;
-  --ms-muted: #71869f;
-  --ms-line: #dfe8f5;
-  --ms-accent: #3478df;
+  --ms-canvas: #fef6f7;
+  --ms-ink: #261517;
+  --ms-muted: #9f7178;
+  --ms-line: #f5dfe1;
+  --ms-accent: #df3445;
   --ms-accent-ink: #fff;
-  --ms-paytm: #0f4fd8;
+  --ms-paytm: #d80f13;
   --ms-flag: #d08b2c;
   --ms-good: #2f9c62;
   --ms-warn: #c2622c;
@@ -18,23 +18,23 @@
   padding: 22px clamp(16px, 3vw, 34px) 46px;
 }
 
-:root[data-theme="blue"] .mentorship {
-  --ms-surface: #131f33;
-  --ms-canvas: #0c1526;
-  --ms-ink: #e6eefb;
-  --ms-muted: #8ea5c3;
-  --ms-line: #22354f;
-  --ms-accent: #7cb3fb;
-  --ms-accent-ink: #131f33;
-  --ms-paytm: #8fb4ff;
-  --ms-flag: #7dd3fc;
+:root[data-theme="red"] .mentorship {
+  --ms-surface: #180e0f;
+  --ms-canvas: #120a0a;
+  --ms-ink: #fbe6e8;
+  --ms-muted: #c38e95;
+  --ms-line: #26181a;
+  --ms-accent: #fb7c8d;
+  --ms-accent-ink: #180e0f;
+  --ms-paytm: #ff8f92;
+  --ms-flag: #fc7dad;
   --ms-good: #74c08c;
-  --ms-warn: #7dd3fc;
+  --ms-warn: #fc7dad;
 }
 
 
-.mentorship-public { min-height: 100vh; background: #f6f9fe; }
-:root[data-theme="blue"] .mentorship-public { background: #0c1526; }
+.mentorship-public { min-height: 100vh; background: #fef6f7; }
+:root[data-theme="red"] .mentorship-public { background: #120a0a; }
 .mentorship-public .mentorship { min-height: 100vh; box-sizing: border-box; }
 
 .mentorship-head { max-width: 780px; margin: 0 auto 22px; }
@@ -322,16 +322,16 @@
    inside the marketplace tree. */
 .payqr { display: grid; gap: 8px; justify-items: start; }
 .payqr-img { border-radius: 12px; background: #fff; max-width: 100%; height: auto; }
-.payqr-meter { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ms-muted, #8ea5c3); font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .06em; }
-.payqr-meter em { color: var(--ms-flag, #7dd3fc); font-style: normal; }
+.payqr-meter { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ms-muted, #c38e95); font-family: "DM Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .06em; }
+.payqr-meter em { color: var(--ms-flag, #fc7dad); font-style: normal; }
 .payqr-dead .payqr-meter span { color: #f6b26b; }
-.payqr-dead-panel { display: grid; gap: 8px; min-width: 168px; max-width: 220px; padding: 14px; border: 1px dashed var(--ms-warn, #c2622c); border-radius: 12px; background: #c2622c1f; color: var(--ms-ink, #e6eefb); font-size: 12px; line-height: 1.45; }
+.payqr-dead-panel { display: grid; gap: 8px; min-width: 168px; max-width: 220px; padding: 14px; border: 1px dashed var(--ms-warn, #c2622c); border-radius: 12px; background: #c2622c1f; color: var(--ms-ink, #fbe6e8); font-size: 12px; line-height: 1.45; }
 .payqr-dead-panel strong { font-size: 13px; }
-.payqr-refresh { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 8px 12px; border: 0; border-radius: 999px; background: var(--ms-paytm, #8fb4ff); color: #131f33; font-size: 12px; font-weight: 700; cursor: pointer; }
+.payqr-refresh { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 8px 12px; border: 0; border-radius: 999px; background: var(--ms-paytm, #ff8f92); color: #180e0f; font-size: 12px; font-weight: 700; cursor: pointer; }
 .payqr-refresh:hover { filter: brightness(1.08); }
 
 .mentorship-qr-restore { font-size: 12px; }
-.mentorship-qr-restore button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: none; color: var(--ms-accent, #7cb3fb); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.mentorship-qr-restore button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: none; color: var(--ms-accent, #fb7c8d); font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
 
 /* The catalogue shelf: one card per product, and the chosen card drives the
    checkout below it. The price on the card is the price the server accepts. */

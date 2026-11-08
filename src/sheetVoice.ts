@@ -103,8 +103,30 @@ export const videoVoice = {
   privacy: "Play dabane tak player embed khaali rehta hai - poster ke alawa YouTube se kuch nahi aata.",
 } as const;
 
-export type HauslaState = {
-  solved: number;
+/** What the day strip above the sheet says. The plan is not a new promise - it is
+ * the sheet's own 12 weeks cut into 84 days, so this copy only ever reports what
+ * those rows already say. */
+export const dailyVoice = {
+  eyebrow: "AAJ KA TASK",
+  day: (day: number, total: number) => `Day ${day} / ${total}`,
+  week: (week: number, slot: number) => `Week ${week} ka din ${slot + 1}`,
+  count: (rows: number) => (rows === 1 ? "1 problem aaj" : `${rows} problems aaj`),
+  open: "Kholo",
+  markDone: "Aaj ke liye ho gaya",
+  undo: "Wapas Todo pe rakho",
+  solvedToday: (done: number, rows: number) => `${done} / ${rows} aaj ho gaye`,
+  allDone: "Aaj ka set poora. Kal ka task raat 12 se.",
+  behind: (rows: number) => `Plan se ${rows} peeche`,
+  ahead: (rows: number) => `Plan se ${rows} aage`,
+  even: "Bilkul plan pe ho.",
+  dueBy: (expected: number, solved: number) => `Aaj tak plan ${expected} solve karne maange tha - tum ${solved} kar chuke ho.`,
+  finished: (total: number) => `${total} din ka plan poora. Ab naya plan shuru karo ya pattern films dohrao.`,
+  restart: "Naya plan aaj se",
+  anchor: (start: string) => `Plan ka din 1 = ${start}.`,
+  note: "Ye 250 sheet ke apne 12 hafte hain - bas din ke hisab se baante hue. Koi naya waada nahi.",
+} as const;
+
+export type HauslaState = {  solved: number;
   total: number;
   inProgress: number;
   streak: number;

@@ -1,16 +1,19 @@
-// CodexSheet sells four things. This module is the only place a price is written
-// down, because the last time pricing lived in strings the page said ₹199 while
-// the database still refused anything under ₹800 — and the student who paid the
-// advertised price got nothing.
+// CodexSheet sells two things: a ₹10 pass that opens every rail, and Aditya's own
+// time. This module is the only place a price is written down, because the last
+// time pricing lived in strings the page said ₹199 while the database still
+// refused anything under ₹800 — and the student who paid the advertised price got
+// nothing.
 //
-// Two rules keep this honest:
+// Three rules keep this honest:
 //   1. Every price here has a matching CHECK on public.mentorship_orders
-//      (supabase/migrations/20261106_codexsheet_products.sql). The row cannot land
+//      (supabase/migrations/20261108_all_access_pass.sql). The row cannot land
 //      at any other figure, so the page cannot over-promise.
 //   2. `gate` says exactly which view the product opens. Copy may describe more,
-//      but only what is in `gate` is locked, and what was already free stays free
-//      for anyone who paid under the old Sheet Pass — they are grandfathered by
-//      `unlocks_all` in the same migration.
+//      but only what is in `gate` is locked, and what was already free stays free.
+//   3. The ids a student can no longer buy (`sold: false`) stay in this list,
+//      because public.codexsheet_unlock_status() answers per id and an old ₹159
+//      roadmap claim must keep opening the roadmap. Buying the pass sets
+//      `unlocks_all`, which satisfies every id at once.
 
 import { rupees } from "./mentorship";
 
@@ -30,6 +33,8 @@ export type CodexSheetProduct = {
   gate: WorkspaceGate[];
   /** A session is bought again for every call; a sheet is bought once and kept. */
   repeatable: boolean;
+  /** On the checkout page. The rest of the list is entitlement history, not stock. */
+  sold: boolean;
 };
 
 /** The views a product can lock. Mirrors WorkspaceView in App.tsx, without the union. */
@@ -38,28 +43,32 @@ export type WorkspaceGate = "problems" | "roadmap" | "patterns" | "mentees";
 export const codexSheetProducts: CodexSheetProduct[] = [
   {
     id: "dsa250",
-    name: "CodexSheet 250",
+    name: "CodexSheet All Access",
     cadence: "one payment · never expires",
-    price: 100,
-    tag: "SHEET",
-    oneLine: "The 250-problem DSA sheet, every pattern and every difficulty.",
+    price: 10,
+    tag: "ALL ACCESS",
+    oneLine: "Every paid rail in the workspace for ₹10 - the sheet, the roadmap and the pattern course.",
     includes: [
       "All 250 problems with your notes, status, XP and streak saved to your account",
+      "Aaj ka task - the same 250 rows cut into 84 days, ticked off from the top of the sheet",
+      "Every row opens its own approach ladder, the traps it falls into and a step-by-step whiteboard",
       "The sheet as a git repo - clone it, commit your solves, paste the log back for credit",
-      "Every pattern filter, the 12-week stage ladder and the timed sets",
+      "The 12-week roadmap board, with the pace counted from your real sheet",
+      "All 16 pattern films, the narration in eight Indian languages and the .pptx deck per pattern",
       "Solve milestones that feed the leaderboard and your certificate",
       "Refund inside 5 days of the confirmed payment if it was not worth it",
     ],
-    gate: ["problems"],
+    gate: ["problems", "roadmap", "patterns"],
     repeatable: false,
+    sold: true,
   },
   {
     id: "roadmap",
     name: "CodexSheet Roadmap",
-    cadence: "one payment · never expires",
+    cadence: "folded into the pass",
     price: 159,
     tag: "PLAN",
-    oneLine: "The 12-week roadmap board: what to study in which week, and why.",
+    oneLine: "The 12-week roadmap board - now part of the ₹10 pass, kept here for the claims already made.",
     includes: [
       "The node-graph board with all 12 weeks, their patterns and their outcomes",
       "The pace counted from the real sheet, so no week promises a number that does not exist",
@@ -68,14 +77,15 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     ],
     gate: ["roadmap"],
     repeatable: false,
+    sold: false,
   },
   {
     id: "patterns",
     name: "CodexSheet Pattern Course",
-    cadence: "one payment · never expires",
+    cadence: "folded into the pass",
     price: 200,
     tag: "COURSE",
-    oneLine: "Sixteen patterns as spoken lesson films, with the deck for each.",
+    oneLine: "Sixteen patterns as spoken lesson films - now part of the ₹10 pass, kept for the claims already made.",
     includes: [
       "All 16 pattern films: the mechanism runs on screen while the captions read themselves",
       "Narration in eight Indian languages, with the skeleton line spoken as it highlights",
@@ -85,6 +95,7 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     ],
     gate: ["patterns"],
     repeatable: false,
+    sold: false,
   },
   {
     id: "session",
@@ -101,8 +112,15 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     ],
     gate: ["mentees"],
     repeatable: true,
+    sold: true,
   },
 ];
+
+/** What a student can actually buy today, in the order the checkout shows it. */
+export const soldProducts = codexSheetProducts.filter((product) => product.sold);
+
+/** The pass every rail points its lock card at. */
+export const accessPass = productById("dsa250")!;
 
 export function productById(id: string): CodexSheetProduct | undefined {
   return codexSheetProducts.find((product) => product.id === id);
@@ -118,8 +136,8 @@ export const gateLabels: Record<WorkspaceGate, string> = {
 
 /** What buying this product opens, or the delivery promise when it buys a service. */
 export function railLabel(product: CodexSheetProduct): string {
-  const gate = product.gate[0];
-  return gate ? gateLabels[gate] : "the delivery Aditya sends you";
+  if (!product.gate.length) return "the delivery Aditya sends you";
+  return product.gate.map((gate) => gateLabels[gate]).join(", ");
 }
 
 export function productPrice(id: ProductId): number {
@@ -149,4 +167,4 @@ export const legacyPlans: Record<string, string> = {
 };
 
 /** Everything a first-time buyer can get in one sitting, for the checkout page. */
-export const catalogueTotal = codexSheetProducts.reduce((sum, product) => sum + product.price, 0);
+export const catalogueTotal = soldProducts.reduce((sum, product) => sum + product.price, 0);

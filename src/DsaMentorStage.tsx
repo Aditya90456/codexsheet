@@ -27,35 +27,35 @@ const MAX_KEYS = 16;
 const MAX_STEPS = 64;
 
 const palette = {
-  background: "#0a1220",
-  surface: "#131f33",
-  line: "#243449",
-  ink: "#e8eff9",
-  primary: "#3b82f6",
-  highlight: "#60a5fa",
-  muted: "#a9c1de",
+  background: "#0f0809",
+  surface: "#180e0f",
+  line: "#24181a",
+  ink: "#f5e2e4",
+  primary: "#f63b4a",
+  highlight: "#fa6077",
+  muted: "#dea9b1",
 };
 
 const tint = {
-  background: 0x0a1220,
-  surface: 0x131f33,
-  line: 0x243449,
-  ink: 0xe8eff9,
-  primary: 0x3b82f6,
-  highlight: 0x60a5fa,
-  block: 0x1b2b44,
+  background: 0x0f0809,
+  surface: 0x180e0f,
+  line: 0x24181a,
+  ink: 0xf5e2e4,
+  primary: 0xf63b4a,
+  highlight: 0xfa6077,
+  block: 0x201415,
 };
 
 const figures = new Set<Figure>(["array", "hash", "stack", "queue", "list", "tree", "graph", "grid", "window"]);
 const slabFigures = new Set<Figure>(["array", "window", "queue", "list", "hash"]);
 
 const moodLights: Record<Mood, { key: number; rim: number; keyPower: number; rimPower: number }> = {
-  calm: { key: 0xcfe2ff, rim: 0x3b82f6, keyPower: 2.1, rimPower: 20 },
-  happy: { key: 0xe4f1ff, rim: 0x60a5fa, keyPower: 2.4, rimPower: 24 },
-  laugh: { key: 0xf3f8ff, rim: 0x7ab6ff, keyPower: 2.7, rimPower: 28 },
-  angry: { key: 0xffa45c, rim: 0x3b82f6, keyPower: 2.9, rimPower: 15 },
-  think: { key: 0xa9c4e8, rim: 0x24509a, keyPower: 1.6, rimPower: 13 },
-  proud: { key: 0xdce900, rim: 0x9ecbff, keyPower: 2.6, rimPower: 34 },
+  calm: { key: 0xffcfd4, rim: 0xf63b4a, keyPower: 2.1, rimPower: 20 },
+  happy: { key: 0xffe4e9, rim: 0xfa6077, keyPower: 2.4, rimPower: 24 },
+  laugh: { key: 0xf3f8ff, rim: 0xff7a8e, keyPower: 2.7, rimPower: 28 },
+  angry: { key: 0xffa45c, rim: 0xf63b4a, keyPower: 2.9, rimPower: 15 },
+  think: { key: 0xe8a9b1, rim: 0x9a242d, keyPower: 1.6, rimPower: 13 },
+  proud: { key: 0xdce900, rim: 0xff9eae, keyPower: 2.6, rimPower: 34 },
 };
 
 function moodSetting(mood?: string) {
@@ -214,7 +214,7 @@ const captionStyle: CSSProperties = {
   flexWrap: "wrap",
   pointerEvents: "none",
   fontFamily: "ui-sans-serif, system-ui, sans-serif",
-  textShadow: "0 2px 12px #0a1220",
+  textShadow: "0 2px 12px #0f0809",
 };
 
 const badgeStyle: CSSProperties = {
@@ -223,7 +223,7 @@ const badgeStyle: CSSProperties = {
   left: "16px",
   padding: "4px 10px",
   borderRadius: "999px",
-  background: "rgba(19, 31, 51, 0.72)",
+  background: "rgba(24, 14, 15, 0.72)",
   border: `1px solid ${palette.line}`,
   color: palette.highlight,
   font: "600 11px/1.6 ui-monospace, Menlo, Consolas, monospace",
@@ -276,7 +276,7 @@ function barStyle(ratio: number, glowing: boolean, committed: boolean): CSSPrope
 function chip(glowing: boolean, committed: boolean): CSSProperties {
   return {
     ...chipBase,
-    background: glowing ? palette.primary : committed ? palette.surface : "#0e1928",
+    background: glowing ? palette.primary : committed ? palette.surface : "#130b0c",
     borderColor: glowing ? palette.highlight : palette.line,
     opacity: committed ? 1 : 0.4,
   };
@@ -417,14 +417,14 @@ function createStage(THREE: any, canvas: HTMLCanvasElement, model: Model, read: 
   camera.position.set(0, model.cameraY, model.cameraZ);
   camera.lookAt(0, 0.9, 0);
 
-  const ambient = new THREE.AmbientLight(0x9fc3ff, 0.5);
-  const keyLight = new THREE.DirectionalLight(0xcfe2ff, 2.1);
+  const ambient = new THREE.AmbientLight(0xff9fa6, 0.5);
+  const keyLight = new THREE.DirectionalLight(0xffcfd4, 2.1);
   keyLight.position.set(3.6, 7.5, 6.2);
-  const rimLight = new THREE.PointLight(0x3b82f6, 20, 46, 2);
+  const rimLight = new THREE.PointLight(0xf63b4a, 20, 46, 2);
   rimLight.position.set(-4.8, 2.4, -4.2);
   world.add(ambient, keyLight, rimLight);
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x0c1626, roughness: 0.96 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x120a0a, roughness: 0.96 }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.03;
   world.add(floor);

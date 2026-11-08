@@ -33,3 +33,54 @@ table { caption-side: top; }
 
 img, svg, video, canvas, audio, iframe, embed, object { vertical-align: baseline; }
 hr { margin: .5em auto; border: 1px inset; opacity: 1; }
+
+/* Bootstrap still ships its own blue in the raw classes the workspace uses - the
+   sheet's search box, the rail pills, progress bars and badges. The app palette is
+   red on black now, so those tokens are retinted once here instead of per page.
+   These are the same values the recoloured styles.css landed on, so a Bootstrap
+   focus ring and an app glow are the same red. */
+:root,
+[data-bs-theme="dark"] {
+  --bs-primary: #f63b4a;
+  --bs-primary-rgb: 246, 59, 74;
+  --bs-link-color: #fa6077;
+  --bs-link-color-rgb: 250, 96, 119;
+  --bs-link-hover-color: #f5e2e4;
+  --bs-link-hover-color-rgb: 245, 226, 228;
+  --bs-focus-ring-color: rgba(246, 59, 74, 0.25);
+  --bs-border-color: #2b1f21;
+}
+
+.btn-primary {
+  --bs-btn-bg: #f63b4a;
+  --bs-btn-border-color: #f63b4a;
+  --bs-btn-color: #130c0c;
+  --bs-btn-hover-bg: #df3445;
+  --bs-btn-hover-border-color: #df3445;
+  --bs-btn-hover-color: #130c0c;
+  --bs-btn-active-bg: #c22b3a;
+  --bs-btn-active-border-color: #c22b3a;
+  --bs-btn-disabled-bg: #6b2027;
+  --bs-btn-disabled-border-color: #6b2027;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: #fa6077;
+  --bs-btn-border-color: #6b2027;
+  --bs-btn-hover-bg: #f63b4a;
+  --bs-btn-hover-border-color: #f63b4a;
+  --bs-btn-hover-color: #130c0c;
+  --bs-btn-active-bg: #df3445;
+  --bs-btn-active-border-color: #df3445;
+}
+
+.nav-pills .nav-link.active { --bs-nav-pills-link-active-bg: #f63b4a; --bs-nav-pills-link-active-color: #130c0c; }
+.progress-bar { --bs-progress-bar-bg: #f63b4a; }
+.list-group-item.active { --bs-list-group-active-bg: #261517; --bs-list-group-active-border-color: #6b2027; --bs-list-group-active-color: #f5e2e4; }
+.badge.bg-primary, .bg-primary { background-color: #f63b4a !important; color: #130c0c; }
+.border-primary { border-color: #f63b4a !important; }
+.form-control:focus, .form-select:focus { border-color: #df3445; box-shadow: 0 0 0 0.25rem rgba(246, 59, 74, 0.22); }
+.form-check-input:checked { background-color: #f63b4a; border-color: #f63b4a; }
+.form-check-input:focus { border-color: #df3445; box-shadow: 0 0 0 0.25rem rgba(246, 59, 74, 0.22); }
+.text-primary { color: #f63b4a !important; }
+.link-primary { color: #fa6077 !important; --bs-link-hover-color: #f5e2e4; }

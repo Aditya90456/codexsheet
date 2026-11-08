@@ -2,40 +2,40 @@
    All colours are themed variables so the board reads correctly in light and midnight. */
 .roadmap-board {
   --rb-surface: #fff;
-  --rb-canvas: #f6f9fe;
-  --rb-canvas-dot: rgba(52, 120, 223, .22);
-  --rb-line: #dfe8f5;
-  --rb-ink: #183153;
-  --rb-muted: #71869f;
-  --rb-accent: #3478df;
+  --rb-canvas: #fef6f7;
+  --rb-canvas-dot: rgba(223,52,69, .22);
+  --rb-line: #f5dfe1;
+  --rb-ink: #261517;
+  --rb-muted: #9f7178;
+  --rb-accent: #df3445;
   --rb-node-surface: #fff;
-  --rb-node-line: #d7e3f2;
-  --rb-edge: #93aed2;
-  --rb-edge-optional: #c3d1e4;
+  --rb-node-line: #f2d7db;
+  --rb-edge: #d2939b;
+  --rb-edge-optional: #e4c3c7;
   --rb-done: #2f9c62;
   --rb-active: #d08b2c;
-  --rb-todo: #b6c4d6;
+  --rb-todo: #d6b6ba;
   display: grid;
   gap: 12px;
   padding: 18px 22px 22px;
   border-top: 1px solid var(--rb-line);
 }
 
-:root[data-theme="blue"] .roadmap-board {
-  --rb-surface: #131f33;
-  --rb-canvas: #0c1526;
-  --rb-canvas-dot: rgba(124, 179, 251, .16);
-  --rb-line: #22354f;
-  --rb-ink: #e6eefb;
-  --rb-muted: #8ea5c3;
-  --rb-accent: #7cb3fb;
-  --rb-node-surface: #16243a;
-  --rb-node-line: #2a3f5c;
-  --rb-edge: #7fa1cc;
-  --rb-edge-optional: #33506f;
+:root[data-theme="red"] .roadmap-board {
+  --rb-surface: #180e0f;
+  --rb-canvas: #120a0a;
+  --rb-canvas-dot: rgba(251,124,141, .16);
+  --rb-line: #26181a;
+  --rb-ink: #fbe6e8;
+  --rb-muted: #c38e95;
+  --rb-accent: #fb7c8d;
+  --rb-node-surface: #1b1112;
+  --rb-node-line: #5c2a30;
+  --rb-edge: #cc7f8a;
+  --rb-edge-optional: #6f333e;
   --rb-done: #74c08c;
-  --rb-active: #60a5fa;
-  --rb-todo: #3b5675;
+  --rb-active: #fa6077;
+  --rb-todo: #753b45;
 }
 
 .roadmap-board-head {
@@ -201,12 +201,12 @@
   border-radius: 10px;
   color: var(--rb-muted);
   background: var(--rb-node-surface);
-  box-shadow: 0 8px 20px rgba(16, 26, 44, .1);
+  box-shadow: 0 8px 20px rgba(21,12,13, .1);
   text-align: left;
   cursor: pointer;
 }
 
-:root[data-theme="blue"] .roadmap-node { box-shadow: 0 10px 22px rgba(0, 0, 0, .28); }
+:root[data-theme="red"] .roadmap-node { box-shadow: 0 10px 22px rgba(0, 0, 0, .28); }
 
 .roadmap-node:hover { border-color: var(--rb-edge); transform: translateY(-1px); }
 .roadmap-node:focus-visible { outline: 0; box-shadow: 0 0 0 2px var(--rb-accent); }
