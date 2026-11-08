@@ -3,9 +3,15 @@
 // row that would open an empty panel.
 //   npx vite build --ssr scripts/study-check.mjs --outDir .study-ssr
 //   node .study-ssr/study-check.js
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { problems, patterns, topics } from "../src/dsaSheet.ts";
 import { patternCardByName } from "../src/dsaPatterns.ts";
 import { approachFor, boardFor, topicPlaybook, patternsForTopic } from "../src/problemCoach.ts";
+import { embedUrl, lessonHours, lessonLectures, lessonVideos, watchUrl, youTubeChannel } from "../src/love-babbar-lessons.ts";
+
+// The bundle runs from .study-ssr, so the repo files are read from the root.
+const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\.study-ssr\/$/, "");
 
 const failures = [];
 
@@ -93,6 +99,54 @@ if (seenLines.size < 8) failures.push(`hausla only has ${seenLines.size} distinc
 const toast = rewardVoice(problems[0], 10);
 if (!toast.includes("+10 XP")) failures.push(`reward toast lost the XP: ${toast}`);
 
+// The lesson rail under the sheet: its copy and the video table it prints.
+const { videoVoice } = await import("../src/sheetVoice.ts");
+const videoArgs = {
+  heading: [140, 96],
+  body: [topics.length, youTubeChannel],
+  lessonLabel: [12],
+  sheetJump: [24, "Trees & BSTs"],
+  showAll: [140],
+  totalNote: [96, 140, 9],
+  playFirst: ["Graphs & Topological Sort"],
+};
+for (const [key, value] of Object.entries(videoVoice)) {
+  if (typeof value === "function") {
+    const args = videoArgs[key];
+    if (!args) failures.push(`videoVoice.${key} has no sample call in the check`);
+    else if (!String(value(...args)).trim()) failures.push(`videoVoice.${key} printed nothing`);
+    continue;
+  }
+  if (!nonEmpty(value)) failures.push(`videoVoice.${key} is empty`);
+}
+
+// The rail is only honest while every row is a real, reachable video, so the
+// table is checked against the playlist dump it was generated from.
+const dump = JSON.parse(readFileSync(`${root}scripts/data/love-babbar-playlist.json`, "utf8"));
+if (lessonVideos.length !== dump.length) failures.push(`the lesson table has ${lessonVideos.length} rows, the playlist dump has ${dump.length}`);
+for (const item of dump) {
+  const row = lessonVideos.find((video) => video.videoId === item.id);
+  if (!row) failures.push(`playlist video ${item.id} (${item.title}) is missing from the lesson table`);
+  else if (row.runtime !== item.runtime) failures.push(`lecture ${row.lecture}: runtime ${row.runtime} is not the ${item.runtime} YouTube shows`);
+}
+for (const row of lessonVideos) {
+  if (!/^[a-zA-Z0-9_-]{11}$/.test(row.videoId)) failures.push(`lecture ${row.lecture}: "${row.videoId}" is not a video id`);
+  if (row.seconds <= 0) failures.push(`lecture ${row.lecture}: runtime "${row.runtime}" is not seconds`);
+  if (!row.title.trim()) failures.push(`${row.videoId}: a lesson with no title`);
+  if (row.topic && !topics.includes(row.topic)) failures.push(`lecture ${row.lecture}: topic ${row.topic} is not on the sheet`);
+  if (!row.topic && !row.patternLabel) failures.push(`lecture ${row.lecture}: neither a sheet topic nor a label`);
+  for (const name of row.patterns) if (!patterns.includes(name)) failures.push(`lecture ${row.lecture}: pattern ${name} is not on the sheet`);
+  if (row.kind === "lecture" && row.topic && !problems.some((problem) => problem.topic === row.topic)) failures.push(`lecture ${row.lecture}: topic ${row.topic} has no sheet rows`);
+  if (row.kind === "lecture" && !row.lecture) failures.push(`${row.videoId}: lecture row with no lecture number`);
+  if (embedUrl(row.videoId) !== `https://www.youtube-nocookie.com/embed/${row.videoId}?rel=0&modestbranding=1`) failures.push(`${row.videoId}: embed url drifted`);
+  if (watchUrl(row.videoId) !== `https://www.youtube.com/watch?v=${row.videoId}`) failures.push(`${row.videoId}: watch url drifted`);
+}
+const lectureRows = lessonVideos.filter((video) => video.kind === "lecture");
+if (lessonLectures.length !== lectureRows.length) failures.push("lessonLectures is not the lecture rows");
+if (lessonHours !== Math.round(lectureRows.reduce((total, row) => total + row.seconds, 0) / 3600)) failures.push("the hour count the rail prints is not the sum of the runtimes");
+// A lecture per sheet topic, or the rail's filter would land on an empty list.
+for (const topic of topics) if (!lectureRows.some((video) => video.topic === topic)) failures.push(`topic ${topic} has no lesson to play`);
+
 console.log(`rows checked: ${problems.length}`);
 console.log(`patterns with a live board: ${boards.size}/${patterns.length} · total board steps: ${steps}`);
 console.log(`topics with a playbook: ${topics.length}`);
@@ -100,5 +154,6 @@ console.log(`ladder range: ${Math.min(...problems.map((problem) => approachFor(p
 const sample = problems[0];
 console.log(`sample row: ${sample.number} ${sample.title} · ${sample.pattern} · board "${boardFor(sample).heading}" · ${boardFor(sample).frames.length} steps`);
 console.log(`hausla lines across the sheet: ${seenLines.size} · at 0: "${hauslaLine({ solved: 0, total: problems.length, inProgress: 0, streak: 0, percent: 0 }).line}"`);
+console.log(`lessons: ${lessonLectures.length} lecture + ${lessonVideos.length - lessonLectures.length} series update · ${lessonHours}h · ${youTubeChannel}`);
 console.log(failures.length ? `FAILURES (${failures.length}):\n` + failures.slice(0, 20).join("\n") : "no failures");
 if (failures.length) process.exitCode = 1;

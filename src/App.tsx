@@ -77,6 +77,8 @@ import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import DsaIde from "./DsaIde";
 import ProblemStudyPanel from "./ProblemStudyPanel";
+import LessonVideoRail from "./LessonVideoRail";
+import { lessonLectures } from "./love-babbar-lessons";
 import DsaCourseStudio from "./DsaCourseStudio";
 import RoadmapBoard from "./RoadmapBoard";
 import MentorshipPayments from "./MentorshipPayments";
@@ -166,7 +168,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar";
+type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "lessons";
 
 const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -195,6 +197,7 @@ const viewPaths: Record<WorkspaceView, string> = {
   studio: "/mentor-studio",
   experiences: "/experiences",
   radar: "/radar",
+  lessons: "/lessons",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -258,6 +261,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   radar: {
     title: "2027 interview questions, by round — CodexSheet Radar",
     description: "What the 2027 hiring cycle is actually asking: the AI-pairing round, reading code you did not write, defending your own project, designing around a model, behavioural answers and the DSA that still gates. 27 questions across 7 rounds, each linked to the write-up it came from.",
+  },
+  lessons: {
+    title: "140 free DSA video lessons, topic by topic — CodexSheet",
+    description: "Every lecture of the CodeHelp / Love Babbar placement series as its own lesson, sorted onto the 12 topics of the CodexSheet DSA sheet. Free, no sign-in, and each lecture says how many problems of its topic are waiting on the sheet.",
   },
 };
 
@@ -2292,14 +2299,36 @@ function App() {
 
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
-  // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar");
+  // money still gets taught and still gets to see the algorithms run. The lesson
+  // videos are the same promise: Babbar's own lectures, free, no sign-in.
+  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "lessons");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
   }
 
+  // One rail, three places: under the sheet on /problems, on its own /lessons
+  // page, and on the public /lessons page for a student who has not signed in.
+  const lessonRail = (
+    <LessonVideoRail
+      problems={problems}
+      pattern={pattern}
+      sheetLocked={sheetLocked}
+      onOpenTopic={(topicName) => {
+        setSheetMode("topic");
+        setSheetGroup(topicName);
+        setStatus("All status");
+        setPattern("All patterns");
+        navigateToView("problems");
+        window.setTimeout(() => document.querySelector(".problem-library-controls")?.scrollIntoView({ behavior: "smooth", block: "center" }), 40);
+      }}
+    />
+  );
+
   if (publicView) {
+    if (activeView === "lessons") {
+      return <main className="lessons-public">{lessonRail}<StudentFooter /></main>;
+    }
     if (activeView === "guru") {
       return <main className="guru-public"><DsaGuru onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
@@ -2356,6 +2385,10 @@ function App() {
           </button>
           <button className={activeView === "leaderboard" ? "active" : ""} aria-pressed={activeView === "leaderboard"} onClick={() => navigateToView("leaderboard")}>
             <Trophy size={16} /> Leaderboard
+          </button>
+          <button className={activeView === "lessons" ? "active" : ""} aria-pressed={activeView === "lessons"} onClick={() => navigateToView("lessons")}>
+            <Video size={16} /> Lessons
+            <span>{lessonLectures.length}</span>
           </button>
           <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
           <summary className={moreMenuViews.includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
@@ -3226,17 +3259,15 @@ function App() {
           }) : <div className="problem-library-empty"><Search size={21}/><strong>{sheetVoice.empty}</strong><span>{sheetVoice.emptyFoot}</span><button type="button" onClick={() => {setQuery("");setPattern("All patterns");setDifficulty("All levels");setStatus("All status");setSheetGroup("");}}>{sheetVoice.clearFilters}</button></div>}</div>
           <div className="problem-library-footer"><span><Target size={14}/> {visibleProblems.length} matching problem dikha rahe hain</span><span><Check size={14}/>{user ? sheetVoice.syncCloud : sheetVoice.syncLocal}</span></div>
         </div>
-        {studyProblem ? <ProblemStudyPanel problem={studyProblem} status={progress[studyProblem.number]?.status ?? "Todo"} onClose={() => setStudyNumber(null)} onPractice={(item) => { setEditorProblem(item.number); navigateToView("dsa-ide"); }} /> : <aside className="free-dsa-video" aria-label="Free Love Babbar DSA course">
-          <div className="free-dsa-video-heading"><div><span>FREE VIDEO COURSE</span><h3>Learn with <em>Love Babbar.</em></h3></div><span className="free-video-tag">FREE</span></div>
-          <p>Follow the complete CodeHelp DSA placement series alongside your practice.</p>
-          <div className="free-dsa-video-player"><iframe src="https://www.youtube-nocookie.com/embed/videoseries?list=PLDzeHZWIZsTryvtXdMr6rPh4IDexB5NIA" title="Love Babbar CodeHelp free DSA placement course" loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
-          <div className="free-dsa-video-footer"><span><Play size={13}/> 149-lesson playlist</span><a href="https://www.youtube.com/playlist?list=PLDzeHZWIZsTryvtXdMr6rPh4IDexB5NIA" target="_blank" rel="noreferrer">Open playlist <ExternalLink size={12}/></a></div>
-          <div className="free-dsa-course-note"><strong>Practice as you learn</strong><span>Watch a lesson, then solve a matching problem in the library.</span></div>
-        </aside>}
+        {studyProblem && <ProblemStudyPanel problem={studyProblem} status={progress[studyProblem.number]?.status ?? "Todo"} onClose={() => setStudyNumber(null)} onPractice={(item) => { setEditorProblem(item.number); navigateToView("dsa-ide"); }} />}
         </div>
         </div>
         {sheetReward && <div className={`sheet-reward${sheetReward.milestone ? " milestone" : ""}`} key={sheetReward.id} role="status" aria-live="polite"><span className="sheet-reward-icon"><Sparkles size={18}/></span><div className="sheet-reward-copy"><strong>{sheetReward.headline}</strong><span>{sheetReward.detail}</span></div><em className="sheet-reward-xp">+{sheetReward.xp} XP</em><button type="button" className="sheet-reward-close" onClick={() => setSheetReward(null)} aria-label="Dismiss"><X size={14}/></button></div>}
       </section>}
+      {/* Free, and outside the lock: the lessons are the reason a student buys the
+          sheet, so hiding them behind it would hide the pitch. */}
+      {activeView === "problems" && lessonRail}
+      {activeView === "lessons" && <section className="lessons-page">{lessonRail}</section>}
       {patternTestOpen && <PatternTest pattern={patternTestOpen} onClose={() => setPatternTestOpen(null)} />}
 
       <StudentFooter compact />

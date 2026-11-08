@@ -78,6 +78,31 @@ export const studyBlockVoice = {
   step: (step: number, total: number) => `STEP ${step} / ${total}`,
 } as const;
 
+/** Everything the Love Babbar video rail under the sheet prints. The lecture
+ * titles stay exactly as YouTube writes them; only the chrome is Hinglish. */
+export const videoVoice = {
+  eyebrow: "VIDEO LESSONS · LOVE BABBAR",
+  heading: (lessons: number, hours: number) => `${lessons} free video lessons, ${hours} ghante.`,
+  headingTail: "Playlist block khatam - ab lesson row se khulta hai.",
+  body: (topics: number, channel: string) => `Har lecture ${channel} ki official series ka, alag khulta hai - ${topics} sheet topics pe bera hua. Pehle video pe tap karo, poora player yahin khulega, page chhod ke nahi.`,
+  free: "FREE",
+  filterAll: "Sab lessons",
+  nowPlaying: "CHAL RAHA HAI",
+  pickPrompt: "Neeche se lesson chuno - player yahin khulega.",
+  playFirst: (topic: string) => `${topic} ka pehla lesson chalao`,
+  play: "Chalao",
+  openYouTube: "YouTube pe kholo",
+  nextLesson: "Agla lesson",
+  prevLesson: "Pichla lesson",
+  lessonLabel: (lecture: number) => `LECTURE ${lecture}`,
+  basicsLabel: "C++ & basics",
+  sheetJump: (count: number, topic: string) => `Sheet mein ${count} problems - ${topic}`,
+  matched: "PATTERN FILTER SE MATCH",
+  showAll: (count: number) => `Saare ${count} lesson dikha do`,
+  totalNote: (hours: number, lessons: number, extras: number) => `${hours} ghante · ${lessons} lecture · ${extras} series update`,
+  privacy: "Play dabane tak player embed khaali rehta hai - poster ke alawa YouTube se kuch nahi aata.",
+} as const;
+
 export type HauslaState = {
   solved: number;
   total: number;
