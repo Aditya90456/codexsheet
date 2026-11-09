@@ -6,6 +6,7 @@ import {
   curriculum,
   mentorCraft,
   mentorEmail,
+  mentorProfile,
   refundWindow,
   orderReference,
   payee,
@@ -488,8 +489,13 @@ export default function MentorshipPayments({
         <img src={adityaPortrait} alt="Aditya Bakshi, your mentor" width={132} height={132} loading="lazy" />
         <div>
           <span className="mentorship-syllabus-kicker"><GraduationCap size={15} /> YOUR MENTOR</span>
-          <h2>Aditya Bakshi</h2>
+          <h2>{mentorProfile.name}</h2>
+          <p className="mentorship-mentor-role">{mentorProfile.role}</p>
           <ul>{mentorCraft.map((line) => <li key={line}>{line}</li>)}</ul>
+          <ul className="mentorship-mentor-stats">
+            {mentorProfile.stats.map((stat) => <li key={stat.label}><strong>{stat.value}</strong><span>{stat.label}</span></li>)}
+          </ul>
+          <p className="mentorship-mentor-stack">{mentorProfile.stack.join(" · ")}</p>
         </div>
       </section>
       <section className="mentorship-faq" aria-label="How the products work">

@@ -35,18 +35,6 @@ export type MentorshipPlanId = ProductId;
  */
 import { productById, type ProductId } from "./products";
 
-/** The rails a pass covers around the sheet itself — every view a signed-in student can reach. */
-export const workspaceFeatureNames = [
-  "Progress dashboard", "Practice calendar", "Pattern library", "Deva editor",
-  "Animated DSA course", "Guru the AI teacher", "Algorithm Labs", "Roadmap board",
-  "Personal notes", "Concept articles", "Group chat", "Interview experiences",
-  "2027 interview radar", "Leaderboard", "Certificate and public verify",
-  "Mentor marketplace", "Company question sets",
-];
-
-/** How many rails the pass covers; every piece of copy quotes this. */
-export const workspaceFeatureCount = workspaceFeatureNames.length;
-
 /** Twelve weeks over the sheet - patterns and interviews only, no LLD or HLD. */
 import { problems } from "./dsaSheet";
 
@@ -101,6 +89,25 @@ export const mentorCraft: string[] = [
   "Stuck at 2am on a sliding window? Message him; there is no per-question charge.",
   "Your pass opens the moment the claim is recorded, and he reconciles the UTR against his own Paytm statement after the fact.",
 ];
+
+/**
+ * Aditya's own credentials, the ones he publishes on his GitHub profile. The
+ * mentor card and the home page quote this instead of restating numbers.
+ */
+export const mentorProfile = {
+  name: "Aditya Bakshi",
+  role: "Software developer, competitive programmer and founder of CodexSheet",
+  stats: [
+    { value: "700+", label: "problems solved on LeetCode" },
+    { value: "300+", label: "students mentored" },
+    { value: "600+", label: "1:1 sessions booked" },
+  ],
+  stack: ["MERN", "Java", "Spring Boot", "Kafka", "Python", "DSA", "Generative AI"],
+  projects: [
+    { name: "Codex Playground", href: "https://codex-playground-editor.vercel.app/", blurb: "The editor and learning workspace this grew out of." },
+    { name: "BharatFlow AI", href: "https://bharatflow-ai.vercel.app/", blurb: "An AI-assisted traffic and police-support project." },
+  ],
+};
 
 /** Rupee display with Indian grouping, so 1000 reads as ₹1,000. */
 export function rupees(amount: number): string {

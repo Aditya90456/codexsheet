@@ -16,6 +16,8 @@ import "./pattern-library.css";
 import "./mentees.css";
 import "./marketplace.css";
 import "./articleReader.css";
+import "./home.css";
+import "./ui.css";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const hasClerkPublishableKey =

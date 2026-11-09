@@ -1,0 +1,112 @@
+/*
+ * The home page, one screen at a time: a hero that says what the workspace is,
+ * the ladder the 250 problems are taught in, the one price that opens it, and the
+ * one person who builds it.
+ *
+ * The hero typography and buttons still come from styles.css and redesign.css, so
+ * this sheet only carries what the new markup introduces. Every rule is pinned to
+ * .home-simple, the class App puts on the page, which outranks the older single
+ * class rules by specificity and not by import order - the page therefore looks the
+ * same inside the workspace shell and on the public landing at /.
+ */
+
+/* A visitor has no app shell behind this page, so it carries its own canvas. */
+.home-public { margin: 0; padding: 0; color: #f5e2e4; background: #0f0809; }
+.home-simple { overflow: hidden; }
+
+/* Hero: the copy on the left, the plan's own day one on the right. */
+.home-simple .home-hero-inner { align-items: start; gap: clamp(34px, 6vw, 74px); }
+.home-simple .home-copy { max-width: 620px; }
+.home-simple .home-numbers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 30px 0 0; padding: 16px 0 0; list-style: none; border-top: 1px solid #24181a; }
+.home-simple .home-numbers li { display: grid; gap: 3px; padding-right: 14px; }
+.home-simple .home-numbers strong { color: #fff; font-size: 22px; font-weight: 750; letter-spacing: -.02em; }
+.home-simple .home-numbers span { color: #b4aea8; font: 500 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+
+.home-simple .home-plan { border: 1px solid #2b1e20; border-radius: 16px; background: #180e0f; box-shadow: 0 22px 60px rgba(0, 0, 0, .32); }
+.home-simple .home-plan-head { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid #24181a; color: #fa6077; font: 500 9px 'DM Mono', monospace; letter-spacing: .1em; }
+.home-simple .home-plan-rows { margin: 0; padding: 4px 16px; list-style: none; }
+.home-simple .home-plan-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 14px; padding: 11px 0; border-bottom: 1px solid #1e1315; }
+.home-simple .home-plan-rows li:last-child { border-bottom: 0; }
+.home-simple .home-plan-rows strong { grid-column: 1; color: #f9e8ea; font-size: 13px; font-weight: 600; }
+.home-simple .home-plan-rows span { grid-column: 1; color: #b4aea8; font-size: 11px; }
+.home-simple .home-plan-rows em { grid-column: 2; grid-row: 1 / span 2; padding: 4px 9px; border: 1px solid #35232a; border-radius: 999px; color: #febfc8; font: 600 8px 'DM Mono', monospace; font-style: normal; letter-spacing: .08em; text-transform: uppercase; }
+.home-simple .home-plan-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; border-top: 1px solid #24181a; color: #aaa29b; font: 500 9px 'DM Mono', monospace; letter-spacing: .06em; }
+.home-simple .home-plan-foot button { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; color: #fa6077; background: none; font-size: 11px; font-weight: 700; cursor: pointer; }
+.home-simple .home-plan-foot button:hover { color: #febfc8; }
+
+/* The ladder: one row per stage, the counts read from the sheet itself. */
+.home-simple .home-path { padding: 74px 5vw 78px; }
+.home-simple .home-tier-list,
+.home-simple .home-path-list,
+.home-simple .home-path-foot,
+.home-simple .home-section-heading { width: min(1180px, 100%); margin-inline: auto; }
+.home-simple .home-section-heading { margin-bottom: 30px; }
+.home-simple .home-path-list { display: grid; padding: 0; list-style: none; border-top: 1px solid #24181a; }
+.home-simple .home-path-row > button { display: grid; grid-template-columns: 40px minmax(0, 1fr) 168px 150px 18px; align-items: center; gap: 18px; width: 100%; padding: 16px 8px; border: 0; border-bottom: 1px solid #24181a; color: inherit; background: none; text-align: left; cursor: pointer; transition: background .18s ease; }
+.home-simple .home-path-row > button:hover { background: #150d0e; }
+.home-simple .home-path-index { color: #8a5560; font: 500 11px 'DM Mono', monospace; }
+.home-simple .home-path-name { display: grid; gap: 3px; min-width: 0; }
+.home-simple .home-path-name strong { color: #fff; font-size: 15px; font-weight: 700; }
+.home-simple .home-path-name small { color: #b4aea8; font-size: 11px; line-height: 1.55; }
+.home-simple .home-path-patterns { color: #febfc8; font: 500 9px 'DM Mono', monospace; letter-spacing: .06em; }
+.home-simple .home-path-count { display: grid; gap: 2px; justify-items: end; }
+.home-simple .home-path-count strong { color: #fff; font-size: 19px; font-weight: 750; }
+.home-simple .home-path-count small { color: #9c8f8b; font: 8px 'DM Mono', monospace; letter-spacing: .04em; }
+.home-simple .home-path-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 28px; margin-top: 26px; }
+.home-simple .home-link { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; color: #fa6077; background: none; font-size: 12px; font-weight: 700; cursor: pointer; }
+.home-simple .home-link:hover { color: #febfc8; }
+.home-simple .home-link svg { transition: transform .18s ease; }
+.home-simple .home-link:hover svg { transform: translateX(3px); }
+
+/* Price: three rows, one figure each, and the pass is the only one you can buy. */
+.home-simple .home-tiers { padding: 72px 5vw 84px; border-top: 1px solid #24181a; background: #130b0c; }
+.home-simple .home-tier-list { display: grid; gap: 12px; padding: 0; list-style: none; }
+.home-simple .home-tier { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: 22px; padding: 20px 22px; border: 1px solid #2b1e20; border-radius: 14px; background: #180e0f; }
+.home-simple .home-tier-free { border-style: dashed; background: transparent; }
+.home-simple .home-tier-price { color: #f63b4a; font-size: 26px; font-weight: 800; letter-spacing: -.03em; }
+.home-simple .home-tier-body strong { display: block; color: #fff; font-size: 15px; font-weight: 700; }
+.home-simple .home-tier-body p { max-width: 720px; margin: 5px 0 0; color: #b4aea8; font-size: 12px; line-height: 1.7; }
+.home-simple .home-tier-action { color: #8f857f; font: 500 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.home-simple .home-tier button { min-height: 42px; padding: 0 16px; border: 1px solid #f63b4a; border-radius: 8px; color: #0f0a0a; background: #f63b4a; font-size: 11px; font-weight: 800; cursor: pointer; }
+.home-simple .home-tier button:hover { border-color: #fb7c8d; background: #fb7c8d; }
+.home-simple .home-footer { width: min(1180px, 100%); margin-inline: auto; }
+
+/* The person behind it: his portrait, his own numbers, what he has shipped. */
+.home-simple .home-builder { display: grid; grid-template-columns: 104px minmax(0, 1fr) 300px; align-items: start; gap: clamp(22px, 4vw, 44px); width: min(calc(1180px + 10vw), 100%); margin-inline: auto; padding: 74px 5vw 84px; border-top: 1px solid #24181a; }
+.home-simple .home-builder-portrait { width: 104px; height: 104px; border: 3px solid #f63b4a; border-radius: 50%; object-fit: cover; }
+.home-simple .home-builder-copy h2 { margin: 8px 0 0; color: #fff; font-size: clamp(22px, 2.6vw, 30px); font-weight: 750; letter-spacing: -.03em; }
+.home-simple .home-builder-copy h2 em { color: #fa6077; font-style: normal; }
+.home-simple .home-builder-role { max-width: 660px; margin: 12px 0 0; color: #b4aea8; font-size: 13px; line-height: 1.7; }
+.home-simple .home-builder-stats { display: flex; flex-wrap: wrap; gap: 8px 30px; margin: 22px 0 0; padding: 18px 0 0; list-style: none; border-top: 1px solid #24181a; }
+.home-simple .home-builder-stats li { display: grid; gap: 3px; }
+.home-simple .home-builder-stats strong { color: #fff; font-size: 24px; font-weight: 750; letter-spacing: -.02em; }
+.home-simple .home-builder-stats span { color: #b4aea8; font: 500 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.home-simple .home-builder-stack { margin: 16px 0 0; color: #8f857f; font: 500 10px 'DM Mono', monospace; letter-spacing: .06em; }
+.home-simple .home-builder-side { display: grid; gap: 10px; align-content: start; }
+.home-simple .home-builder-project { display: grid; gap: 4px; padding: 13px 15px; border: 1px solid #2b1e20; border-radius: 12px; background: #180e0f; color: inherit; text-decoration: none; transition: border-color .18s ease; }
+.home-simple .home-builder-project:hover { border-color: #f63b4a; }
+.home-simple .home-builder-project strong { color: #fff; font-size: 13px; font-weight: 700; }
+.home-simple .home-builder-project span { color: #b4aea8; font-size: 11px; line-height: 1.55; }
+.home-simple .home-builder-side .home-link { justify-self: start; margin-top: 4px; }
+
+@media (max-width: 900px) {
+  .home-simple .home-path-row > button { grid-template-columns: 32px minmax(0, 1fr) 18px; }
+  .home-simple .home-path-patterns { display: none; }
+  .home-simple .home-path-count { grid-column: 2; justify-items: start; }
+  .home-simple .home-tier { grid-template-columns: 92px minmax(0, 1fr); }
+  .home-simple .home-tier-action,
+  .home-simple .home-tier button { grid-column: 2; justify-self: start; }
+  .home-simple .home-builder { grid-template-columns: 84px minmax(0, 1fr); }
+  .home-simple .home-builder-portrait { width: 84px; height: 84px; }
+  .home-simple .home-builder-side { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .home-simple .home-builder-side .home-link { grid-column: 1 / -1; }
+}
+
+@media (max-width: 620px) {
+  .home-simple .home-hero-inner { gap: 34px; }
+  .home-simple .home-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 0; }
+  .home-simple .home-path { padding: 56px 20px 60px; }
+  .home-simple .home-tiers { padding: 54px 20px 62px; }
+  .home-simple .home-builder { grid-template-columns: minmax(0, 1fr); padding: 56px 20px 62px; }
+  .home-simple .home-builder-side { grid-template-columns: minmax(0, 1fr); }
+}

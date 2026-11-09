@@ -1,0 +1,148 @@
+/*
+ * ui.css - the new UI for the rest of the workspace.
+ *
+ * The home page was rebuilt first (home.css) and its language is what this sheet
+ * spreads over the other rails: black-red canvas, flat surfaces, hairline rules
+ * instead of floating cards, DM Mono micro-labels, one red used only for the action
+ * that matters. It is imported last, so it outranks redesign.css on ties.
+ *
+ * Two guards, on purpose:
+ *   .ui-scope          - App puts this on the workspace shell and on every public
+ *                        rail, so nothing here reaches the preloader or a modal
+ *                        rendered outside the page.
+ *   :not(.home-simple) - the home page already has its own finished design; it must
+ *                        keep it, so every sweep here excludes that subtree.
+ * The editor, the 3D stages and the simulation lanes are left alone: they own their
+ * own pixels and a font or background change here would break their layout maths.
+ */
+
+/* 1. One palette for the whole workspace. Flatter than the card-shadow system it
+      replaces, and the same ramp the home page was drawn with. */
+:root[data-theme="red"] {
+  --ui-canvas: #0d0708;
+  --ui-surface: #150e0f;
+  --ui-elevate: #1b1315;
+  --ui-line: #26191b;
+  --ui-hair: #1f1517;
+  --ui-ink: #f7e7e8;
+  --ui-muted: #a89a97;
+  --ui-faint: #7c706e;
+  --ui-primary: #f63b4a;
+  --ui-primary-hover: #ff5566;
+  --ui-primary-soft: #231518;
+  --ui-radius: 12px;
+  --ui-shadow: none;
+}
+
+:root[data-theme="red"] body { background: var(--ui-canvas); color: var(--ui-ink); }
+:root[data-theme="red"] .ui-scope { background: var(--ui-canvas); }
+:root[data-theme="red"] ::selection { color: #14090a; background: #ff9aa6; }
+
+/* 2. Surfaces: the card/panel/box sweep redesign.css already runs, retuned to flat. */
+:root[data-theme] .ui-scope :is([class*="-card"], [class*="-panel"], [class*="-box"], [class*="-tile"], [class*="-modal"], [class*="-lobby"]):not(.home-simple, .home-simple *):not([class*="editor"]):not([class*="cm-"]):not([class*="stage"]):not([class*="canvas"]) {
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background-color: var(--ui-surface);
+  box-shadow: none;
+}
+:root[data-theme] .ui-scope :is([class*="-card"], [class*="-panel"], [class*="-tile"]):not(.home-simple, .home-simple *) :is(h1, h2, h3, h4, strong) { color: #fff; }
+:root[data-theme] .ui-scope :is([class*="-card"], [class*="-panel"], [class*="-tile"]):not(.home-simple, .home-simple *) :is(p, small, span, li, label) { color: var(--ui-muted); }
+
+/* 3. Type: tight display headings, and every micro-label on the page becomes the
+      same DM Mono kicker the home page uses. */
+:root[data-theme] .ui-scope :is(h1, h2, h3):not(.home-simple, .home-simple *) { color: #fff; font-weight: 750; line-height: 1.12; letter-spacing: -.035em; }
+:root[data-theme] .ui-scope :is(h1, h2, h3):not(.home-simple, .home-simple *) em { color: var(--ui-primary-hover); font-style: normal; }
+:root[data-theme] .ui-scope :is([class*="-kicker"], [class*="-eyebrow"], [class*="-overline"], [class*="-steps"], [class*="-meta"], [class*="-caption"]):not(.home-simple, .home-simple *) {
+  color: var(--ui-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+:root[data-theme] .ui-scope :is(p, li):not(.home-simple, .home-simple *) { letter-spacing: 0; }
+:root[data-theme] .ui-scope :is([class*="-note"], [class*="-small"], [class*="-hint"], [class*="-muted"]):not(.home-simple, .home-simple *) { color: var(--ui-muted); }
+
+/* 4. Controls: one height, one radius, and only the primary action is filled. */
+:root[data-theme] .ui-scope :is(button, .primary-button, .secondary-button):not(.home-simple, .home-simple *):not([class*="toggler"]):not([class*="node"]):not([class*="icon"]):not([class*="close"]):not([class*="caret"]):not([class*="stepper"]) {
+  min-height: 38px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+:root[data-theme] .ui-scope :is(button, a)[class*="primary"]:not(.home-simple, .home-simple *) {
+  border-color: var(--ui-primary);
+  background-color: var(--ui-primary);
+  color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(246, 59, 74, .8);
+}
+:root[data-theme] .ui-scope :is(button, a)[class*="primary"]:not(.home-simple, .home-simple *):hover { border-color: var(--ui-primary-hover); background-color: var(--ui-primary-hover); }
+:root[data-theme] .ui-scope :is(button, .secondary-button):not([class*="primary"]):not(.home-simple, .home-simple *):not([class*="chip"]):not([class*="tab"]):not([class*="node"]) {
+  border-color: var(--ui-line);
+  background-color: var(--ui-elevate);
+  color: #f2dcde;
+}
+:root[data-theme] .ui-scope button:not([class*="primary"]):not(.home-simple, .home-simple *):hover { border-color: #7a333c; background-color: #201415; }
+
+/* 5. Filters and toggles read as pills, not buttons. */
+:root[data-theme] .ui-scope :is([class*="-chip"], [class*="-badge"], [class*="-tag"], [class*="-pill"]):not(.home-simple, .home-simple *) {
+  border-radius: 999px;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+:root[data-theme] .ui-scope :is([class*="-chip"], [class*="-tag"]):not(.home-simple, .home-simple *):is(button, [role="button"]) { min-height: 28px; }
+:root[data-theme] .ui-scope :is([class*="-chip"].active, [class*="-chip"][aria-pressed="true"], [class*="-tag"].active, [class*="-tab"].active):not(.home-simple, .home-simple *) {
+  border-color: var(--ui-primary);
+  background-color: var(--ui-primary-soft);
+  color: #ffb3bd;
+}
+
+/* 6. Fields: dark, quiet, one red ring on focus. */
+:root[data-theme] .ui-scope :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):not(.home-simple, .home-simple *):not([class*="cm-"]) {
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+  background-color: #0c0909;
+  color: #f8e5e7;
+}
+:root[data-theme] .ui-scope :is(input, select, textarea):not(.home-simple, .home-simple *)::placeholder { color: #7f746f; }
+:root[data-theme] .ui-scope :is(input, select, textarea):not(.home-simple, .home-simple *):focus { border-color: #913d45; outline: none; box-shadow: 0 0 0 3px rgba(246, 59, 74, .16); }
+
+/* 7. Structure over boxes: long lists are hairline rows, the way the home ladder is. */
+:root[data-theme] .ui-scope :is([class*="-row"], [class*="-item"], [class*="-result"]):not(.home-simple, .home-simple *) { border-color: var(--ui-hair); }
+:root[data-theme] .ui-scope :is([class*="-row"], [class*="-item"]):not(.home-simple, .home-simple *):is(button, a) { border-radius: 10px; }
+:root[data-theme] .ui-scope :is([class*="-row"], [class*="-item"]):not(.home-simple, .home-simple *):is(button, a):hover { background-color: #191011; }
+:root[data-theme] .ui-scope :is([class*="-empty"], [class*="-none"], [class*="-locked"]):not(.home-simple, .home-simple *) { border: 1px dashed var(--ui-line); border-radius: var(--ui-radius); background: transparent; color: var(--ui-muted); }
+
+/* 8. Tables (the sheet, the ledger, the leaderboard) share one header and one rule. */
+:root[data-theme] .ui-scope :is(th):not(.home-simple, .home-simple *) {
+  color: var(--ui-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+:root[data-theme] .ui-scope :is(th, td):not(.home-simple, .home-simple *) { border-color: var(--ui-hair); }
+:root[data-theme] .ui-scope table:not(.home-simple, .home-simple *) { border-collapse: separate; border-spacing: 0; }
+
+/* 9. The shell itself: a flat header line and a nav that stops floating. */
+:root[data-theme] .ui-scope :is(.topbar, .workspace-header, .toolbar, .view-switcher) { border-color: var(--ui-line); background-color: transparent; box-shadow: none; }
+:root[data-theme] .ui-scope .nav-badge { border-color: var(--ui-line); background-color: var(--ui-surface); }
+:root[data-theme] .ui-scope .nav-more-menu { border: 1px solid var(--ui-line); border-radius: var(--ui-radius); background-color: var(--ui-elevate); box-shadow: 0 18px 40px -20px #000; }
+:root[data-theme] .ui-scope .site-footer { border-top: 1px solid var(--ui-line); background: transparent; }
+
+/* 10. Progress and rails, so a bar looks the same on every page. */
+:root[data-theme] .ui-scope :is(.progress, [class*="-progress"], [class*="-track"], [class*="-meter"]):not(.home-simple, .home-simple *):not([class*="cm-"]) { background-color: #241718; }
+:root[data-theme] .ui-scope :is(.progress-bar, [class*="-fill"], [class*="progress-bar"]):not(.home-simple, .home-simple *) { background-color: var(--ui-primary); }
+:root[data-theme] .ui-scope :is(code, pre, kbd):not(.home-simple, .home-simple *) { border: 1px solid var(--ui-hair); border-radius: 8px; background-color: #0c0909; color: #ffb3bd; font-family: 'DM Mono', ui-monospace, monospace; }
+:root[data-theme] .ui-scope :is(hr, [class*="-rule"], [class*="-divider"]):not(.home-simple, .home-simple *) { border-color: var(--ui-hair); opacity: 1; }
+
+/* 11. Scrollbars, last so they match the canvas everywhere. */
+:root[data-theme] .ui-scope ::-webkit-scrollbar { width: 10px; height: 10px; }
+:root[data-theme] .ui-scope ::-webkit-scrollbar-track { background: #0b0607; }
+:root[data-theme] .ui-scope ::-webkit-scrollbar-thumb { border: 3px solid #0b0607; border-radius: 999px; background: #332124; }
+:root[data-theme] .ui-scope ::-webkit-scrollbar-thumb:hover { background: #52302f; }

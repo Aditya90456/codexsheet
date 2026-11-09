@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import {
   SignInButton,
   SignUpButton,
@@ -73,12 +73,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import CsLabs from "./CsLabs";
-import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import DsaIde from "./DsaIde";
 import ProblemStudyPanel from "./ProblemStudyPanel";
 import LessonVideoRail from "./LessonVideoRail";
 import DailyTaskRail from "./DailyTaskRail";
+import { expectedByDay, planDays, taskForDay } from "./dailyTasks";
 import { lessonLectures } from "./love-babbar-lessons";
 import DsaCourseStudio from "./DsaCourseStudio";
 import RoadmapBoard from "./RoadmapBoard";
@@ -96,8 +96,9 @@ import PatternTest from "./PatternTest";
 import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
-import { useT, type MessageKey } from "./i18n";
-import { rupees, workspaceFeatureCount } from "./mentorship";
+import { uiLanguages, useT, type MessageKey } from "./i18n";
+import { mentorProfile, rupees } from "./mentorship";
+import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { accessPass, productById, railLabel, soldProducts, type CodexSheetProduct, type ProductId } from "./products";
 import { unlocksRail, useUnlocks } from "./entitlements";
 import { gitLogCommand, parseCommitSubjects, studentRepoCloneCommand, studentRepoUrl, topicFolderFor } from "./studentRepo";
@@ -327,25 +328,26 @@ const moreMenuViews: WorkspaceView[] = navMenuGroups.flatMap((group) => group.it
 
 
 
-function HomePage({
-  solved,
-  inProgress,
-  streak,
-  percent,
-  patterns,
+/**
+ * The public landing page and the signed-in home, one component. Everything a
+ * visitor sees is a fact from the data modules - problem, pattern, stage and
+ * language counts come from dsaSheet, dsaPatterns and i18n, and the day-one card
+ * is what planCalendar() really assigns, so the page cannot drift from the sheet.
+ */
+export function HomePage({
+  signedIn,
+  signInSlot,
   onNavigate,
   onOpenProduct,
 }: {
-  solved: number;
-  inProgress: number;
-  streak: number;
-  percent: number;
-  patterns: Array<{ name: string; completed: number; total: number }>;
+  signedIn: boolean;
+  /** The Clerk sign-in button, handed over by App so this stays presentation. */
+  signInSlot: ReactNode;
   onNavigate: (view: WorkspaceView, plan?: string) => void;
   /** The catalogue card a visitor taps - lands the checkout on that product. */
   onOpenProduct: (product: ProductId) => void;
 }) {
-  const pageRef = useRef<HTMLElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
   const tr = useT();
   const stageStats = useMemo(() => {
     const ownerOf = new Map(roadmapStages.flatMap((stage, index) => stage.patterns.map((name) => [name, index] as const)));
@@ -358,6 +360,8 @@ function HomePage({
     }
     return buckets;
   }, []);
+  /** Day 1 of the 12-week plan - the same rows the plan hands a new student. */
+  const firstDay = useMemo(() => taskForDay(1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -372,31 +376,33 @@ function HomePage({
           const intro = engine.timeline({ defaults: { ease: "power3.out" } });
           intro
             .from(".home-copy > *", { y: 24, opacity: 0, duration: 0.7, stagger: 0.1 })
-            .from(".home-flow-node", { y: 28, opacity: 0, duration: 0.65, stagger: 0.13 }, "-=0.35")
-            .from(".home-flow-link", { scaleX: 0, duration: 0.45, stagger: 0.12, transformOrigin: "left center" }, "-=0.3")
-            .from(".home-lab-foot", { y: 10, opacity: 0, duration: 0.45 }, "-=0.2");
+            .from(".home-plan", { y: 26, opacity: 0, duration: 0.6 }, "-=0.45")
+            .from(".home-plan-rows li", { y: 14, opacity: 0, duration: 0.4, stagger: 0.07 }, "-=0.3");
 
-          engine.from(".home-stage", {
-            y: 22,
+          engine.from(".home-path-row", {
+            y: 18,
             opacity: 0,
-            duration: 0.55,
-            stagger: 0.09,
+            duration: 0.5,
+            stagger: 0.07,
             ease: "power2.out",
-            scrollTrigger: { trigger: ".home-roadmap", start: "top 78%", once: true },
+            scrollTrigger: { trigger: ".home-path", start: "top 82%", once: true },
           });
-          engine.from(".home-progress-fill", {
-            scaleX: 0,
-            duration: 1.1,
+          engine.from(".home-tier", {
+            y: 18,
+            opacity: 0,
+            duration: 0.5,
+            stagger: 0.08,
             ease: "power2.out",
-            transformOrigin: "left center",
-            scrollTrigger: { trigger: ".home-progress", start: "top 82%", once: true },
+            scrollTrigger: { trigger: ".home-tiers", start: "top 85%", once: true },
           });
-          engine.to(".home-lab", {
-            y: -18,
-            ease: "none",
-            scrollTrigger: { trigger: ".home-hero", start: "top top", end: "bottom top", scrub: 0.7 },
+          engine.from(".home-builder > *", {
+            y: 18,
+            opacity: 0,
+            duration: 0.5,
+            stagger: 0.08,
+            ease: "power2.out",
+            scrollTrigger: { trigger: ".home-builder", start: "top 88%", once: true },
           });
-          engine.to(".home-mark-orbit", { rotate: 360, duration: 32, ease: "none", repeat: -1 });
         });
         return () => motion.revert();
       }, pageRef);
@@ -409,7 +415,7 @@ function HomePage({
   }, []);
 
   return (
-    <main className="home-page" ref={pageRef}>
+    <div className="home-page home-simple" ref={pageRef}>
       <section className="home-hero">
         <div className="home-hero-inner">
           <div className="home-copy">
@@ -417,105 +423,121 @@ function HomePage({
             <h1>{tr("home.title1")} <em>{tr("home.title2")}</em></h1>
             <p>{tr("home.body")}</p>
             <div className="home-actions">
-              <button className="home-primary" type="button" onClick={() => onNavigate("guru")}>{tr("home.cta2")} <ArrowRight size={16} /></button>
-              <button className="home-secondary" type="button" onClick={() => onNavigate("dsa-ide")}>{tr("home.cta1")}</button>
+              {signedIn ? (
+                <button className="home-primary" type="button" onClick={() => onNavigate("problems")}>{tr("home.cta1")} <ArrowRight size={16} /></button>
+              ) : signInSlot}
+              <button className="home-secondary" type="button" onClick={() => onOpenProduct(accessPass.id)}>{tr("home.ctaPass", { price: rupees(accessPass.price) })}</button>
             </div>
-            <div className="home-proof"><span><Check size={14} /> {tr("home.proof1")}</span><span><Check size={14} /> {tr("home.proof2")}</span></div>
+            <ul className="home-numbers">
+              <li><strong>{problems.length}</strong><span>problems</span></li>
+              <li><strong>{patterns.length}</strong><span>patterns</span></li>
+              <li><strong>{roadmapStages.length}</strong><span>stages</span></li>
+              <li><strong>{uiLanguages.length}</strong><span>languages, free</span></li>
+            </ul>
           </div>
 
-          <div className="home-lab" aria-label="A problem-solving path from problem to pattern to solution">
-            <div className="home-lab-head"><span>THE PRACTICE LOOP</span><span>01 — 03</span></div>
-            <div className="home-flow">
-              <div className="home-flow-node node-problem"><span className="home-node-index">01</span><span className="home-node-title">Read the problem</span><strong>Two Sum</strong><small>Find a matching pair</small></div>
-              <i className="home-flow-link" />
-              <div className="home-flow-node node-pattern"><span className="home-node-index">02</span><span className="home-node-title">Spot the pattern</span><strong>Hash map</strong><small>Trade space for time</small></div>
-              <i className="home-flow-link" />
-              <div className="home-flow-node node-solve"><span className="home-node-index">03</span><span className="home-node-title">Build the solution</span><strong>O(n)</strong><small>One clear pass</small></div>
+          <aside className="home-plan" aria-label="What the plan asks on day one">
+            <div className="home-plan-head"><span>DAY 1 OF {planDays}</span><span>WEEK {firstDay.week}</span></div>
+            <ol className="home-plan-rows">
+              {firstDay.rows.slice(0, 4).map((problem) => (
+                <li key={problem.number}>
+                  <strong>{problem.title}</strong>
+                  <span>{problem.pattern}</span>
+                  <em>{problem.difficulty}</em>
+                </li>
+              ))}
+            </ol>
+            <div className="home-plan-foot">
+              <span>{firstDay.rows.length} today · {expectedByDay(1)} done by tonight</span>
+              <button type="button" onClick={() => onNavigate("problems")}>Open the sheet <ArrowRight size={14} /></button>
             </div>
-            <div className="home-lab-foot"><span><span className="home-success-dot" /> A repeatable way to think</span><div className="home-mark-orbit"><i /><i /><i /></div></div>
-          </div>
+          </aside>
         </div>
-        <div className="home-hero-bottom"><span>START WITH ONE PROBLEM</span><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div>
+        <div className="home-hero-bottom"><span>ONE PATTERN · ONE PROBLEM · ONE STEP</span><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div>
       </section>
 
-      <section className="home-roadmap" aria-labelledby="home-roadmap-title">
+      <section className="home-path" aria-labelledby="home-path-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">THE PATH, IN ORDER</span><h2 id="home-roadmap-title">Five stages, <em>250 problems.</em></h2></div>
-          <p>The sheet is a ladder, not a list. Each stage is a set of patterns, the reps behind them and what you can say out loud by the end of it.</p>
+          <div><span className="home-section-kicker">THE PATH, IN ORDER</span><h2 id="home-path-title">{roadmapStages.length} stages, <em>{problems.length} problems.</em></h2></div>
+          <p>A ladder, not a list. Each stage is a set of patterns, the reps behind them and what you can say out loud at the end of it.</p>
         </div>
-        <ol className="home-stage-list">
+        <ol className="home-path-list">
           {roadmapStages.map((stage, index) => {
             const stats = stageStats[index];
             return (
-              <li className="home-stage" key={stage.name}>
-                <span className="home-stage-index">{String(index + 1).padStart(2, "0")}</span>
-                <div className="home-stage-body">
-                  <div className="home-stage-top"><strong>{stage.name}</strong><span className="home-stage-weeks">{stage.weeks}</span></div>
-                  <p>{stage.outcome}</p>
-                  <div className="home-stage-patterns">{stage.patterns.map((name) => <span key={name}>{name}</span>)}</div>
-                </div>
-                <div className="home-stage-count">
-                  <strong>{stats.total}<small> problems</small></strong>
-                  <span>{([1, 2, 3] as const).map((tier) => `${stats.tiers[tier]} ${tierLabels[tier].toLowerCase()}`).join(" · ")}</span>
-                </div>
+              <li className="home-path-row" key={stage.name}>
+                <button type="button" onClick={() => onNavigate("roadmap")}>
+                  <span className="home-path-index">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="home-path-name"><strong>{stage.name}</strong><small>{stage.outcome}</small></span>
+                  <span className="home-path-patterns">{stage.patterns.length} patterns · {stage.weeks}</span>
+                  <span className="home-path-count">
+                    <strong>{stats.total}</strong>
+                    <small>{([1, 2, 3] as const).map((tier) => `${stats.tiers[tier]} ${tierLabels[tier].toLowerCase()}`).join(" · ")}</small>
+                  </span>
+                  <ArrowRight size={15} />
+                </button>
               </li>
             );
           })}
         </ol>
-        <div className="home-roadmap-foot">
-          <button className="home-stage-cta" type="button" onClick={() => onNavigate("roadmap")}>Open the roadmap board <ArrowRight size={15} /></button>
-          <button className="home-stage-ghost" type="button" onClick={() => onNavigate("patterns")}>{roadmapStages.reduce((count, stage) => count + stage.patterns.length, 0)} pattern cards, with the film for each <ArrowRight size={15} /></button>
+        <div className="home-path-foot">
+          <button className="home-link" type="button" onClick={() => onNavigate("patterns")}>{patterns.length} pattern films, with the deck for each <ArrowRight size={15} /></button>
+          <button className="home-link" type="button" onClick={() => onNavigate("lessons")}>{lessonLectures.length} video lessons, free <ArrowRight size={15} /></button>
+          <button className="home-link" type="button" onClick={() => onNavigate("guru")}>Guru, the AI teacher <ArrowRight size={15} /></button>
         </div>
       </section>
 
-      <section className="home-creator" aria-labelledby="home-creator-title">
-        <div className="home-creator-photo-wrap">
-          <img className="home-creator-photo" src={adityaPortrait} alt="Aditya Bakshi, creator of CodexSheet" />
-          <span className="home-creator-photo-caption"><span className="home-success-dot" /> BUILDING CODEXSHEET</span>
-        </div>
-        <div className="home-creator-copy">
-          <span className="home-section-kicker">A NOTE FROM THE CREATOR</span>
-          <h2 id="home-creator-title">Hey, I’m Aditya.<br /><em>I build with purpose.</em></h2>
-          <p>I’m a full-stack developer and competitive programmer. I built CodexSheet to make data structures and algorithms structured, practical and reachable for students preparing for technical interviews.</p>
-          <blockquote>“The challenges we face can inspire us to build solutions that help others.”</blockquote>
-          <div className="home-creator-tags"><span>Full-Stack Development</span><span>Competitive Programming</span><span>Learning in Public</span></div>
-          <a className="home-creator-link" href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer">Connect on LinkedIn <ExternalLink size={14} /></a>
-        </div>
-      </section>
-
-      <section className="home-services" aria-labelledby="home-services-title">
+      <section className="home-tiers" aria-labelledby="home-tiers-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">{rupees(accessPass.price)} PASS · EVERY PAID RAIL</span><h2 id="home-services-title">CodexSheet products. <em>One pass, then Aditya&apos;s time.</em></h2></div>
-          <p>Everything the workspace does — the Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, group chat, the calendar, the leaderboard, your certificate and the 2027 radar — is free with a Google sign-in. The {accessPass.gate.length} paid rails — the 250-problem sheet, the roadmap board and the 16 pattern films — are one {rupees(accessPass.price)} payment that never expires. A 1:1 session is bought separately because it buys a human hour. Pay on Aditya&apos;s Paytm QR; no card form, no gateway.</p>
+          <div><span className="home-section-kicker">ONE {rupees(accessPass.price)} PAYMENT · NO GATEWAY</span><h2 id="home-tiers-title">Free to start. <em>Then one pass.</em></h2></div>
+          <p>Paid on Aditya&apos;s Paytm QR and confirmed the moment the claim lands. The pass never expires.</p>
         </div>
-        <div className="home-offer-grid" aria-label="What CodexSheet sells">
-          <article className="home-offer-card home-offer-free">
-            <div className="home-offer-top"><span className="home-offer-icon">{workspaceFeatureCount}</span><span className="home-offer-price">FREE</span></div>
-            <span className="home-offer-label">EVERY RAIL THAT IS NOT FOR SALE</span>
-            <h3>The rest of CodexSheet</h3>
-            <p>The Deva editor with real judged submissions, the animated course, algorithm labs, notes, group chat, the practice calendar, the leaderboard, your certificate and Guru — the AI teacher who explains out loud in 7 Indian languages. Sign in with Google and it is all yours.</p>
-            <a href="/guru" onClick={(event) => { event.preventDefault(); onNavigate("guru"); }}>Sit in with Guru <ArrowRight size={15}/></a>
-          </article>
+        <ul className="home-tier-list">
+          <li className="home-tier home-tier-free">
+            <span className="home-tier-price">FREE</span>
+            <div className="home-tier-body">
+              <strong>The workspace</strong>
+              <p>The Deva editor with real judged submissions, Guru in {uiLanguages.length} Indian languages, the Algorithm Labs, {lessonLectures.length} video lessons, notes, group chat, the leaderboard, your certificate and the 2027 radar - open with a Google sign-in.</p>
+            </div>
+            <span className="home-tier-action">{signedIn ? "Yours already" : "Google sign-in"}</span>
+          </li>
           {soldProducts.map((item) => (
-            <article className="home-offer-card home-offer-session" key={item.id}>
-              <div className="home-offer-top"><span className="home-offer-icon tag">{item.tag}</span><span className="home-offer-price">{rupees(item.price)}</span></div>
-              <span className="home-offer-label">{item.cadence.toUpperCase()}</span>
-              <h3>{item.name}</h3>
-              <p>{item.oneLine} {item.includes[0]}</p>
-              <a href="/mentorship" onClick={(event) => { event.preventDefault(); onOpenProduct(item.id); }}>Unlock {item.name} · {rupees(item.price)} <ArrowRight size={15}/></a>
-            </article>
+            <li className="home-tier" key={item.id}>
+              <span className="home-tier-price">{rupees(item.price)}</span>
+              <div className="home-tier-body">
+                <strong>{item.name}</strong>
+                <p>{item.oneLine} Opens {railLabel(item)}.</p>
+              </div>
+              <button type="button" onClick={() => onOpenProduct(item.id)}>Unlock <ArrowRight size={14} /></button>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
-      <section className="home-progress" aria-label="Your current study progress">
-        <div className="home-progress-copy"><span className="home-section-kicker">YOUR WORKSPACE IS READY</span><h2>Pick up where <em>you are.</em></h2><p>Your practice stays yours. Sign in to sync progress and study with your peers.</p><button className="home-progress-link" type="button" onClick={() => onNavigate("dashboard")}>Open your dashboard <ArrowRight size={15} /></button></div>
-        <div className="home-progress-stats"><div><span>PROBLEMS SOLVED</span><strong>{solved}<small> / 250</small></strong></div><div><span>IN PROGRESS</span><strong>{inProgress}</strong></div><div><span>DAY STREAK</span><strong>{streak}</strong></div><div className="home-progress-bar" aria-label={`${percent}% of problems solved`}><i className="home-progress-fill" style={{ width: `${percent}%` }} /></div>
-          <div className="home-pattern-list">{patterns.slice(0, 3).map((item) => <span key={item.name}>{item.name}<small>{item.completed}/{item.total}</small></span>)}</div>
+      <section className="home-builder" aria-label="Who builds CodexSheet">
+        <img className="home-builder-portrait" src={adityaPortrait} alt="Aditya Bakshi, your mentor" width={104} height={104} loading="lazy" />
+        <div className="home-builder-copy">
+          <span className="home-section-kicker">BUILT BY ONE PERSON</span>
+          <h2>{mentorProfile.name} <em>writes the code and takes the sessions.</em></h2>
+          <p className="home-builder-role">{mentorProfile.role}. He solved the problems himself, wrote the pattern notes he wanted at 2am, and put them where any student can reach them.</p>
+          <ul className="home-builder-stats">
+            {mentorProfile.stats.map((stat) => (
+              <li key={stat.label}><strong>{stat.value}</strong><span>{stat.label}</span></li>
+            ))}
+          </ul>
+          <p className="home-builder-stack">{mentorProfile.stack.join(" · ")}</p>
+        </div>
+        <div className="home-builder-side">
+          {mentorProfile.projects.map((project) => (
+            <a className="home-builder-project" key={project.name} href={project.href} target="_blank" rel="noreferrer">
+              <strong>{project.name}</strong><span>{project.blurb}</span>
+            </a>
+          ))}
+          <button className="home-link" type="button" onClick={() => onNavigate("mentorship")}>Book a 1:1 session <ArrowRight size={15} /></button>
         </div>
       </section>
-      <footer className="home-footer"><span>codexsheet</span><span>One pattern. One problem. One step forward.</span><nav className="home-social-links" aria-label="Social profiles"><a href="https://www.instagram.com/adityabakshi10/" target="_blank" rel="noreferrer" aria-label="Instagram: adityabakshi10"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg> adityabakshi10</a><a href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer" aria-label="Aditya Bakshi on LinkedIn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4ZM3.4 9.5h3.7v11H3.4v-11Zm6 0h3.5V11h.1c.5-.9 1.7-1.9 3.5-1.9 3.8 0 4.5 2.4 4.5 5.5v5.9h-3.7v-5.2c0-1.2 0-2.8-1.8-2.8s-2.1 1.3-2.1 2.7v5.3H9.4v-11Z"/></svg> LinkedIn</a></nav><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
-    </main>
+      <footer className="home-footer"><span>codexsheet</span><span>Built by Aditya Bakshi - one pattern, one problem, one step forward.</span><nav className="home-social-links" aria-label="Social profiles"><a href="https://www.instagram.com/adityabakshi10/" target="_blank" rel="noreferrer" aria-label="Instagram: adityabakshi10"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none"/></svg> adityabakshi10</a><a href="https://www.linkedin.com/in/aditya-bakshi-11923dd/?isSelfProfile=true" target="_blank" rel="noreferrer" aria-label="Aditya Bakshi on LinkedIn"><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="M5.2 3.5a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4ZM3.4 9.5h3.7v11H3.4v-11Zm6 0h3.5V11h.1c.5-.9 1.7-1.9 3.5-1.9 3.8 0 4.5 2.4 4.5 5.5v5.9h-3.7v-5.2c0-1.2 0-2.8-1.8-2.8s-2.1 1.3-2.1 2.7v5.3H9.4v-11Z"/></svg> LinkedIn</a></nav><button type="button" onClick={() => onNavigate("problems")}>Go to the problem sheet <ArrowRight size={14} /></button></footer>
+    </div>
   );
 }
 
@@ -2334,7 +2356,7 @@ function App() {
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run. The lesson
   // videos are the same promise: Babbar's own lectures, free, no sign-in.
-  const publicView = !isSignedIn && (activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "lessons");
+  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "lessons");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2359,35 +2381,52 @@ function App() {
   );
 
   if (publicView) {
+    if (activeView === "home") {
+      return (
+        <main className="home-public ui-scope">
+          <HomePage
+            signedIn={false}
+            signInSlot={(
+              <SignInButton mode="modal" forceRedirectUrl={window.location.href}>
+                <button className="home-primary" type="button">{tr("home.cta2")} <ArrowRight size={16} /></button>
+              </SignInButton>
+            )}
+            onNavigate={navigateToView}
+            onOpenProduct={openCheckout}
+          />
+          <StudentFooter />
+        </main>
+      );
+    }
     if (activeView === "lessons") {
-      return <main className="lessons-public">{lessonRail}<StudentFooter /></main>;
+      return <main className="lessons-public ui-scope">{lessonRail}<StudentFooter /></main>;
     }
     if (activeView === "guru") {
-      return <main className="guru-public"><DsaGuru onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+      return <main className="guru-public ui-scope"><DsaGuru onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
     if (activeView === "cslabs") {
-      return <main className="cslabs-public"><CsLabs onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+      return <main className="cslabs-public ui-scope"><CsLabs onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
     if (activeView === "marketplace") {
-      return <main className="mkt-public"><Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => { window.location.href = "/mentor-studio"; }} onNavigateHome={() => navigateToView("mentorship")} /><StudentFooter /></main>;
+      return <main className="mkt-public ui-scope"><Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => { window.location.href = "/mentor-studio"; }} onNavigateHome={() => navigateToView("mentorship")} /><StudentFooter /></main>;
     }
     if (activeView === "experiences") {
-      return <main className="exp-public"><InterviewExperiences /><StudentFooter /></main>;
+      return <main className="exp-public ui-scope"><InterviewExperiences /><StudentFooter /></main>;
     }
     if (activeView === "radar") {
-      return <main className="rad-public"><InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} /><StudentFooter /></main>;
+      return <main className="rad-public ui-scope"><InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} /><StudentFooter /></main>;
     }
     if (activeView === "patterns") {
-      return <main className="patterns-public"><PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} /><StudentFooter /></main>;
+      return <main className="patterns-public ui-scope"><PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} /><StudentFooter /></main>;
     }
     if (activeView === "verify") {
-      return <main className="cert-public"><VerifyPage /><StudentFooter /></main>;
+      return <main className="cert-public ui-scope"><VerifyPage /><StudentFooter /></main>;
     }
-    return <main className="mentorship-public"><MentorshipPayments /><StudentFooter /></main>;
+    return <main className="mentorship-public ui-scope"><MentorshipPayments /><StudentFooter /></main>;
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell ui-scope">
       <header className="topbar navbar">
         <button type="button" className="navbar-brand brand-lockup" onClick={() => navigateToView("home")} aria-label="CodexSheet home">
           <img className="brand-primary-image" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" />
@@ -2539,11 +2578,8 @@ function App() {
         </div>}
       </section>
       {activeView === "home" && <HomePage
-        solved={solved}
-        inProgress={inProgress}
-        streak={practiceStreak.current}
-        percent={percent}
-        patterns={patternStats}
+        signedIn
+        signInSlot={null}
         onNavigate={navigateToView}
         onOpenProduct={openCheckout}
       />}
