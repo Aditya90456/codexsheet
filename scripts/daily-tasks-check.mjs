@@ -20,6 +20,17 @@ import {
 } from "../src/dailyTasks.ts";
 import { dailyVoice } from "../src/sheetVoice.ts";
 import DailyTaskRail from "../src/DailyTaskRail.tsx";
+import { planConfigKey } from "../src/savedPlan.ts";
+
+// The rail reads the student's chosen window off localStorage. A memory stub
+// keeps the default path honest (no key = the ladder) and lets the check switch
+// a custom window on the same way /roadmap does.
+const store = new Map();
+globalThis.localStorage = {
+  getItem: (key) => (store.has(key) ? store.get(key) : null),
+  setItem: (key, value) => store.set(key, String(value)),
+  removeItem: (key) => store.delete(key),
+};
 
 const failures = [];
 const calendar = planCalendar();
@@ -114,6 +125,7 @@ const slots = {
   dueBy: [40, 33],
   finished: [planDays],
   anchor: ["2026-01-01"],
+  custom: ["10-day sprint"],
 };
 for (const [key, value] of Object.entries(dailyVoice)) {
   if (typeof value === "function") {
@@ -151,6 +163,21 @@ if (!pastPlan.includes("daily-task-empty")) failures.push("a plan past day 84 st
 if (!pastPlan.includes(dailyVoice.finished(planDays))) failures.push("the finished plan does not say how long it was");
 if (!dayEight.includes(dailyVoice.restart)) failures.push("the plan offers no way to restart");
 if (!dayOne.includes("Plan ka din 1 = 2026-11-08")) failures.push("the anchor date is not the day-1 key it was given");
+if (dayOne.includes(dailyVoice.custom("10-day sprint"))) failures.push("a student who chose nothing is told they chose a window");
+
+// The same strip when /roadmap saved a 10-day sprint: the note and the day count
+// follow the saved window, the rows still come from the 250 sheet.
+store.set(planConfigKey, JSON.stringify({ track: "sprint10", daysPerWeek: 5, dailyTarget: 6 }));
+const sprint = render("2026-11-08", () => "Todo");
+if (!sprint.includes(dailyVoice.custom("10-day sprint"))) failures.push("a saved sprint window does not say so on the strip");
+if (sprint.includes(dailyVoice.note)) failures.push("a saved window still prints the ladder note");
+if (!sprint.includes("Day 1 / 10")) failures.push("a 10-day sprint still counts days out of 84");
+if (!sprint.includes("10 days")) failures.push("the week chip does not name the chosen window");
+for (const match of sprint.matchAll(/daily-task-no">(\d{3})/g)) {
+  if (!problems.some((problem) => problem.number === Number(match[1]))) failures.push(`the sprint strip printed row ${match[1]}, which is not on the sheet`);
+}
+store.delete(planConfigKey);
+if (render("2026-11-08", () => "Todo").includes(dailyVoice.custom("10-day sprint"))) failures.push("clearing the choice did not put the ladder back");
 
 const perWeek = calendar.map((day) => day.rows.length);
 console.log(`days: ${calendar.length} · rows assigned: ${seen.size}/${problems.length} · per-day ${Math.min(...perWeek)}-${Math.max(...perWeek)}`);

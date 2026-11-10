@@ -518,6 +518,154 @@ def tutor():
         return jsonify({"error": "The DSA tutor could not respond right now. Please try again shortly."}), 502
 
 
+PLAN_SYSTEM_PROMPT = """You are the CodexSheet study planner. A student tells you how long they have and what worries them; you choose the shape of their plan from options the app already implements.
+
+You never write problems, patterns, weeks or links. The app owns the 250-problem sheet; you only pick a window and a pace. Anything you invent is thrown away, so do not try.
+
+Answer with one JSON object and nothing else:
+{"track": "<one of the ids in tracks>", "daysPerWeek": <3, 5 or 7>, "dailyTarget": <2 to 6>, "weakPatterns": ["<names copied from patterns>"], "note": "<two sentences to the student>"}
+
+Rules:
+- A student with less than three weeks takes the shortest track offered, even if the sheet will not fit. The core is the honest answer.
+- A student with more than four months gets the longest track: the ladder first, then a second pass.
+- daysPerWeek is what they can actually keep, not what they wish for. 5 is the default for a student with college.
+- weakPatterns only when they named one or it is obvious from their words; copy the names exactly.
+- note speaks to the student in the language asked for. Plain, warm, no exclamation marks, no lecture.
+"""
+
+plan_request_times: dict[str, deque[float]] = defaultdict(deque)
+
+
+def json_object_in(text: str) -> dict | None:
+    """Models wrap JSON in prose or fences more often than you would think."""
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, TypeError):
+        match = re.search(r"\{.*\}", text or "", re.DOTALL)
+        if not match:
+            return None
+        try:
+            parsed = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def gemini_reply(
+    system_prompt: str,
+    user_text: str,
+    max_output_tokens: int,
+    temperature: float = 0.3,
+    response_mime_type: str = "",
+    thinking_level: str = "",
+    retry_attempts: int = 2,
+    timeout_ms: int = 0,
+) -> str:
+    """One Gemini call, with the configured fallback model. Raises on real failure.
+
+    thinking_level="low" matters more than it sounds: the flash models spend most of
+    their output budget on hidden thinking, and a JSON answer gets cut off in the
+    middle of the first key. That reads to the caller as a broken planner.
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(
+        api_key=os.environ.get("GEMINI_API_KEY", "").strip(),
+        http_options=types.HttpOptions(
+            timeout=timeout_ms if timeout_ms > 0 else None,
+            retry_options=types.HttpRetryOptions(attempts=retry_attempts, initial_delay=1, max_delay=2, http_status_codes=[503]),
+        ),
+    )
+    models = [os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()]
+    fallback = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash").strip()
+    if fallback and fallback not in models:
+        models.append(fallback)
+    config = types.GenerateContentConfig(system_instruction=system_prompt, temperature=temperature, max_output_tokens=max_output_tokens)
+    if response_mime_type:
+        config.response_mime_type = response_mime_type
+    if thinking_level and hasattr(types, "ThinkingConfig"):
+        config.thinking_config = types.ThinkingConfig(thinking_level=thinking_level)
+    for index, model_name in enumerate(models):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[{"role": "user", "parts": [{"text": user_text}]}],
+                config=config,
+            )
+            return (response.text or "").strip()
+        except Exception as exc:
+            if is_service_unavailable(exc) and index < len(models) - 1:
+                app.logger.warning("Gemini model %s is unavailable; retrying with %s", model_name, models[-1])
+                continue
+            raise
+    return ""
+
+
+@app.post("/api/plan")
+def plan():
+    origin = request.headers.get("Origin")
+    if origin and not is_allowed_origin(origin):
+        return jsonify({"error": "The planner only answers CodexSheet."}), 403
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
+        return jsonify({"error": "The planner is not configured yet. Add GEMINI_API_KEY to the Flask environment."}), 503
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Send the student's brief as JSON."}), 400
+    brief = str(data.get("brief", ""))[:400].strip()
+    tracks = data.get("tracks") if isinstance(data.get("tracks"), list) else []
+    allowed_tracks = {str(track.get("id")) for track in tracks if isinstance(track, dict)}
+    sheet_patterns = [str(name) for name in data.get("patterns", []) if isinstance(name, str)][:40]
+    if not brief or not allowed_tracks or not sheet_patterns:
+        return jsonify({"error": "The planner needs the brief, the tracks and the pattern list."}), 400
+
+    now = time.monotonic()
+    client_ip = request.remote_addr or "local"
+    recent = plan_request_times[client_ip]
+    while recent and now - recent[0] > 60:
+        recent.popleft()
+    if len(recent) >= 8:
+        return jsonify({"error": "The planner is rate limited. Wait a minute, then try again."}), 429
+
+    language = str(data.get("language", "en")).strip().lower()[:5]
+    system_prompt = PLAN_SYSTEM_PROMPT
+    instruction = GURU_LANGUAGE_INSTRUCTIONS.get(language)
+    if instruction:
+        system_prompt = f"{system_prompt}\n\nLanguage for the note: {instruction}"
+
+    recent.append(now)
+    try:
+        answer = gemini_reply(system_prompt, json.dumps({
+            "brief": brief,
+            "solved": data.get("solved", 0),
+            "tracks": tracks,
+            "patterns": sheet_patterns,
+        }), 700, temperature=0.2, response_mime_type="application/json", thinking_level="low", retry_attempts=1, timeout_ms=25_000)
+    except Exception as exc:
+        if is_service_unavailable(exc):
+            app.logger.warning("Gemini planner models are temporarily unavailable: %s", exc)
+            return jsonify({"error": "Google Gemini is temporarily at capacity. Please try again in a minute."}), 503
+        app.logger.exception("CodexSheet planner request failed")
+        return jsonify({"error": "The planner could not answer right now. Please try again shortly."}), 502
+
+    parsed = json_object_in(answer)
+    if parsed is None:
+        app.logger.warning("CodexSheet planner returned unreadable JSON: %.200s", answer)
+        return jsonify({"error": "The planner did not return a plan. Try again in a moment."}), 502
+
+    # The same clamp the browser runs, so a bad answer never reaches a student.
+    weak = parsed.get("weakPatterns")
+    plan_out = {
+        "track": parsed.get("track") if str(parsed.get("track")) in allowed_tracks else None,
+        "daysPerWeek": parsed.get("daysPerWeek") if parsed.get("daysPerWeek") in (3, 5, 7, 3.0, 5.0, 7.0) else None,
+        "dailyTarget": parsed.get("dailyTarget") if isinstance(parsed.get("dailyTarget"), (int, float)) and 0 <= parsed.get("dailyTarget") <= 8 else None,
+        "weakPatterns": [name for name in (weak if isinstance(weak, list) else []) if name in sheet_patterns][:6],
+        "note": str(parsed.get("note", ""))[:320],
+    }
+    return jsonify({"plan": {key: value for key, value in plan_out.items() if value is not None}})
+
+
 if __name__ == "__main__":
     from waitress import serve
 

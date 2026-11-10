@@ -1,0 +1,229 @@
+/*
+ * dashboard-hub.css - the board at the foot of /dashboard that lists every rail
+ * CodexSheet has, grouped the way the product is actually organised: practice,
+ * learn, peers, mentors.
+ *
+ * Same language as ui.css, home.css and students.css - flat surfaces, hairline
+ * rules, DM Mono micro-labels, and the one red reserved for what is hovered or
+ * chosen. Imported from main.tsx after ui.css so these rules are later and
+ * narrower than the generic sweeps.
+ */
+:root[data-theme="red"] .dashboard-hub {
+  --dh-line: var(--ui-line, #26191b);
+  --dh-hair: var(--ui-hair, #1f1517);
+  --dh-ink: var(--ui-ink, #f7e7e8);
+  --dh-muted: var(--ui-muted, #a89a97);
+  --dh-faint: var(--ui-faint, #7c706e);
+  --dh-red: var(--ui-primary, #f63b4a);
+  --dh-hover: var(--ui-primary-hover, #ff5566);
+  --dh-surface: var(--ui-surface, #150e0f);
+  --dh-elevate: var(--ui-elevate, #1b1315);
+  --dh-soft: var(--ui-primary-soft, #231518);
+  display: grid;
+  gap: 20px;
+  margin-top: 18px;
+  padding: 22px clamp(16px, 2.2vw, 26px) 24px;
+  border: 1px solid var(--dh-line);
+  border-radius: 14px;
+  background: var(--dh-surface);
+  color: var(--dh-ink);
+}
+
+/* 1. The promise, in one line, so the grid below reads as a table of contents
+ *    rather than advertising. */
+:root[data-theme="red"] .dashboard-hub .hub-head {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 42ch);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--dh-hair);
+}
+:root[data-theme="red"] .hub-head h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+:root[data-theme="red"] .hub-head p {
+  margin: 0 0 2px;
+  color: var(--dh-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* 2. One band per part of the product. The label sits beside the cards instead
+ *    of above them, so the eye reads group first, then the doors. */
+:root[data-theme="red"] .hub-group {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: start;
+}
+:root[data-theme="red"] .hub-group-title {
+  margin: 10px 0 0;
+  color: var(--dh-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+:root[data-theme="red"] .hub-cards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+}
+
+/* 3. The card. Flat, one hairline, and the only thing that moves is the rule. */
+:root[data-theme="red"] .hub-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 13px 14px 12px;
+  border: 1px solid var(--dh-line);
+  border-radius: 12px;
+  background: var(--dh-elevate);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+:root[data-theme="red"] .hub-card:hover,
+:root[data-theme="red"] .hub-card:focus-visible {
+  border-color: var(--dh-red);
+  outline: none;
+}
+:root[data-theme="red"] .hub-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 2px;
+  border: 1px solid var(--dh-line);
+  border-radius: 8px;
+  background: var(--dh-soft);
+  color: var(--dh-red);
+}
+:root[data-theme="red"] .hub-card strong {
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+:root[data-theme="red"] .hub-card small {
+  color: var(--dh-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+:root[data-theme="red"] .hub-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--dh-faint);
+}
+:root[data-theme="red"] .hub-card-foot em {
+  color: var(--dh-muted);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root[data-theme="red"] .hub-card:hover .hub-card-foot { color: var(--dh-hover); }
+
+/* 4. Who you are, and the patterns you left half-finished. These two sit outside
+ *    the hub panel, so they read the --ui-* ramp straight off :root. */
+:root[data-theme="red"] .dashboard-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: var(--ui-elevate);
+}
+:root[data-theme="red"] .dashboard-identity-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--ui-primary-soft);
+  color: var(--ui-primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+:root[data-theme="red"] .dashboard-identity-copy { display: grid; gap: 2px; margin-right: auto; }
+:root[data-theme="red"] .dashboard-identity-copy strong { font-size: 13.5px; font-weight: 650; }
+:root[data-theme="red"] .dashboard-identity-copy small { color: var(--ui-muted); font-size: 11.5px; }
+:root[data-theme="red"] .dashboard-identity-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ui-ink);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+:root[data-theme="red"] .dashboard-identity-cta:hover { border-color: var(--ui-primary); color: var(--ui-primary-hover); }
+
+:root[data-theme="red"] .dashboard-resume { display: grid; gap: 12px; margin-top: 20px; }
+:root[data-theme="red"] .resume-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(196px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+:root[data-theme="red"] .resume-card {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 12px 13px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+:root[data-theme="red"] .resume-card:hover,
+:root[data-theme="red"] .resume-card:focus-visible { border-color: var(--ui-primary); outline: none; }
+:root[data-theme="red"] .resume-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+:root[data-theme="red"] .resume-card-top strong { font-size: 13px; font-weight: 620; }
+:root[data-theme="red"] .resume-card-top em {
+  color: var(--ui-muted);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-style: normal;
+}
+:root[data-theme="red"] .resume-bar { display: block; height: 4px; border-radius: 999px; background: var(--ui-hair); overflow: hidden; }
+:root[data-theme="red"] .resume-bar i { display: block; height: 100%; border-radius: inherit; background: var(--ui-primary); }
+:root[data-theme="red"] .resume-card small { color: var(--ui-muted); font-size: 11.5px; }
+
+/* 5. Two columns, then one. The group label moves above its cards rather than
+ *    shrinking into a sliver. */
+@media (max-width: 860px) {
+  :root[data-theme="red"] .dashboard-hub .hub-head { grid-template-columns: minmax(0, 1fr); }
+  :root[data-theme="red"] .hub-group { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  :root[data-theme="red"] .hub-group-title { margin-top: 6px; }
+  :root[data-theme="red"] .dashboard-identity { flex-wrap: wrap; }
+}
+
+@media (max-width: 560px) {
+  :root[data-theme="red"] .dashboard-hub { padding: 18px 14px 20px; }
+  :root[data-theme="red"] .hub-cards { grid-template-columns: minmax(0, 1fr); }
+  :root[data-theme="red"] .resume-track { grid-auto-columns: minmax(168px, 1fr); }
+}

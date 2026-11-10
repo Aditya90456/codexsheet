@@ -80,8 +80,10 @@ import LessonVideoRail from "./LessonVideoRail";
 import DailyTaskRail from "./DailyTaskRail";
 import { expectedByDay, planDays, taskForDay } from "./dailyTasks";
 import { lessonLectures } from "./love-babbar-lessons";
+import { DashboardHub, ResumeTrack, resumeRows, type HubCounts } from "./DashboardHub";
 import DsaCourseStudio from "./DsaCourseStudio";
-import RoadmapBoard from "./RoadmapBoard";
+import StudyPlanner from "./StudyPlanner";
+import StudentNetwork from "./StudentNetwork";
 import MentorshipPayments from "./MentorshipPayments";
 import MenteeSpace from "./MenteeSpace";
 import Marketplace from "./Marketplace";
@@ -134,11 +136,6 @@ type PersonalNote = {
   savedContent: string;
   updatedAt: string;
 };
-type RoadmapPreferences = {
-  targetWeeks: number;
-  sessionsPerWeek: number;
-  focusPattern: string;
-};
 type SheetGroupMode = "week" | "topic" | "pattern";
 
 const sheetModeLabels: Record<SheetGroupMode, string> = { week: "Stage", topic: "Topic", pattern: "Pattern" };
@@ -170,9 +167,9 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "lessons";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "lessons" | "network";
 
-const viewPaths: Record<WorkspaceView, string> = {
+export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
   dashboard: "/dashboard",
   problems: "/problems",
@@ -200,9 +197,20 @@ const viewPaths: Record<WorkspaceView, string> = {
   experiences: "/experiences",
   radar: "/radar",
   lessons: "/lessons",
+  network: "/network",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
+
+// Rails that arrive with their own header - their own kicker, h1 and blurb,
+// written for that rail. Above them the shared band only ever printed the
+// generic "Your workspace" fallback, so a student saw two titles, one of them
+// wrong. Anything not listed here is a plain rail and gets the band.
+export const selfHeadedViews: WorkspaceView[] = [
+  "home", "guru", "leaderboard", "certificate", "verify", "patterns",
+  "companies", "cslabs", "articles", "jobs", "lessons", "radar", "experiences",
+  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course",
+];
 
 const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   home: {
@@ -264,6 +272,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "2027 interview questions, by round — CodexSheet Radar",
     description: "What the 2027 hiring cycle is actually asking: the AI-pairing round, reading code you did not write, defending your own project, designing around a model, behavioural answers and the DSA that still gates. 27 questions across 7 rounds, each linked to the write-up it came from.",
   },
+  network: {
+    title: "CodexSheet Network — share code, follow students and ask in private",
+    description: "The CodexSheet network: post the code you wrote for the 250-problem sheet and let the batch like, dislike or pick it apart in the comments, follow the students whose approach you want, and open a private thread to ask the doubt you have been sitting on.",
+  },
   lessons: {
     title: "140 free DSA video lessons, topic by topic — CodexSheet",
     description: "Every lecture of the CodeHelp / Love Babbar placement series as its own lesson, sorted onto the 12 topics of the CodexSheet DSA sheet. Free, no sign-in, and each lecture says how many problems of its topic are waiting on the sheet.",
@@ -310,6 +322,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
     label: "Community",
     items: [
       { view: "chat", label: "Group chat", icon: MessageCircle },
+      { view: "network", label: "Network", icon: Users },
       { view: "experiences", label: "Interview experiences", icon: Building2 },
     ],
   },
@@ -1387,13 +1400,6 @@ function App() {
   }, [activeView]);
 
   const tr = useT();
-  const [roadmapPreferences, setRoadmapPreferences] = useState<RoadmapPreferences>(
-    () => JSON.parse(
-      localStorage.getItem("codexsheet-roadmap-preferences") ??
-        '{"targetWeeks":12,"sessionsPerWeek":5,"focusPattern":"Build weak areas"}',
-    ) as RoadmapPreferences,
-  );
-  const [patternOfDay, setPatternOfDay] = useState(patterns[0] ?? "");
   const [pattern, setPattern] = useState("All patterns");
   const [difficulty, setDifficulty] = useState("All levels");
   const [status, setStatus] = useState("All status");
@@ -1656,45 +1662,30 @@ function App() {
         .filter((item) => item.total > 0),
     [progress],
   );
-  const weakestPattern = useMemo(
-    () => [...patternStats].sort((left, right) =>
-      (left.completed / left.total) - (right.completed / right.total) || left.name.localeCompare(right.name),
-    )[0],
-    [patternStats],
+  const solvedNumbers = useMemo(
+    () => problems.filter((problem) => progress[problem.number]?.status === "Solved").map((problem) => problem.number),
+    [progress],
   );
-  const roadmapProblems = useMemo(() => {
-    const completionByPattern = new Map(
-      patternStats.map((item) => [item.name, item.completed / item.total]),
-    );
-    return problems
-      .filter((problem) => progress[problem.number]?.status !== "Solved")
-      .sort((left, right) => {
-        const leftInProgress = progress[left.number]?.status === "In progress";
-        const rightInProgress = progress[right.number]?.status === "In progress";
-        if (leftInProgress !== rightInProgress) return Number(rightInProgress) - Number(leftInProgress);
-        if (roadmapPreferences.focusPattern === "Build weak areas") {
-          const weaknessDifference =
-            (completionByPattern.get(left.pattern) ?? 0) -
-            (completionByPattern.get(right.pattern) ?? 0);
-          if (weaknessDifference !== 0) return weaknessDifference;
-        } else if (roadmapPreferences.focusPattern !== "All patterns") {
-          const focusDifference =
-            Number(right.pattern === roadmapPreferences.focusPattern) -
-            Number(left.pattern === roadmapPreferences.focusPattern);
-          if (focusDifference !== 0) return focusDifference;
-        }
-        return left.number - right.number;
-      });
-  }, [patternStats, progress, roadmapPreferences.focusPattern]);
-  const roadmapWeeks = useMemo(() => {
-    if (roadmapProblems.length === 0) return [];
-    const weekCount = Math.min(roadmapPreferences.targetWeeks, roadmapProblems.length);
-    const problemsPerWeek = Math.ceil(roadmapProblems.length / weekCount);
-    return Array.from({ length: weekCount }, (_, index) => ({
-      number: index + 1,
-      problems: roadmapProblems.slice(index * problemsPerWeek, (index + 1) * problemsPerWeek),
-    }));
-  }, [roadmapPreferences.targetWeeks, roadmapProblems]);
+  // A half-finished pattern is where the next hour of practice pays best, so the
+  // dashboard hands back the patterns with work open in them. The ordering lives
+  // in DashboardHub.tsx next to the markup it feeds.
+  const resumePatterns = useMemo(
+    () =>
+      resumeRows(
+        patternStats.map((item) => ({
+          ...item,
+          active: problems.filter((problem) => problem.pattern === item.name && progress[problem.number]?.status === "In progress").length,
+        })),
+      ),
+    [patternStats, problems, progress],
+  );
+  const hubCounts: HubCounts = {
+    solved,
+    total: problems.length,
+    patterns: patternStats.length,
+    activeDays: practiceDays.length,
+    unread: chatUnreadIds.length,
+  };
   function getDisplayName(userId: string) {
     if (userId === user?.id) return "You";
     const profile = profileByUserId[userId];
@@ -2190,9 +2181,6 @@ function App() {
     localStorage.setItem("codexsheet-practice-days", JSON.stringify(practiceDays));
   }, [practiceDays]);
 
-  useEffect(() => {
-    localStorage.setItem("codexsheet-roadmap-preferences", JSON.stringify(roadmapPreferences));
-  }, [roadmapPreferences]);
 
 
 
@@ -2494,8 +2482,8 @@ function App() {
         </div>
         </div>
       </header>
-      <section className={`workspace-header${activeView === "companies" ? " company-workspace-header" : ""}`}>
-        {activeView !== "home" && activeView !== "guru" && activeView !== "leaderboard" && activeView !== "certificate" && activeView !== "verify" && activeView !== "patterns" && <div className="title-row">
+      <section className="workspace-header">
+        {!selfHeadedViews.includes(activeView) && <div className="title-row">
           <div>
             <div className="breadcrumb">
               <span>Library</span>
@@ -2524,7 +2512,8 @@ function App() {
                   : activeView === "mentorship" ? "Mentorship"
                   : activeView === "experiences" ? "Interview experiences"
                   : activeView === "mentees" ? "Mentees"
-                  : activeView === "articles" ? "Articles" : "Job search"}
+                  : activeView === "network" ? "CodexSheet Network"
+                  : activeView === "articles" ? "Articles" : activeView === "jobs" ? "Job search" : "CodexSheet"}
               </span>
             </div>
             <h1>
@@ -2548,7 +2537,7 @@ function App() {
                     ? "Group chat"
                       : activeView === "notes"
                         ? "Personal notebook"
-                : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : "Find your next opportunity"}{" "}
+                : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : activeView === "network" ? "Share your code, read theirs" : activeView === "jobs" ? "Roles worth preparing for" : "Your workspace"}{" "}
               <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
             </h1>
             <p>
@@ -2572,7 +2561,7 @@ function App() {
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
                         ? "Keep private study notes that sync with your account."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "experiences" ? "Round-by-round accounts written by the candidate who sat in the room. Nothing here is scraped." : "Explore early career roles and find a team where you can grow."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "experiences" ? "Round-by-round accounts written by the candidate who sat in the room. Nothing here is scraped." : activeView === "network" ? "Post the solution you just wrote, let the batch react and argue in the comments, and message any student privately." : activeView === "jobs" ? "Explore early career roles and find a team where you can grow." : "Pick up the rail you need - everything here is tied to your account."}
             </p>
           </div>
         </div>}
@@ -2592,6 +2581,7 @@ function App() {
       {activeView === "experiences" && <InterviewExperiences userId={user?.id ?? ""} />}
       {activeView === "radar" && <InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} />}
       {activeView === "leaderboard" && <Leaderboard userId={user?.id ?? ""} />}
+      {activeView === "network" && <StudentNetwork userId={user?.id ?? ""} />}
       {activeView === "certificate" && <Certificates userId={user?.id ?? ""} />}
       {activeView === "verify" && <VerifyPage />}
       {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
@@ -2608,6 +2598,14 @@ function App() {
               <span className="dashboard-welcome-kicker"><span /> YOUR PRACTICE, AT A GLANCE</span>
               <h2>Small steps make <em>strong instincts.</em></h2>
               <p>{solved > 0 ? `You’ve solved ${solved} of ${problems.length} problems. Keep your momentum going with the next one.` : "Build a steady interview practice habit, one thoughtfully chosen problem at a time."}</p>
+              <div className="dashboard-identity">
+                <span className="dashboard-identity-avatar" aria-hidden="true">{(clerkDisplayName.trim().slice(0, 1) || "C").toUpperCase()}</span>
+                <span className="dashboard-identity-copy">
+                  <strong>{clerkDisplayName}</strong>
+                  <small>{sheetRank.title} · Level {sheetRank.level} · {sheetRank.xp} XP{sheetRank.toNext ? ` · ${sheetRank.toNext} XP to the next rank` : " · top rank held"}</small>
+                </span>
+                <button type="button" className="dashboard-identity-cta" onClick={() => navigateToView("network")}><Users size={14} /> Share your code</button>
+              </div>
               <div className="dashboard-welcome-actions">
                 <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
                 <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
@@ -2657,6 +2655,7 @@ function App() {
           <span>{Math.max(problems.length - solved, 0)} problems left in your path</span>
         </div>
           </section>
+          <ResumeTrack rows={resumePatterns} onOpen={navigateToView} />
           <section className="dashboard-grid">
             <div className="dashboard-panel queue-panel">
               <header className="panel-heading">
@@ -2729,6 +2728,7 @@ function App() {
             </article>
             <article className="dashboard-panel dashboard-lld-card"><span className="dashboard-lld-kicker"><Layers3 size={14}/> NEXT CAREER TRACK</span><h2>Design for the<br/><em>senior engineer.</em></h2><p>A visual 12-week LLD roadmap: domain modeling, concurrency, resilience, and senior-level trade-offs.</p><div className="dashboard-lld-steps"><span>01 · MODEL</span><i/><span>02 · SCALE</span><i/><span>03 · LEAD</span></div><button type="button" onClick={() => navigateToView("lld")}>Open LLD roadmap <ArrowRight size={15}/></button></article>
           </section>
+          <DashboardHub counts={hubCounts} onOpen={navigateToView} />
         </>
       )}
       {activeView === "roadmap" && lockedFor("roadmap") && (
@@ -2745,137 +2745,20 @@ function App() {
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
             <div>
-              <span className="roadmap-eyebrow">ADAPTIVE PREPARATION</span>
+              <span className="roadmap-eyebrow">CHOOSE YOUR WINDOW</span>
               <h2>Your DSA roadmap</h2>
-              <p>A focused plan built around your progress and weekly availability.</p>
+              <p>Ten days before an interview, the full ladder, or six months from first principles - the same {problems.length} problems, cut to the time you have.</p>
             </div>
             <button type="button" className="roadmap-buy unlocked" onClick={() => openCheckout("dsa250")}>Unlock everything · {rupees(accessPass.price)} <ArrowRight size={15}/></button>
           </header>
-          <div className="roadmap-controls">
-            <label>
-              <span>Finish in</span>
-              <select
-                value={roadmapPreferences.targetWeeks}
-                onChange={(event) => setRoadmapPreferences((current) => ({
-                  ...current,
-                  targetWeeks: Number(event.target.value),
-                }))}
-              >
-                <option value={4}>4 weeks</option>
-                <option value={8}>8 weeks</option>
-                <option value={12}>12 weeks</option>
-                <option value={16}>16 weeks</option>
-              </select>
-            </label>
-            <label>
-              <span>Study days each week</span>
-              <select
-                value={roadmapPreferences.sessionsPerWeek}
-                onChange={(event) => setRoadmapPreferences((current) => ({
-                  ...current,
-                  sessionsPerWeek: Number(event.target.value),
-                }))}
-              >
-                <option value={3}>3 days</option>
-                <option value={5}>5 days</option>
-                <option value={7}>7 days</option>
-              </select>
-            </label>
-            <label>
-              <span>Focus area</span>
-              <select
-                value={roadmapPreferences.focusPattern}
-                onChange={(event) => setRoadmapPreferences((current) => ({
-                  ...current,
-                  focusPattern: event.target.value,
-                }))}
-              >
-                <option>Build weak areas</option>
-                <option>All patterns</option>
-                {patterns.map((item) => <option key={item}>{item}</option>)}
-              </select>
-            </label>
-          </div>
-          <section className="roadmap-pattern-day" aria-label="Choose a pattern of the day">
-            <div className="roadmap-pattern-day-heading">
-              <div>
-                <span className="roadmap-eyebrow">YOUR DAILY PRACTICE</span>
-                <h3>Choose a pattern of the day</h3>
-                <p>Pick one pattern to focus on, then work through its problems at your pace.</p>
-              </div>
-              <span className="roadmap-pattern-day-count">
-                {problems.filter((problem) => problem.pattern === patternOfDay).length} problems
-              </span>
-            </div>
-            <div className="roadmap-pattern-choices" role="group" aria-label="Available patterns">
-              {patternStats.map((item) => (
-                <button
-                  className={`roadmap-pattern-choice${patternOfDay === item.name ? " active" : ""}`}
-                  key={item.name}
-                  type="button"
-                  aria-pressed={patternOfDay === item.name}
-                  onClick={() => setPatternOfDay(item.name)}
-                >
-                  <span>{item.name}</span>
-                  <small>{item.completed}/{item.total}</small>
-                </button>
-              ))}
-            </div>
-            <div className="roadmap-pattern-problems" aria-live="polite">
-              {problems.filter((problem) => problem.pattern === patternOfDay).map((problem) => {
-                const current = progress[problem.number]?.status ?? "Todo";
-                return (
-                  <div className="roadmap-pattern-problem" key={problem.number}>
-                    <span className="roadmap-task-number">{String(problem.number).padStart(3, "0")}</span>
-                    <a href={problem.link} target="_blank" rel="noreferrer">
-                      <strong>{problem.title}</strong>
-                      <span>{problem.difficulty}</span>
-                    </a>
-                    <select
-                      className={`roadmap-task-status ${current.toLowerCase().replace(" ", "-")}`}
-                      aria-label={`Status for ${problem.title}`}
-                      value={current}
-                      onChange={(event) => setProblemStatus(problem.number, event.target.value as Status)}
-                    >
-                      <option>Todo</option>
-                      <option>In progress</option>
-                      <option>Solved</option>
-                    </select>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-          <div className="roadmap-insight" aria-live="polite">
-            <div className="roadmap-insight-mark"><Target size={17} /></div>
-            <div className="roadmap-insight-copy">
-              <span className="roadmap-insight-label">YOUR NEXT FOCUS</span>
-            {weakestPattern ? (
-              <p><strong>{weakestPattern.name}</strong> is your least-practiced pattern ({weakestPattern.completed} of {weakestPattern.total} solved). {roadmapPreferences.focusPattern === "Build weak areas" ? "It is prioritized in your plan." : "Choose Build weak areas to prioritize it."}</p>
-            ) : (
-              <p>As you solve problems, the plan will identify patterns where you need more practice and adjust the order.</p>
-            )}
-            </div>
-          </div>
-          <div className="roadmap-load" aria-live="polite">
-            <div className="roadmap-stat"><strong>{roadmapProblems.length}</strong><span>problems remaining</span></div>
-            <div className="roadmap-stat"><strong>{Math.ceil(roadmapProblems.length / (roadmapPreferences.targetWeeks * roadmapPreferences.sessionsPerWeek))}</strong><span>problems per study day</span></div>
-            <div className="roadmap-stat"><strong>{roadmapPreferences.sessionsPerWeek}</strong><span>study days each week</span></div>
-          </div>
-          {roadmapWeeks.length === 0 ? (
-            <div className="roadmap-complete">
-              <Check size={20} />
-              <strong>You’ve completed the roadmap.</strong>
-              <p>All {problems.length} problems are marked solved.</p>
-            </div>
-          ) : (
-            <RoadmapBoard
-              weeks={roadmapWeeks}
-              patternStats={patternStats}
-              statusOf={(problemNumber) => progress[problemNumber]?.status ?? "Todo"}
-              onStatus={setProblemStatus}
-            />
-          )}
+          <StudyPlanner
+            startKey={planStart}
+            nowKey={todayDateKey}
+            solvedNumbers={solvedNumbers}
+            statusOf={(number) => progress[number]?.status ?? "Todo"}
+            onStatus={setProblemStatus}
+            patternStats={patternStats}
+          />
         </section>
       )}
       {activeView === "calendar" && (

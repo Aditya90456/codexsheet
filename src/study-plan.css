@@ -1,0 +1,156 @@
+/*
+ * study-plan.css - the planner on /roadmap.
+ *
+ * Same language as home.css and ui.css: flat surfaces, hairline rules, DM Mono
+ * micro-labels, one red reserved for the choice that is currently made. It is
+ * imported after ui.css, so the generic sweeps in there do not have to be fought -
+ * these rules are simply later and narrower.
+ */
+
+:root[data-theme="red"] .planner {
+  --sp-line: var(--ui-line, #26191b);
+  --sp-hair: var(--ui-hair, #1f1517);
+  --sp-ink: var(--ui-ink, #f7e7e8);
+  --sp-muted: var(--ui-muted, #a89a97);
+  --sp-faint: var(--ui-faint, #7c706e);
+  --sp-red: var(--ui-primary, #f63b4a);
+  --sp-surface: var(--ui-surface, #150e0f);
+  --sp-soft: var(--ui-primary-soft, #231518);
+  display: grid;
+  gap: 18px;
+  color: var(--sp-ink);
+}
+
+:root[data-theme="red"] .planner-eyebrow,
+:root[data-theme="red"] .planner-control-label {
+  display: block;
+  color: var(--sp-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+/* 1. The three windows. Cards, not a dropdown - the choice is the whole page. */
+:root[data-theme="red"] .planner-tracks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+:root[data-theme="red"] .planner-track {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 16px 15px 14px;
+  text-align: left;
+  color: var(--sp-ink);
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+:root[data-theme="red"] .planner-track:hover { border-color: #3a2427; }
+:root[data-theme="red"] .planner-track.active { border-color: var(--sp-red); background: #1a1012; }
+:root[data-theme="red"] .planner-track-kicker { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .14em; }
+:root[data-theme="red"] .planner-track.active .planner-track-kicker { color: #ff8f9b; }
+:root[data-theme="red"] .planner-track strong { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+:root[data-theme="red"] .planner-track p { margin: 0; color: var(--sp-muted); font-size: 12.5px; line-height: 1.5; }
+:root[data-theme="red"] .planner-track-foot { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; }
+:root[data-theme="red"] .planner-track-picked { position: absolute; top: 12px; right: 12px; display: inline-flex; align-items: center; gap: 4px; color: var(--sp-red); font-size: 10px; font-family: 'DM Mono', ui-monospace, monospace; }
+
+/* 2. The AI brief. One box, one verb. */
+:root[data-theme="red"] .planner-brief { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; align-items: end; padding: 14px 15px; background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: 12px; }
+:root[data-theme="red"] .planner-brief-field { display: grid; gap: 6px; }
+:root[data-theme="red"] .planner-brief textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--sp-ink);
+  background: #0f0a0b;
+  border: 1px solid var(--sp-hair);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13.5px;
+  resize: vertical;
+}
+:root[data-theme="red"] .planner-brief textarea:focus-visible { outline: none; border-color: var(--sp-red); }
+:root[data-theme="red"] .planner-brief-go { display: inline-flex; align-items: center; gap: 7px; padding: 11px 16px; color: #14090a; background: var(--sp-red); border: 0; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+:root[data-theme="red"] .planner-brief-go:hover:not(:disabled) { background: var(--ui-primary-hover, #ff5566); }
+:root[data-theme="red"] .planner-brief-go:disabled { background: #2a1d1f; color: var(--sp-faint); cursor: not-allowed; }
+:root[data-theme="red"] .planner-brief-note { grid-column: 1 / -1; margin: 0; color: #ff98a3; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; min-height: 14px; }
+
+/* 3. Pace, target, weak areas - chips, not selects. */
+:root[data-theme="red"] .planner-controls { display: flex; flex-wrap: wrap; gap: 18px 26px; align-items: center; padding: 14px 15px; background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: 12px; }
+:root[data-theme="red"] .planner-control { display: flex; align-items: center; gap: 8px; }
+:root[data-theme="red"] .planner-control-label { margin-right: 2px; }
+:root[data-theme="red"] .planner-chip { min-width: 38px; padding: 7px 10px; color: var(--sp-muted); background: #0f0a0b; border: 1px solid var(--sp-hair); border-radius: 999px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; cursor: pointer; }
+:root[data-theme="red"] .planner-chip:hover { color: var(--sp-ink); border-color: #3a2427; }
+:root[data-theme="red"] .planner-chip.active { color: #ffd7dc; background: var(--sp-soft); border-color: var(--sp-red); }
+:root[data-theme="red"] .planner-summary { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-left: auto; font-size: 11px; color: var(--sp-faint); }
+:root[data-theme="red"] .planner-summary strong { color: var(--sp-ink); font-family: 'DM Mono', ui-monospace, monospace; font-size: 15px; font-weight: 500; margin-right: 5px; }
+:root[data-theme="red"] .planner-weak { display: grid; gap: 9px; }
+:root[data-theme="red"] .planner-weak-list { display: flex; flex-wrap: wrap; gap: 7px; }
+:root[data-theme="red"] .planner-weak-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 11px; color: var(--sp-muted); background: var(--sp-surface); border: 1px solid var(--sp-hair); border-radius: 999px; font-size: 12px; cursor: pointer; }
+:root[data-theme="red"] .planner-weak-chip small { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; }
+:root[data-theme="red"] .planner-weak-chip:hover { color: var(--sp-ink); border-color: #3a2427; }
+:root[data-theme="red"] .planner-weak-chip.active { color: #ffd7dc; border-color: var(--sp-red); background: #221316; }
+
+/* 4. The shape of the window, drawn as one bar. */
+:root[data-theme="red"] .planner-phases { display: flex; gap: 3px; height: 46px; }
+:root[data-theme="red"] .planner-phase { display: grid; align-content: center; gap: 2px; padding: 0 10px; min-width: 0; overflow: hidden; border-radius: 8px; background: #130d0e; border: 1px solid var(--sp-hair); }
+:root[data-theme="red"] .planner-phase strong { font-size: 11px; font-weight: 600; }
+:root[data-theme="red"] .planner-phase span { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme="red"] .planner-phase.learn { border-left: 2px solid var(--sp-red); }
+:root[data-theme="red"] .planner-phase.revise { border-left: 2px solid #b0793f; }
+:root[data-theme="red"] .planner-phase.mock { border-left: 2px solid #7aa2c7; }
+:root[data-theme="red"] .planner-phase.rest { opacity: .55; }
+
+/* 5. Today. */
+:root[data-theme="red"] .planner-today { display: grid; gap: 12px; padding: 16px 15px; background: linear-gradient(180deg, #1a1012, var(--sp-surface)); border: 1px solid #332022; border-radius: 12px; }
+:root[data-theme="red"] .planner-today.rest { background: var(--sp-surface); }
+:root[data-theme="red"] .planner-today-head h3 { margin: 6px 0 4px; font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
+:root[data-theme="red"] .planner-today-head p { margin: 0; color: var(--sp-muted); font-size: 12.5px; }
+:root[data-theme="red"] .planner-rows { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--sp-hair); border-radius: 10px; overflow: hidden; }
+:root[data-theme="red"] .planner-row { display: flex; align-items: center; gap: 11px; padding: 11px 13px; background: #120c0d; }
+:root[data-theme="red"] .planner-row a { display: flex; align-items: baseline; gap: 9px; min-width: 0; color: var(--sp-ink); text-decoration: none; }
+:root[data-theme="red"] .planner-row a:hover strong { color: #ff98a3; }
+:root[data-theme="red"] .planner-row strong { font-size: 13.5px; font-weight: 500; }
+:root[data-theme="red"] .planner-row small { color: var(--sp-faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme="red"] .planner-row-no { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; }
+:root[data-theme="red"] .planner-row.done strong { color: var(--sp-faint); text-decoration: line-through; }
+:root[data-theme="red"] .planner-tick { display: grid; place-items: center; width: 21px; height: 21px; flex: none; color: var(--sp-faint); background: #0f0a0b; border: 1px solid #3a2427; border-radius: 7px; cursor: pointer; }
+:root[data-theme="red"] .planner-tick:hover { border-color: var(--sp-red); }
+:root[data-theme="red"] .planner-row.done .planner-tick { color: #14090a; background: var(--sp-red); border-color: var(--sp-red); }
+:root[data-theme="red"] .planner-row-empty { padding: 13px; color: var(--sp-muted); background: #120c0d; font-size: 13px; }
+
+/* 6. The whole window, 21 days at a time. */
+:root[data-theme="red"] .planner-days { display: grid; gap: 10px; padding: 14px 15px; background: var(--sp-surface); border: 1px solid var(--sp-line); border-radius: 12px; }
+:root[data-theme="red"] .planner-days-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+:root[data-theme="red"] .planner-days-nav { display: flex; align-items: center; gap: 8px; color: var(--sp-muted); font-family: 'DM Mono', ui-monospace, monospace; font-size: 11.5px; }
+:root[data-theme="red"] .planner-days-arrow,
+:root[data-theme="red"] .planner-days-today { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; color: var(--sp-muted); background: #0f0a0b; border: 1px solid var(--sp-hair); border-radius: 8px; font-size: 11px; cursor: pointer; }
+:root[data-theme="red"] .planner-days-arrow:hover:not(:disabled),
+:root[data-theme="red"] .planner-days-today:hover { color: var(--sp-ink); border-color: #3a2427; }
+:root[data-theme="red"] .planner-days-arrow:disabled { opacity: .35; cursor: default; }
+:root[data-theme="red"] .planner-days-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--sp-hair); border-radius: 10px; overflow: hidden; }
+:root[data-theme="red"] .planner-day { display: grid; grid-template-columns: 34px auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; background: #120c0d; font-size: 12px; }
+:root[data-theme="red"] .planner-day.now { background: #221316; }
+:root[data-theme="red"] .planner-day.rest { opacity: .6; }
+:root[data-theme="red"] .planner-day-no { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; }
+:root[data-theme="red"] .planner-day-phase { padding: 2px 7px; border-radius: 999px; border: 1px solid var(--sp-hair); color: var(--sp-muted); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; }
+:root[data-theme="red"] .planner-day-phase.learn { border-color: #45252a; color: #ff98a3; }
+:root[data-theme="red"] .planner-day-phase.revise { border-color: #4a3722; color: #d7a96b; }
+:root[data-theme="red"] .planner-day-phase.mock { border-color: #2c4356; color: #a6cbe6; }
+:root[data-theme="red"] .planner-day-focus { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="red"] .planner-day-count { color: var(--sp-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; }
+:root[data-theme="red"] .planner-day.complete .planner-day-count { color: #7fc08a; }
+:root[data-theme="red"] .planner-days-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; color: var(--sp-faint); font-size: 11.5px; }
+:root[data-theme="red"] .planner-days-open { display: inline-flex; align-items: center; gap: 6px; padding: 0; color: var(--sp-muted); background: none; border: 0; font-size: 11.5px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+:root[data-theme="red"] .planner-days-open:hover { color: #ff98a3; }
+
+@media (max-width: 900px) {
+  :root[data-theme="red"] .planner-tracks { grid-template-columns: 1fr; }
+  :root[data-theme="red"] .planner-brief { grid-template-columns: 1fr; }
+  :root[data-theme="red"] .planner-summary { margin-left: 0; }
+}
+@media (max-width: 620px) {
+  :root[data-theme="red"] .planner-days-list { grid-template-columns: 1fr; }
+  :root[data-theme="red"] .planner-phases { height: auto; flex-wrap: wrap; }
+  :root[data-theme="red"] .planner-phase { flex: none; min-width: 108px; padding: 7px 10px; }
+}

@@ -1,0 +1,640 @@
+/*
+ * students.css - the CodexSheet network rail at /network: the board where
+ * students post the code they wrote, and the inbox - threads on the left, the
+ * conversation in the middle, one person on the right.
+ *
+ * Same language as home.css, ui.css and study-plan.css - flat surfaces, hairline
+ * rules, DM Mono micro-labels, and the one red reserved for what is currently
+ * chosen or currently unread. Imported from StudentNetwork.tsx, after ui.css, so
+ * these rules are later and narrower than the generic sweeps.
+ */
+
+:root[data-theme="red"] .students {
+  --st-line: var(--ui-line, #26191b);
+  --st-hair: var(--ui-hair, #1f1517);
+  --st-ink: var(--ui-ink, #f7e7e8);
+  --st-muted: var(--ui-muted, #a89a97);
+  --st-faint: var(--ui-faint, #7c706e);
+  --st-red: var(--ui-primary, #f63b4a);
+  --st-hover: var(--ui-primary-hover, #ff5566);
+  --st-surface: var(--ui-surface, #150e0f);
+  --st-elevate: var(--ui-elevate, #1b1315);
+  --st-soft: var(--ui-primary-soft, #231518);
+  --st-canvas: var(--ui-canvas, #0d0708);
+  --st-radius: var(--ui-radius, 12px);
+  display: grid;
+  gap: 16px;
+  color: var(--st-ink);
+}
+
+/* 1. The head. One line of intent, then the rule that keeps the rail usable. */
+:root[data-theme="red"] .students-head { display: grid; gap: 8px; }
+:root[data-theme="red"] .students-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--st-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+:root[data-theme="red"] .students-kicker svg { color: var(--st-red); }
+:root[data-theme="red"] .students-unread {
+  margin-left: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--st-red);
+  color: #14070a;
+  font-style: normal;
+  letter-spacing: .08em;
+}
+:root[data-theme="red"] .students-head h1 { margin: 0; font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -.02em; }
+:root[data-theme="red"] .students-head p { margin: 0; max-width: 78ch; color: var(--st-muted); font-size: 14px; line-height: 1.6; }
+:root[data-theme="red"] .students-note {
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--st-line);
+  border-left: 2px solid var(--st-red);
+  border-radius: 8px;
+  background: var(--st-surface);
+  color: var(--st-muted);
+  font-size: 13px;
+}
+
+/* 2. Three panes. The middle one takes whatever is left. */
+:root[data-theme="red"] .students-panes {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr) 316px;
+  gap: 12px;
+  align-items: start;
+}
+:root[data-theme="red"] .students-inbox,
+:root[data-theme="red"] .students-people,
+:root[data-theme="red"] .students-room {
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+:root[data-theme="red"] .students-pane-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 13px 14px 9px;
+  color: var(--st-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+:root[data-theme="red"] .students-pane-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px 16px;
+  color: var(--st-faint);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* 3. The inbox list. */
+:root[data-theme="red"] .students-threads { display: grid; gap: 2px; margin: 0; padding: 0 6px 8px; list-style: none; }
+:root[data-theme="red"] .students-thread {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-thread:hover { background: var(--st-elevate); }
+:root[data-theme="red"] .students-thread.active { background: var(--st-soft); box-shadow: inset 2px 0 0 var(--st-red); }
+:root[data-theme="red"] .students-thread-copy { display: grid; gap: 2px; min-width: 0; }
+:root[data-theme="red"] .students-thread-copy strong { font-size: 13.5px; font-weight: 600; }
+:root[data-theme="red"] .students-thread-copy span {
+  overflow: hidden;
+  color: var(--st-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:root[data-theme="red"] .students-thread-when { display: grid; justify-items: end; gap: 4px; }
+:root[data-theme="red"] .students-thread-when em { color: var(--st-faint); font-size: 10.5px; font-style: normal; font-family: 'DM Mono', ui-monospace, monospace; }
+:root[data-theme="red"] .students-pill {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--st-red);
+  color: #14070a;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* 4. Avatars are initials on a hairline disc - no uploads, no fake faces. */
+:root[data-theme="red"] .students-avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--st-line);
+  border-radius: 999px;
+  background: var(--st-elevate);
+  color: var(--st-muted);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+:root[data-theme="red"] .students-avatar.big { width: 52px; height: 52px; font-size: 15px; color: var(--st-ink); border-color: var(--st-red); }
+:root[data-theme="red"] .students-avatar.small { width: 22px; height: 22px; font-size: 9px; }
+
+/* 5. The room. A log that scrolls, a composer that does not move. */
+:root[data-theme="red"] .students-room { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 460px; overflow: hidden; }
+:root[data-theme="red"] .students-room-empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  min-height: 460px;
+  padding: 24px;
+  color: var(--st-faint);
+  text-align: center;
+}
+:root[data-theme="red"] .students-room-empty svg { color: var(--st-line); }
+:root[data-theme="red"] .students-room-empty strong { color: var(--st-ink); font-size: 15px; }
+:root[data-theme="red"] .students-room-empty p { margin: 0; font-size: 13px; }
+:root[data-theme="red"] .students-room-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--st-hair);
+}
+:root[data-theme="red"] .students-room-head strong { display: block; font-size: 14px; }
+:root[data-theme="red"] .students-room-head small { color: var(--st-faint); font-size: 11.5px; }
+:root[data-theme="red"] .students-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--st-line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--st-muted);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-back:hover { border-color: var(--st-red); color: var(--st-ink); }
+:root[data-theme="red"] .students-log { display: grid; gap: 8px; align-content: start; padding: 14px; overflow-y: auto; max-height: min(52vh, 460px); }
+:root[data-theme="red"] .students-log-empty { margin: 12px 0; color: var(--st-faint); font-size: 13px; text-align: center; }
+:root[data-theme="red"] .students-older {
+  justify-self: center;
+  padding: 4px 10px;
+  border: 1px solid var(--st-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-faint);
+  font-size: 11px;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-line {
+  display: grid;
+  gap: 3px;
+  max-width: 76%;
+  padding: 9px 12px;
+  border: 1px solid var(--st-line);
+  border-radius: 12px 12px 12px 4px;
+  background: var(--st-elevate);
+  margin: 0;
+}
+:root[data-theme="red"] .students-line span { font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+:root[data-theme="red"] .students-line em { color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; font-style: normal; }
+:root[data-theme="red"] .students-line.mine { justify-self: end; border-color: #3a1d22; border-radius: 12px 12px 4px 12px; background: var(--st-soft); }
+:root[data-theme="red"] .students-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 12px 14px; border-top: 1px solid var(--st-hair); }
+:root[data-theme="red"] .students-compose textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  background: var(--st-canvas, #0d0708);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 13.5px;
+  resize: vertical;
+}
+:root[data-theme="red"] .students-compose textarea:focus { border-color: var(--st-red); outline: none; }
+:root[data-theme="red"] .students-send,
+:root[data-theme="red"] .students-sendghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--st-red);
+  border-radius: 9px;
+  background: var(--st-red);
+  color: #14070a;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-send:hover:not(:disabled) { border-color: var(--st-hover); background: var(--st-hover); }
+:root[data-theme="red"] .students-send:disabled { border-color: var(--st-line); background: transparent; color: var(--st-faint); cursor: not-allowed; }
+:root[data-theme="red"] .students-sendghost { border-color: var(--st-line); background: transparent; color: var(--st-muted); }
+:root[data-theme="red"] .students-sendghost:hover { border-color: var(--st-red); color: var(--st-ink); }
+
+/* 6. The network column - search, then cards. */
+:root[data-theme="red"] .students-people { display: grid; gap: 4px; padding-bottom: 12px; }
+:root[data-theme="red"] .students-search { position: relative; display: flex; align-items: center; margin: 0 12px 8px; }
+:root[data-theme="red"] .students-search svg { position: absolute; left: 10px; color: var(--st-faint); pointer-events: none; }
+:root[data-theme="red"] .students-search input {
+  width: 100%;
+  padding: 8px 30px 8px 30px;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  background: var(--st-elevate);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 13px;
+}
+:root[data-theme="red"] .students-search input:focus { border-color: var(--st-red); outline: none; }
+:root[data-theme="red"] .students-clear { position: absolute; right: 6px; padding: 4px; border: 0; background: transparent; color: var(--st-faint); cursor: pointer; }
+:root[data-theme="red"] .students-loading { display: flex; align-items: center; gap: 6px; padding: 0 14px 12px; color: var(--st-faint); font-size: 12px; margin: 0; }
+:root[data-theme="red"] .students-cards { display: grid; gap: 6px; margin: 0; padding: 0 12px; list-style: none; }
+:root[data-theme="red"] .students-card {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--st-hair);
+  border-radius: 10px;
+  background: var(--st-elevate);
+}
+:root[data-theme="red"] .students-card-who { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 9px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+:root[data-theme="red"] .students-card-who span { display: grid; gap: 1px; min-width: 0; }
+:root[data-theme="red"] .students-card-who strong { font-size: 13px; font-weight: 600; }
+:root[data-theme="red"] .students-card-who small { overflow: hidden; color: var(--st-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="red"] .students-card-who:hover strong { color: var(--st-hover); }
+:root[data-theme="red"] .students-card-actions { display: flex; gap: 6px; }
+:root[data-theme="red"] .students-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--st-red);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-red);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-follow.on { border-color: var(--st-line); background: var(--st-soft); color: var(--st-muted); }
+:root[data-theme="red"] .students-follow:disabled { opacity: .6; cursor: progress; }
+:root[data-theme="red"] .students-hello { display: inline-grid; place-items: center; padding: 5px 8px; border: 1px solid var(--st-line); border-radius: 999px; background: transparent; color: var(--st-muted); cursor: pointer; }
+:root[data-theme="red"] .students-hello:hover { border-color: var(--st-red); color: var(--st-ink); }
+:root[data-theme="red"] .students-tag { position: absolute; top: 10px; right: 12px; color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+:root[data-theme="red"] .students-mine { justify-self: start; margin: 10px 12px 0; padding: 6px 11px; border: 1px dashed var(--st-line); border-radius: 999px; background: transparent; color: var(--st-faint); font-size: 11.5px; cursor: pointer; }
+:root[data-theme="red"] .students-mine:hover { border-color: var(--st-red); color: var(--st-ink); }
+
+/* 7. One student's page, inside the same column. */
+:root[data-theme="red"] .students-profile { display: grid; gap: 10px; padding: 0 14px; }
+:root[data-theme="red"] .students-profile-top { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 11px; }
+:root[data-theme="red"] .students-profile-top strong { display: block; font-size: 16px; }
+:root[data-theme="red"] .students-profile-top small { display: block; color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; }
+:root[data-theme="red"] .students-rank { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; color: var(--st-red); font-size: 11px; }
+:root[data-theme="red"] .students-bio { margin: 0; color: var(--st-muted); font-size: 13px; line-height: 1.6; }
+:root[data-theme="red"] .students-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; }
+:root[data-theme="red"] .students-stats div { padding: 8px 6px; border: 1px solid var(--st-hair); border-radius: 9px; background: var(--st-elevate); text-align: center; }
+:root[data-theme="red"] .students-stats dt { color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+:root[data-theme="red"] .students-stats dd { margin: 3px 0 0; font-size: 15px; font-weight: 650; }
+:root[data-theme="red"] .students-stats dd small { color: var(--st-faint); font-size: 10px; font-weight: 400; }
+:root[data-theme="red"] .students-strengths { margin: 0; color: var(--st-muted); font-size: 12px; }
+:root[data-theme="red"] .students-joined { margin: 0; color: var(--st-faint); font-size: 11px; }
+:root[data-theme="red"] .students-profile-actions { display: flex; gap: 7px; }
+:root[data-theme="red"] .students-edit { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--st-line); border-radius: 10px; background: var(--st-elevate); }
+:root[data-theme="red"] .students-edit label { display: grid; gap: 4px; color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+:root[data-theme="red"] .students-edit input,
+:root[data-theme="red"] .students-edit textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--st-line);
+  border-radius: 8px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+:root[data-theme="red"] .students-edit input:focus,
+:root[data-theme="red"] .students-edit textarea:focus { border-color: var(--st-red); outline: none; }
+:root[data-theme="red"] .students-edit div { display: flex; gap: 7px; }
+:root[data-theme="red"] .students-friends { display: flex; gap: 4px; padding-top: 4px; border-top: 1px solid var(--st-hair); }
+:root[data-theme="red"] .students-friends button {
+  padding: 6px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-friends button.active { background: var(--st-soft); color: var(--st-ink); }
+:root[data-theme="red"] .students-friend-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+:root[data-theme="red"] .students-friend-list button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-friend-list button:hover { background: var(--st-elevate); }
+:root[data-theme="red"] .students-friend-list strong { font-size: 12.5px; font-weight: 550; }
+:root[data-theme="red"] .students-friend-list em { color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; font-style: normal; }
+:root[data-theme="red"] .students-friend-list .students-pane-empty { padding: 6px 4px; }
+:root[data-theme="red"] .spin { animation: students-spin 1s linear infinite; }
+@keyframes students-spin { to { transform: rotate(360deg); } }
+
+/* 8. Board or messages. The board owns the whole width, so the panes collapse. */
+:root[data-theme="red"] .students-tabs { display: flex; gap: 5px; margin-top: 4px; }
+:root[data-theme="red"] .students-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--st-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-muted);
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-tabs button:hover { border-color: var(--st-red); color: var(--st-ink); }
+:root[data-theme="red"] .students-tabs button.active { border-color: var(--st-red); background: var(--st-soft); color: var(--st-ink); }
+:root[data-theme="red"] .students-tabs .students-pill { margin-left: 2px; }
+:root[data-theme="red"] .students-panes.board { grid-template-columns: minmax(0, 1fr); }
+:root[data-theme="red"] .students-board {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 9. The composer. Code first, everything else is a label under it. */
+:root[data-theme="red"] .students-share {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+:root[data-theme="red"] .students-share-body { display: grid; gap: 8px; min-width: 0; }
+:root[data-theme="red"] .students-share-body input,
+:root[data-theme="red"] .students-share-body textarea,
+:root[data-theme="red"] .students-share-body select {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  background: var(--st-canvas, #0d0708);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+:root[data-theme="red"] .students-share-body textarea {
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  resize: vertical;
+  tab-size: 2;
+}
+:root[data-theme="red"] .students-share-body input:focus,
+:root[data-theme="red"] .students-share-body textarea:focus,
+:root[data-theme="red"] .students-share-body select:focus { border-color: var(--st-red); outline: none; }
+:root[data-theme="red"] .students-share-foot { display: grid; grid-template-columns: 132px 92px auto; gap: 7px; align-items: center; }
+:root[data-theme="red"] .students-share-foot select { appearance: none; cursor: pointer; }
+:root[data-theme="red"] .students-share-foot .students-send { white-space: nowrap; }
+
+:root[data-theme="red"] .students-filters { display: flex; gap: 4px; }
+:root[data-theme="red"] .students-filters button {
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-faint);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-filters button:hover { color: var(--st-ink); }
+:root[data-theme="red"] .students-filters button.active { background: var(--st-soft); color: var(--st-ink); }
+
+/* 10. A post. Author, caption, the code itself, then what the batch thinks. */
+:root[data-theme="red"] .students-posts { display: grid; gap: 12px; min-width: 0; }
+:root[data-theme="red"] .students-posts .students-pane-empty { padding: 18px 4px; }
+:root[data-theme="red"] .students-posts .students-older { justify-self: center; margin-bottom: 8px; }
+:root[data-theme="red"] .students-post {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--st-line);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+:root[data-theme="red"] .students-post.open { border-color: #3a1d22; }
+:root[data-theme="red"] .students-post-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+:root[data-theme="red"] .students-post-head .students-card-who { min-width: 0; }
+:root[data-theme="red"] .students-post-head em { color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; font-style: normal; }
+:root[data-theme="red"] .students-kill {
+  display: inline-grid;
+  place-items: center;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--st-faint);
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-kill:hover { border-color: var(--st-red); color: var(--st-red); }
+:root[data-theme="red"] .students-post-caption { margin: 0; color: var(--st-ink); font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+:root[data-theme="red"] .students-code {
+  max-height: 340px;
+  margin: 0;
+  padding: 12px 13px;
+  overflow: auto;
+  border: 1px solid var(--st-hair);
+  border-radius: 10px;
+  background: var(--st-canvas, #0d0708);
+  color: #e8d5d3;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+}
+:root[data-theme="red"] .students-code:focus { border-color: var(--st-red); outline: none; }
+:root[data-theme="red"] .students-post-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0; color: var(--st-faint); font-size: 11.5px; }
+:root[data-theme="red"] .students-chip {
+  padding: 3px 9px;
+  border: 1px solid var(--st-line);
+  border-radius: 999px;
+  background: var(--st-elevate);
+  color: var(--st-muted);
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+:root[data-theme="red"] .students-chip.problem { border-color: #3a1d22; color: var(--st-ink); text-transform: none; letter-spacing: 0; font-size: 11px; }
+
+:root[data-theme="red"] .students-post-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding-top: 2px; border-top: 1px solid var(--st-hair); }
+:root[data-theme="red"] .students-react,
+:root[data-theme="red"] .students-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-muted);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-react:hover,
+:root[data-theme="red"] .students-read:hover { border-color: var(--st-line); color: var(--st-ink); }
+:root[data-theme="red"] .students-react.on { border-color: var(--st-red); background: var(--st-soft); color: var(--st-red); }
+:root[data-theme="red"] .students-react.down.on { border-color: #4a2a2f; background: var(--st-elevate); color: var(--st-faint); }
+:root[data-theme="red"] .students-react:disabled,
+:root[data-theme="red"] .students-read:disabled { opacity: .6; cursor: progress; }
+:root[data-theme="red"] .students-read.on { color: var(--st-ink); }
+:root[data-theme="red"] .students-post-bar .students-sendghost { padding: 5px 11px; font-size: 11.5px; }
+
+/* 11. The comments under a post - a thread that reads like one. */
+:root[data-theme="red"] .students-comments { display: grid; gap: 7px; padding: 11px 12px; border: 1px solid var(--st-hair); border-radius: 10px; background: var(--st-elevate); }
+:root[data-theme="red"] .students-comments .students-pane-empty { padding: 2px 0 6px; }
+:root[data-theme="red"] .students-reply {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 9px;
+  border-left: 2px solid var(--st-line);
+  border-radius: 0 8px 8px 0;
+  background: var(--st-surface);
+  font-size: 13px;
+  line-height: 1.55;
+}
+:root[data-theme="red"] .students-reply.mine { border-left-color: var(--st-red); }
+:root[data-theme="red"] .students-reply > button:first-child { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+:root[data-theme="red"] .students-reply strong { font-size: 12.5px; font-weight: 650; }
+:root[data-theme="red"] .students-reply:hover strong { color: var(--st-hover); }
+:root[data-theme="red"] .students-reply span { color: var(--st-muted); overflow-wrap: anywhere; }
+:root[data-theme="red"] .students-reply em { color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; font-style: normal; }
+:root[data-theme="red"] .students-comments .students-compose { padding: 4px 0 0; border-top: 0; }
+:root[data-theme="red"] .students-compose input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  background: var(--st-canvas, #0d0708);
+  color: var(--st-ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+:root[data-theme="red"] .students-compose input:focus { border-color: var(--st-red); outline: none; }
+:root[data-theme="red"] .students-compose .students-send { padding: 9px 11px; }
+
+/* 12. The board before its database exists. The composer would only ever fail,
+ * so the rail says the true thing and hands the student Messages instead. */
+:root[data-theme="red"] .students-soon {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding: 30px 26px;
+  border: 1px dashed var(--st-line);
+  border-radius: var(--st-radius);
+  background: var(--st-surface);
+}
+:root[data-theme="red"] .students-soon-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  background: var(--st-soft);
+  color: var(--st-red);
+}
+:root[data-theme="red"] .students-soon h3 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
+:root[data-theme="red"] .students-soon p { margin: 0; max-width: 58ch; color: var(--st-muted); font-size: 13.5px; line-height: 1.6; }
+:root[data-theme="red"] .students-soon-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 9px 14px;
+  border: 1px solid var(--st-line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--st-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-soon-go:hover { border-color: var(--st-red); color: var(--st-hover); }
+
+/* 13. Two columns, then one. The room keeps its height so the composer stays put. */
+@media (max-width: 1120px) {
+  :root[data-theme="red"] .students-panes { grid-template-columns: 240px minmax(0, 1fr); }
+  :root[data-theme="red"] .students-people { grid-column: 1 / -1; }
+  :root[data-theme="red"] .students-cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  :root[data-theme="red"] .students-share-foot { grid-template-columns: minmax(0, 1fr) 88px auto; }
+}
+
+@media (max-width: 720px) {
+  :root[data-theme="red"] .students-panes { grid-template-columns: minmax(0, 1fr); }
+  :root[data-theme="red"] .students-room,
+  :root[data-theme="red"] .students-room-empty { min-height: 400px; }
+  :root[data-theme="red"] .students-line { max-width: 88%; }
+  :root[data-theme="red"] .students-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root[data-theme="red"] .students-share { grid-template-columns: minmax(0, 1fr); }
+  :root[data-theme="red"] .students-share > .students-avatar { display: none; }
+  :root[data-theme="red"] .students-share-foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  :root[data-theme="red"] .students-share-foot .students-send { grid-column: 1 / -1; }
+  :root[data-theme="red"] .students-reply { grid-template-columns: minmax(0, 1fr) auto; }
+  :root[data-theme="red"] .students-code { max-height: 260px; font-size: 11.5px; }
+}

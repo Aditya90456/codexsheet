@@ -1,0 +1,196 @@
+  ok   found the XP functions to reuse
+  ok   the sheet seeded
+  ok   the migration ran from top to bottom
+  ok   the board migration ran from top to bottom
+  ok   every RPC the rail calls exists
+  ok   profiles gained a handle and a line about you
+  ok   threads are in the realtime publication
+
+-- what a signed-in student can see --
+  ok   the directory lists the other two, not me
+  ok   the directory counts another student's solves
+  ok   and prices them with the sheet's own XP
+  ok   with the rank title that matches
+  ok   nobody has followed me yet
+  ok   my own unread count starts at zero
+  ok   a search matches a name, whatever the case
+  ok   a hostile search string is data, not SQL
+  ok   the limit is honoured
+
+-- what nobody can see directly --
+  ok   the follow graph is closed to the client
+  ok   threads are closed to the client
+  ok   read receipts are closed to the client
+  ok   a student cannot write a message around the rules
+  ok   a student cannot follow around the rules
+  ok   a student cannot edit somebody's email
+  ok   a student cannot delete another thread
+
+-- following --
+  ok   following someone counts up
+  ok   the directory puts the person who follows you first, and says so
+  ok   following yourself is refused
+  ok   following a name that is not on the sheet is refused
+  ok   following twice is still one follow
+  ok   the follower list names the follower
+  ok   the profile carries the relationship
+  ok   unfollowing takes the count back down
+
+-- a thread with someone you follow --
+  ok   opening a thread gives back a chat
+  ok   opening it again gives back the same chat
+  ok   you get no thread with yourself
+  ok   and none with a stranger to the sheet
+  ok   one row per pair, in one order only
+  ok   a follow link opens the thread both ways
+  ok   and the message reads back
+  ok   and a second message is fine because you follow each other
+  ok   an empty message is refused
+  ok   a novel in one bubble is refused
+  ok   the message is stored trimmed
+
+-- the other side of it --
+  ok   the thread shows up in brian's inbox
+  ok   with the last message they sent
+  ok   unread until brian reads it
+  ok   it says anna follows brian, not the other way round
+  ok   history comes back newest first
+  ok   paging back from the oldest message finds nothing
+  ok   marking read clears the badge
+  ok   brian can answer
+  ok   and anna sees it as one unread
+
+-- a stranger gets one message --
+  ok   carl can start a thread with nobody following anybody
+  ok   the first message goes through
+  ok   the second one does not
+  ok   and the refusal carries the peer's name for the UI
+  ok   the refused message was not stored
+  ok   brian reads one unread from a stranger
+  ok   brian can reply to a stranger
+  ok   and now carl can keep talking, because he was answered
+  ok   and once more, still with no follow link
+  ok   following works the same from either end
+
+-- somebody else's thread stays theirs --
+  ok   carl only ever sees his own thread
+  ok   carl cannot read anna's thread
+  ok   carl cannot post into anna's thread
+  ok   carl cannot mark anna's thread read
+  ok   carl cannot open a thread with himself
+  ok   the row-level policy shows him only his own messages
+  ok   and none of anna's words reach him
+  ok   a profile is still public inside the network
+  ok   no call leaks an email address
+
+-- your own card --
+  ok   the card saves
+  ok   the bio came back
+  ok   my own page has no thread with myself
+  ok   my page counts my solves with the sheet's XP
+  ok   my page names the patterns I solve most
+  ok   saving the same handle again is not a clash with yourself
+  ok   the handle shows up for other students
+  ok   a handle that is taken is refused
+  ok   even written in another case
+  ok   a handle with a space is refused
+  ok   a two-letter handle is refused
+  ok   a forty-one character name is refused
+  ok   a two-hundred-and-one character bio is refused
+  ok   leaving a field out keeps what was there
+  ok   an empty display name is refused
+
+-- a student who cannot type a limit --
+  ok   a limit of zero still returns somebody
+  ok   a limit of ninety thousand stays inside the network
+  ok   a negative page size does not explode
+  ok   a history page of 90000 is capped, not fatal
+
+-- the minute rate limit --
+  ok   a flood of messages stops at the cap
+
+-- sharing code --
+  ok   a post without code is refused
+  ok   a file dump is not a post
+  ok   a language the editor cannot run is refused
+  ok   and so is a problem number off the sheet
+  ok   a student shares their sliding window
+  ok   the post comes back with its code
+  ok   carried under the author's real rank
+  ok   linked to the problem it answers
+  ok   with nobody having reacted yet
+  ok   and the author knowing it is theirs
+  ok   a second student shares theirs
+  ok   the board carries both, newest first
+  ok   with the handle where there is one
+  ok   and no email anywhere on it
+  ok   the following tab holds only people brian chose
+  ok   and my posts shows just mine
+  ok   an unknown tab is the whole board, not an error
+  ok   paging back from the newest post finds the older one
+  ok   liking a post counts up
+  ok   and says what you did
+  ok   a like can become a dislike
+  ok   without leaving the first one behind
+  ok   and a dislike can be taken back
+  ok   leaving the post exactly as it was
+  ok   a reaction that is neither is refused
+  ok   and one on a post that is gone
+  ok   the author sees the dislike
+  ok   but not who left it
+  ok   a student comments on the code
+  ok   the comment arrives with the post
+  ok   an empty comment is refused
+  ok   an essay in a comment is refused
+  ok   and a comment on a post that is gone
+  ok   the rest of the batch answers in the thread
+  ok   and the author has the last word
+  ok   the thread reads oldest first
+  ok   and marks which lines are mine
+  ok   the board count agrees with the thread
+  ok   a student cannot delete somebody else's post
+  ok   or somebody else's comment
+  ok   a student deletes their own post
+  ok   and it leaves the board
+  ok   a deleted post cannot be liked
+  ok   a student cannot post in another name
+  ok   cannot vote behind the RPC
+  ok   cannot edit the board
+  ok   cannot delete the board
+  ok   but can read it, which is what realtime needs
+
+-- the board badge --
+  ok   carl has not seen anna's post
+  ok   opening the board clears it
+  ok   brian shares again
+  ok   and nobody is told about their own post
+  ok   but carl has one waiting
+
+-- ten shares an hour --
+  ok   posting stops at the hour's cap
+
+-- signed out --
+  ok   an anonymous caller cannot list students
+  ok   cannot open a thread
+  ok   cannot follow
+  ok   cannot read the board
+  ok   cannot share code
+  ok   cannot react
+  ok   cannot read the publication tables
+  ok   cannot read the board as a stranger
+  ok   a signed-in call with no subject sees nothing
+  ok   not even the board
+  ok   and has no unread badge
+
+-- pasted a second time --
+  ok   both migrations are safe to run twice
+  ok   the follows survived
+  ok   the threads survived
+  ok   the unread count survived
+  ok   only one realtime registration per table
+  ok   only two threads exist
+  ok   the handle is still mine
+  ok   the post survived with its thread and its votes
+  ok   and so did the deletes
+
+162 checks passed, 0 failed

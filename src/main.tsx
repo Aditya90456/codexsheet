@@ -8,7 +8,6 @@ import "./styles.css";
 import "./redesign.css";
 import "./deva-runner.css";
 import "./deva-course.css";
-import "./roadmap-board.css";
 import "./mentorship.css";
 import "./guru.css";
 import "./cslabs.css";
@@ -18,6 +17,8 @@ import "./marketplace.css";
 import "./articleReader.css";
 import "./home.css";
 import "./ui.css";
+import "./study-plan.css";
+import "./dashboard-hub.css";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const hasClerkPublishableKey =

@@ -124,6 +124,8 @@ export const dailyVoice = {
   restart: "Naya plan aaj se",
   anchor: (start: string) => `Plan ka din 1 = ${start}.`,
   note: "Ye 250 sheet ke apne 12 hafte hain - bas din ke hisab se baante hue. Koi naya waada nahi.",
+  custom: (label: string) => `Ye tumhara chuna hua window hai (${label}). Rows wahi 250 sheet se aate hain - bas baant badli hai.`,
+  restDay: "Aaj koi naya problem nahi. Kal ke do dohrao, phir band karo.",
 } as const;
 
 export type HauslaState = {  solved: number;
