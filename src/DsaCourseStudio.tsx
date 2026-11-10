@@ -73,6 +73,7 @@ export default function DsaCourseStudio() {
   const unitIndex = Math.max(0, courseUnits.findIndex((entry) => entry.id === unit.id));
   const siblings = lessonsForUnit(unit.id);
   const lessonIndex = Math.max(0, siblings.findIndex((item) => item.id === lesson.id));
+  const courseProgress = Math.round((completed.size / Math.max(1, courseLessons.length)) * 100);
 
   useEffect(() => {
     const saved = localStorage.getItem(`deva-course:${lesson.id}:${language}`);
@@ -236,6 +237,12 @@ export default function DsaCourseStudio() {
         {lesson.labTopic && <button type="button" className="deva-course-lab" onClick={() => window.dispatchEvent(new CustomEvent("codexsheet:goto", { detail: { view: "cslabs", topic: lesson.labTopic } }))}><CirclePlay size={13}/> Run it live in the lab</button>}
       </div>
     </header>
+    <section className="deva-course-progress" aria-label="Course progress">
+      <div className="deva-course-progress-copy"><span>YOUR LEARNING PATH</span><strong>{completed.size}<i> / {courseLessons.length}</i> lessons complete</strong><small>{courseProgress === 100 ? "Course complete — you did it." : `${courseLessons.length - completed.size} lessons left in your DSA journey`}</small></div>
+      <div className="deva-course-progress-track" role="progressbar" aria-valuenow={courseProgress} aria-valuemin={0} aria-valuemax={100} aria-label={`${courseProgress}% of course complete`}><span style={{ width: `${courseProgress}%` }} /></div>
+      <div className="deva-course-progress-percent">{courseProgress}<small>%</small></div>
+      <div className="deva-course-progress-current"><span>UP NEXT IN YOUR PATH</span><strong>{lesson.title}</strong><small>Unit {String(unitIndex + 1).padStart(2, "0")} · Lesson {String(lessonIndex + 1).padStart(2, "0")}</small></div>
+    </section>
     <div className="deva-course-units" aria-label="Course units">{courseUnits.map((entry, index) => {
       const items = lessonsForUnit(entry.id);
       const finished = items.filter((item) => completed.has(item.id)).length;
@@ -248,6 +255,7 @@ export default function DsaCourseStudio() {
       <section className="deva-course-stage-panel" aria-label="Animation panel">
         <div className="deva-course-panel-head"><span><CirclePlay size={13}/> {lesson.stage === "stack" ? "STACK VIEW" : "ARRAY STAGE"}</span><span>{lesson.complexity}</span></div>
         <DevaStage lesson={lesson} step={step} stepIndex={stepIndex} playing={playing} />
+        <div className="deva-course-step-summary"><span>STEP {String(stepIndex + 1).padStart(2, "0")} OF {String(steps.length).padStart(2, "0")}</span><strong>{step.title}</strong><p>{step.narration}</p></div>
         {teaching && <div className="deva-course-teacher" aria-label="AI teacher">
           <GuruFace mood={teacherMood} speaking={teaching} moodLabel={translate(teacherMood === "proud" ? "mood.proud" : "mood.think", teacherLang)} className="deva-course-teacher-face" />
           <p className="deva-course-teacher-line">{spokenLine(lesson.id, step, stepIndex, teacherLang)}</p>

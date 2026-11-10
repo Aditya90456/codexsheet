@@ -186,3 +186,85 @@
   .deva-course-teacher { right: 8px; top: 44px; max-width: 70%; }
   .deva-course-teacher-line { display: none; }
 }
+
+/* Course studio refresh: stronger hierarchy, a visible progress goal, and a
+   readable explanation directly under the animation. */
+.deva-course {
+  gap: 16px;
+  padding: clamp(14px, 2vw, 24px);
+  border-color: #302326;
+  border-radius: 18px;
+  background:
+    radial-gradient(900px 420px at 95% -10%, rgba(178, 50, 69, .14), transparent 64%),
+    linear-gradient(145deg, #171012 0%, #0c090a 58%, #100b0c 100%);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .24), inset 0 1px rgba(255,255,255,.025);
+}
+.deva-course-head { align-items: center; padding: 2px 2px 4px; }
+.deva-course-kicker { font-size: 9px; color: #ef8491; }
+.deva-course-head h2 { margin-top: 9px; font-size: clamp(25px, 3vw, 36px); line-height: 1.14; }
+.deva-course-head h2 em { display: inline-block; padding: 5px 9px; border: 1px solid #52252c; border-radius: 999px; background: #211214; vertical-align: 4px; }
+.deva-course-head p { max-width: 66ch; font-size: 12px; }
+.deva-course-progress {
+  display: grid;
+  grid-template-columns: minmax(190px, .9fr) minmax(120px, 1.3fr) 48px minmax(160px, .9fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #312124;
+  border-radius: 13px;
+  background: linear-gradient(100deg, #1c1214, #140e0f 72%);
+}
+.deva-course-progress-copy,.deva-course-progress-current { display:grid; gap:3px; min-width:0; }
+.deva-course-progress-copy>span,.deva-course-progress-current>span { color:#a98186; font:700 8px 'DM Mono',monospace; letter-spacing:.13em; }
+.deva-course-progress-copy>strong { color:#f6e7e9; font-size:12px; }
+.deva-course-progress-copy>strong i { color:#a68d90; font-style:normal; font-weight:500; }
+.deva-course-progress-copy>small,.deva-course-progress-current>small { color:#947d80; font-size:10px; }
+.deva-course-progress-current { padding-left:15px; border-left:1px solid #39272a; }
+.deva-course-progress-current>strong { overflow:hidden; color:#f1c6cc; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.deva-course-progress-track { height:7px; overflow:hidden; border-radius:99px; background:#342326; box-shadow:inset 0 1px 2px #0008; }
+.deva-course-progress-track>span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#b82e40,#fa7585); box-shadow:0 0 16px #ef566566; transition:width .35s ease; }
+.deva-course-progress-percent { color:#ffdce1; font:700 18px 'DM Mono',monospace; text-align:right; }
+.deva-course-progress-percent small { color:#b8878d; font-size:10px; }
+.deva-course-units { gap:10px; }
+.deva-course-unit { padding:11px 12px 12px; border-color:#2c2022; background:rgba(17,11,12,.86); }
+.deva-course-unit.open { border-color:#76353e; box-shadow:inset 0 0 0 1px #76353e25; }
+.deva-course-unit h3 { margin-bottom:10px; }
+.deva-course-unit h3>strong { font-size:12px; }
+.deva-course-unit .deva-course-outline>button { flex-basis:120px; padding:9px 10px; border-radius:9px; background:#171012; }
+.deva-course-unit .deva-course-outline>button.active { border-color:#e05a6b; background:linear-gradient(135deg,#281518,#1a1113); box-shadow:0 5px 16px #0003; }
+.deva-course-split { gap:14px; }
+.deva-course-stage-panel,.deva-course-editor-panel { padding:13px; border-color:#2d2224; border-radius:14px; background:linear-gradient(155deg,#151011,#100b0c); box-shadow:0 12px 28px #0002; }
+.deva-course-panel-head { min-height:24px; color:#b39296; }
+.deva-stage { border-color:#292123; border-radius:11px; }
+.deva-course-step-summary { display:grid; gap:4px; margin-top:10px; padding:11px 13px; border:1px solid #2d2022; border-radius:9px; background:#171011; }
+.deva-course-step-summary>span { color:#c1707a; font:700 8px 'DM Mono',monospace; letter-spacing:.12em; }
+.deva-course-step-summary>strong { color:#f2dfe2; font-size:13px; }
+.deva-course-step-summary>p { margin:0; color:#ad989a; font-size:11px; line-height:1.65; }
+.deva-course-editor { overflow:hidden; border:1px solid #302426; border-radius:10px; }
+.deva-course-actions { gap:8px; }
+.deva-course-actions>button { min-height:34px; border-radius:8px; }
+.deva-course-run { box-shadow:0 5px 16px #ea526522; }
+.deva-course-ai { padding:13px; border-color:#352326; border-radius:11px; background:linear-gradient(135deg,#191113,#100c0d); }
+.deva-course-ai-head { font-size:9px; }
+.deva-course-ai-chips>button { padding:6px 9px; border-radius:8px; }
+.deva-course-ai>textarea { border-radius:8px; font:11px/1.65 'Manrope',system-ui,sans-serif; }
+.deva-course-ask { min-height:33px; border-radius:8px; }
+.deva-course-notes { gap:11px; }
+.deva-course-notes>article { padding:14px 15px; border-color:#2e2224; border-radius:11px; background:linear-gradient(145deg,#171011,#110c0d); }
+.deva-course-notes>article>span { font-size:9px; }
+.deva-course-notes p,.deva-course-notes li { font-size:11.5px; }
+.deva-course-transport { gap:8px; border-radius:10px; }
+.deva-course-transport>button,.deva-course-transport>label { border-radius:8px; }
+@media(max-width:900px) {
+  .deva-course-progress { grid-template-columns:1fr 46px; gap:10px 14px; }
+  .deva-course-progress-track { grid-column:1; grid-row:2; }
+  .deva-course-progress-percent { grid-column:2; grid-row:1 / span 2; }
+  .deva-course-progress-current { grid-column:1 / -1; padding:10px 0 0; border-top:1px solid #39272a; border-left:0; }
+}
+@media(max-width:700px) {
+  .deva-course { border-radius:13px; }
+  .deva-course-progress { padding:12px; }
+  .deva-course-head h2 em { margin:6px 0 0; vertical-align:middle; }
+  .deva-course-unit .deva-course-outline>button { flex-basis:calc(50% - 5px); }
+  .deva-course-step-summary { padding:9px 10px; }
+}

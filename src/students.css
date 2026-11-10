@@ -638,3 +638,144 @@
   :root[data-theme="red"] .students-reply { grid-template-columns: minmax(0, 1fr) auto; }
   :root[data-theme="red"] .students-code { max-height: 260px; font-size: 11.5px; }
 }
+
+/* Network redesign: a clear community masthead, an intentional two-column
+   board, and more spacious panels for the inbox and student directory. */
+:root[data-theme="red"] .students {
+  gap: 18px;
+  width: 100%;
+  --st-radius: 15px;
+}
+:root[data-theme="red"] .students-head {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, .56fr);
+  align-items: end;
+  gap: 10px 28px;
+  overflow: hidden;
+  padding: clamp(22px, 3.6vw, 42px);
+  border: 1px solid #382326;
+  border-radius: 20px;
+  background:
+    radial-gradient(500px 300px at 92% 10%, rgba(209, 54, 75, .18), transparent 68%),
+    linear-gradient(115deg, #1b1113 0%, #120d0e 70%, #160e10 100%);
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 22px 60px rgba(0,0,0,.16);
+}
+:root[data-theme="red"] .students-head::after {
+  position: absolute;
+  top: -88px;
+  right: 8%;
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgba(232,102,119,.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 28px rgba(232,102,119,.025), 0 0 0 58px rgba(232,102,119,.02);
+  content: "";
+  pointer-events: none;
+}
+:root[data-theme="red"] .students-kicker { grid-column: 1 / -1; color: #bc989c; font-size: 9px; }
+:root[data-theme="red"] .students-head h1 {
+  grid-column: 1;
+  grid-row: 2;
+  max-width: 18ch;
+  margin: 3px 0 0;
+  color: #fff0f1;
+  font-size: clamp(31px, 4.2vw, 51px);
+  line-height: 1.04;
+  letter-spacing: -.065em;
+  text-wrap: balance;
+}
+:root[data-theme="red"] .students-head p {
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 2;
+  max-width: 40ch;
+  margin: 0 0 2px;
+  color: #bca8aa;
+  font-size: 13px;
+  line-height: 1.75;
+}
+:root[data-theme="red"] .students-tabs { z-index: 1; grid-column: 1 / -1; margin-top: 8px; }
+:root[data-theme="red"] .students-tabs button {
+  min-height: 38px;
+  padding: 8px 15px;
+  border-color: #382629;
+  background: rgba(13,8,9,.38);
+  color: #c7afb2;
+  font-size: 12px;
+}
+:root[data-theme="red"] .students-tabs button.active {
+  border-color: #a63b49;
+  background: linear-gradient(135deg,#3a171d,#261215);
+  color: #ffe4e7;
+  box-shadow: inset 0 1px rgba(255,255,255,.04), 0 5px 16px #0003;
+}
+:root[data-theme="red"] .students-panes { gap: 14px; align-items: stretch; }
+:root[data-theme="red"] .students-panes:not(.board) { grid-template-columns: minmax(225px, .72fr) minmax(390px, 1.55fr) minmax(260px, .86fr); }
+:root[data-theme="red"] .students-panes.board { grid-template-columns: minmax(0,1fr) minmax(260px,.58fr); align-items:start; }
+:root[data-theme="red"] .students-panes.board .students-board { grid-column:1; }
+:root[data-theme="red"] .students-panes.board .students-people { grid-column:2; grid-row:1; }
+:root[data-theme="red"] .students-inbox,
+:root[data-theme="red"] .students-people,
+:root[data-theme="red"] .students-room {
+  overflow: hidden;
+  border-color: #302124;
+  border-radius: 15px;
+  background: linear-gradient(155deg,#171012,#110c0d);
+  box-shadow: 0 14px 36px rgba(0,0,0,.14), inset 0 1px rgba(255,255,255,.02);
+}
+:root[data-theme="red"] .students-board { gap: 14px; }
+:root[data-theme="red"] .students-share {
+  padding: 16px;
+  border-color: #382629;
+  border-radius: 15px;
+  background: linear-gradient(140deg,#1a1214,#130e0f);
+  box-shadow: inset 0 1px rgba(255,255,255,.025);
+}
+:root[data-theme="red"] .students-share-body input,
+:root[data-theme="red"] .students-share-body textarea,
+:root[data-theme="red"] .students-share-body select,
+:root[data-theme="red"] .students-compose input {
+  border-color: #332427;
+  border-radius: 10px;
+  background: #100b0c;
+}
+:root[data-theme="red"] .students-filters {
+  width: fit-content;
+  padding: 4px;
+  border: 1px solid #2e2023;
+  border-radius: 11px;
+  background: #130d0e;
+}
+:root[data-theme="red"] .students-filters button { padding: 7px 12px; border-radius: 8px; }
+:root[data-theme="red"] .students-filters button.active { background: #291619; color: #f6dadd; }
+:root[data-theme="red"] .students-posts { gap: 14px; }
+:root[data-theme="red"] .students-post {
+  gap: 12px;
+  padding: 16px;
+  border-color: #302124;
+  border-radius: 15px;
+  background: linear-gradient(150deg,#171112,#110c0d 72%);
+  transition: border-color .18s, transform .18s, box-shadow .18s;
+}
+:root[data-theme="red"] .students-post:hover { border-color:#593038; box-shadow:0 14px 30px #0002; transform:translateY(-1px); }
+:root[data-theme="red"] .students-post.open { border-color:#8c3b46; }
+:root[data-theme="red"] .students-code { border-color:#302326; border-radius:11px; background:#0b0809; }
+:root[data-theme="red"] .students-post-bar { padding-top:8px; }
+:root[data-theme="red"] .students-soon { padding:32px; border-style:solid; border-color:#39272a; border-radius:15px; background:radial-gradient(400px 200px at 10% 0,#31171b,#151011 76%); }
+:root[data-theme="red"] .students-pane-title { padding:15px 16px 10px; color:#bc999e; }
+:root[data-theme="red"] .students-note { border-color:#513036; border-radius:10px; background:#1b1113; }
+@media(max-width:1120px) {
+  :root[data-theme="red"] .students-panes:not(.board) { grid-template-columns:minmax(220px,.65fr) minmax(0,1.4fr); }
+  :root[data-theme="red"] .students-panes:not(.board) .students-people { grid-column:1 / -1; }
+  :root[data-theme="red"] .students-panes.board { grid-template-columns:minmax(0,1fr) minmax(230px,.55fr); }
+}
+@media(max-width:720px) {
+  :root[data-theme="red"] .students-head { grid-template-columns:minmax(0,1fr); gap:10px; padding:22px 18px; border-radius:15px; }
+  :root[data-theme="red"] .students-head h1 { grid-column:1; grid-row:auto; max-width:16ch; font-size:clamp(30px,9vw,42px); }
+  :root[data-theme="red"] .students-head p { grid-column:1; grid-row:auto; font-size:12.5px; }
+  :root[data-theme="red"] .students-tabs { grid-column:1; margin-top:5px; }
+  :root[data-theme="red"] .students-panes:not(.board),
+  :root[data-theme="red"] .students-panes.board { grid-template-columns:minmax(0,1fr); }
+  :root[data-theme="red"] .students-panes.board .students-people { grid-column:1; grid-row:auto; }
+  :root[data-theme="red"] .students-post { padding:13px; }
+}

@@ -177,7 +177,7 @@ as $$
   );
 $$;
 
-revoke all on function public.student_is_in_chat(bigint) from public;
+revoke all on function public.student_is_in_chat(bigint) from public, anon, authenticated;
 grant execute on function public.student_is_in_chat(bigint) to authenticated;
 
 -- Sheet numbers for one student: how far they got, what it is worth, and the
