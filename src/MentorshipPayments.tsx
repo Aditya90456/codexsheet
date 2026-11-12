@@ -18,6 +18,7 @@ import {
   queuedOrders,
   recordOrder,
   rupees,
+  topmateSessionUrl,
   upiUriFor,
   utrValid,
   whatsapp,
@@ -284,6 +285,35 @@ export default function MentorshipPayments({
         </article>
       </div>
 
+      {/* ── Session: skip the internal payment flow, link to Topmate ── */}
+      {product.id === "session" && (
+        <div className="mentorship-topmate">
+          <div className="mentorship-topmate-copy">
+            <span className="mentorship-topmate-kicker">BOOK ON TOPMATE</span>
+            <h2>Pick your slot and pay on Topmate</h2>
+            <p>Sessions are booked and paid directly on Topmate — no Paytm QR needed. Choose an available hour, complete payment there, and Aditya confirms your Google Meet link.</p>
+            <ul className="mentorship-topmate-list">
+              {product.includes.map((line) => <li key={line}><Check size={13} /> {line}</li>)}
+            </ul>
+            <a
+              className="mentorship-topmate-cta"
+              href={topmateSessionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Book a session on Topmate <ArrowRight size={15} />
+            </a>
+            <p className="mentorship-topmate-note">Opens topmate.io in a new tab · payment is handled by Topmate</p>
+          </div>
+          <div className="mentorship-topmate-portrait">
+            <img src={adityaPortrait} alt="Aditya Bakshi" width={200} height={200} />
+            <span>{mentorProfile.name}</span>
+            <small>{mentorProfile.role}</small>
+          </div>
+        </div>
+      )}
+
+      {product.id !== "session" && <>
       <section className="mentorship-flow" aria-label="What happens after you pay">
         {flowSteps(product.name, amount).map((step, index) => (
           <article key={step.title}>
@@ -485,6 +515,8 @@ export default function MentorshipPayments({
         </section>
       )}
 
+      </>}
+
       <section className="mentorship-mentor" aria-label="Who mentors you">
         <img src={adityaPortrait} alt="Aditya Bakshi, your mentor" width={132} height={132} loading="lazy" />
         <div>
@@ -498,13 +530,15 @@ export default function MentorshipPayments({
           <p className="mentorship-mentor-stack">{mentorProfile.stack.join(" · ")}</p>
         </div>
       </section>
+
       <section className="mentorship-faq" aria-label="How the products work">
         <article><strong>One price for the workspace</strong><p>{soldProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(", ")}. The pass opens all three paid rails and the server refuses a claim that does not carry the exact figure on the card, so what you read here is what unlocks.</p></article>
-        <article><strong>What stayed free</strong><p>The Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, chat, the calendar, the leaderboard, your certificate and /radar. You never need to pay to open the workspace - only the sheet, the roadmap board and the pattern films have a price, and one {rupees(accessPass.price)} payment covers all three.</p></article>
-        <article><strong>If you paid before</strong><p>Anyone with a confirmed order placed before the pass - the ₹100 sheet, the ₹159 roadmap, the ₹200 course or the old pay-what-you-can Sheet Pass - keeps every rail open, free, forever. Nothing you already bought is taken back, and the ledger still reads those receipts.</p></article>
-        <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Message Aditya once your session claim is confirmed - no per-question fee, and the 1:1 Google Meet slot is one you pick yourself.</p></article>
-        <article><strong>How payment is confirmed</strong><p>Pay the figure on Paytm, then record the reference and UTR here - or WhatsApp the receipt screenshot to {whatsapp.display}. The claim is confirmed as it lands, so the rail stops asking for money straight away, and Aditya reconciles your UTR against his statement afterwards. That is why the UTR and the screenshot are both required.</p></article>
-        <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if it was not worth it, asked inside {refundWindow.days} days of confirmation - refunded on Paytm to the UPI id you paid from.</p></article>
+        <article><strong>What stayed free</strong><p>The Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, chat, the calendar, the leaderboard, your certificate and /radar. You never need to pay to open the workspace — only the sheet, the roadmap board and the pattern films have a price, and one {rupees(accessPass.price)} payment covers all three.</p></article>
+        <article><strong>If you paid before</strong><p>Anyone with a confirmed order placed before the pass — the ₹100 sheet, the ₹159 roadmap, the ₹200 course or the old pay-what-you-can Sheet Pass — keeps every rail open, free, forever. Nothing you already bought is taken back, and the ledger still reads those receipts.</p></article>
+        <article><strong>Sessions are on Topmate</strong><p>1:1 sessions are booked and paid on <a href="https://topmate.io/aditya_bakshi/2260868" target="_blank" rel="noopener noreferrer">topmate.io/aditya_bakshi</a> — slot selection, payment and the Meet link are all handled there.</p></article>
+        <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Book a session on Topmate or message Aditya — no per-question charge.</p></article>
+        <article><strong>How payment is confirmed</strong><p>Pay the figure on Paytm, then record the reference and UTR here — or WhatsApp the receipt screenshot to {whatsapp.display}. The claim is confirmed as it lands, so the rail stops asking for money straight away, and Aditya reconciles your UTR against his statement afterwards.</p></article>
+        <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if it was not worth it, asked inside {refundWindow.days} days of confirmation — refunded on Paytm to the UPI id you paid from.</p></article>
       </section>
     </section>
   );

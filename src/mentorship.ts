@@ -26,6 +26,9 @@ export function whatsappHref(reference: string, product: string, amount: number)
 
 export const mentorEmail = "adityabakshi1011@gmail.com";
 
+/** Topmate booking page for a 1:1 mentor session. */
+export const topmateSessionUrl = "https://topmate.io/aditya_bakshi/2260868";
+
 /** The plan id written on a claim is the product id - the ledger has no separate vocabulary. */
 export type MentorshipPlanId = ProductId;
 

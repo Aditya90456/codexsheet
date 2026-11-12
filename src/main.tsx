@@ -8,6 +8,7 @@ import "./styles.css";
 import "./redesign.css";
 import "./deva-runner.css";
 import "./deva-course.css";
+import "./programming-basics-course.css";
 import "./mentorship.css";
 import "./guru.css";
 import "./cslabs.css";

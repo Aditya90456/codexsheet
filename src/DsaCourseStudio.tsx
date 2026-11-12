@@ -5,7 +5,7 @@ import { python } from "@codemirror/lang-python";
 import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { ArrowRight, BookOpen, Braces, ChevronLeft, CirclePlay, Lightbulb, LoaderCircle, Pause, Repeat, RotateCcw, Send, Sparkles, Target, TriangleAlert, Volume2 } from "lucide-react";
-import DevaStage from "./DevaStage";
+import DsaVisualization from "./DsaVisualization";
 import GuruFace from "./GuruFace";
 import { uiLanguages, translate, useUiLanguage, type UiLanguage } from "./i18n";
 import { speak, stopSpeaking, voiceSupported } from "./mentor-voice";
@@ -34,9 +34,17 @@ function practiceCases(lesson: CourseLesson) {
   return { cases: [{ stdin: lessonDemoStdin(lesson), expected: "" }], judged: false };
 }
 
-export default function DsaCourseStudio() {
+export default function DsaCourseStudio({
+  initialLessonId,
+  showCourseHeader = true,
+  showCurriculum = true,
+}: {
+  initialLessonId?: string;
+  showCourseHeader?: boolean;
+  showCurriculum?: boolean;
+} = {}) {
   const uiLang = useUiLanguage();
-  const [lessonId, setLessonId] = useState(courseLessons[0]?.id ?? "");
+  const [lessonId, setLessonId] = useState(initialLessonId ?? courseLessons[0]?.id ?? "");
   const [language, setLanguage] = useState<CourseLanguage>("JavaScript");
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -228,34 +236,48 @@ export default function DsaCourseStudio() {
   }
 
   return <section className="deva-course" aria-label="DSA course studio">
-    <header className="deva-course-head">
-      <div><span className="deva-course-kicker">DSA COURSE · UNIT {String(unitIndex + 1).padStart(2, "0")} — {unit.title.toUpperCase()}</span><h2>{lesson.title} <em>{lesson.pattern}</em></h2><p>{lesson.goal}</p></div>
+    {showCourseHeader && <header className="deva-course-head">
+      <div><span className="deva-course-kicker">CODEXSHEET LEARNING PATH</span><h2>Make algorithms click.</h2><p>Build your DSA intuition with visual walkthroughs, runnable code, and focused practice.</p></div>
       <div className="deva-course-headside">
-        <label className="deva-course-picker"><span>LESSON {String(lessonIndex + 1).padStart(2, "0")} / {String(siblings.length).padStart(2, "0")} · {String(completed.size)} of {String(courseLessons.length).padStart(2, "0")} COURSE DONE</span>
-          <select value={lesson.id} onChange={(event) => setLessonId(event.target.value)}>{courseUnits.map((entry) => <optgroup key={entry.id} label={entry.title}>{lessonsForUnit(entry.id).map((item) => <option key={item.id} value={item.id}>{completed.has(item.id) ? "✓ " : ""}{item.title}</option>)}</optgroup>)}</select>
-        </label>
-        {lesson.labTopic && <button type="button" className="deva-course-lab" onClick={() => window.dispatchEvent(new CustomEvent("codexsheet:goto", { detail: { view: "cslabs", topic: lesson.labTopic } }))}><CirclePlay size={13}/> Run it live in the lab</button>}
+        <span><strong>{courseLessons.length}</strong> visual lessons</span>
+        <span><strong>{courseUnits.length}</strong> learning units</span>
       </div>
-    </header>
-    <section className="deva-course-progress" aria-label="Course progress">
-      <div className="deva-course-progress-copy"><span>YOUR LEARNING PATH</span><strong>{completed.size}<i> / {courseLessons.length}</i> lessons complete</strong><small>{courseProgress === 100 ? "Course complete — you did it." : `${courseLessons.length - completed.size} lessons left in your DSA journey`}</small></div>
-      <div className="deva-course-progress-track" role="progressbar" aria-valuenow={courseProgress} aria-valuemin={0} aria-valuemax={100} aria-label={`${courseProgress}% of course complete`}><span style={{ width: `${courseProgress}%` }} /></div>
-      <div className="deva-course-progress-percent">{courseProgress}<small>%</small></div>
-      <div className="deva-course-progress-current"><span>UP NEXT IN YOUR PATH</span><strong>{lesson.title}</strong><small>Unit {String(unitIndex + 1).padStart(2, "0")} · Lesson {String(lessonIndex + 1).padStart(2, "0")}</small></div>
-    </section>
-    <div className="deva-course-units" aria-label="Course units">{courseUnits.map((entry, index) => {
-      const items = lessonsForUnit(entry.id);
-      const finished = items.filter((item) => completed.has(item.id)).length;
-      return <section key={entry.id} className={`deva-course-unit${entry.id === lesson.unit ? " open" : ""}`}>
-        <h3><span>UNIT {String(index + 1).padStart(2, "0")}</span><strong>{entry.title}</strong><small>{finished}/{items.length}</small><i>{entry.blurb}</i></h3>
-        <div className="deva-course-outline">{items.map((item, position) => <button type="button" key={item.id} className={item.id === lesson.id ? "active" : completed.has(item.id) ? "complete" : ""} onClick={() => setLessonId(item.id)}><span>{completed.has(item.id) ? "✓" : String(position + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small></button>)}</div>
-      </section>;
-    })}</div>
-    <div className="deva-course-split">
+    </header>}
+    <div className={`deva-course-layout${showCurriculum ? "" : " standalone"}`}>
+      {showCurriculum && <aside className="deva-course-sidebar" aria-label="Course curriculum">
+        <div className="deva-course-sidebar-head">
+          <div><span>YOUR PROGRESS</span><strong>{completed.size}<i> / {courseLessons.length}</i></strong></div>
+          <b>{courseProgress}%</b>
+        </div>
+        <div className="deva-course-progress-track" role="progressbar" aria-valuenow={courseProgress} aria-valuemin={0} aria-valuemax={100} aria-label={`${courseProgress}% of course complete`}><span style={{ width: `${courseProgress}%` }} /></div>
+        <p className="deva-course-sidebar-caption">{courseProgress === 100 ? "Course complete — you did it." : `${courseLessons.length - completed.size} lessons left to explore`}</p>
+        <div className="deva-course-units" aria-label="Course units">{courseUnits.map((entry, index) => {
+          const items = lessonsForUnit(entry.id);
+          const finished = items.filter((item) => completed.has(item.id)).length;
+          return <details key={entry.id} className={`deva-course-unit${entry.id === lesson.unit ? " open" : ""}`} open={entry.id === lesson.unit}>
+            <summary>
+              <span>UNIT {String(index + 1).padStart(2, "0")}</span>
+              <strong>{entry.title}</strong>
+              <small>{finished}/{items.length}</small>
+              <i>{entry.blurb}</i>
+            </summary>
+            <div className="deva-course-outline">{items.map((item, position) => <button type="button" key={item.id} className={item.id === lesson.id ? "active" : completed.has(item.id) ? "complete" : ""} aria-current={item.id === lesson.id ? "page" : undefined} onClick={() => setLessonId(item.id)}><span>{completed.has(item.id) ? "✓" : String(position + 1).padStart(2, "0")}</span><strong>{item.title}</strong><small>{item.pattern}</small></button>)}</div>
+          </details>;
+        })}</div>
+      </aside>}
+      <div className="deva-course-main">
+        <header className="deva-course-lesson-head">
+          <div>
+            <span className="deva-course-lesson-meta">UNIT {String(unitIndex + 1).padStart(2, "0")} · LESSON {String(lessonIndex + 1).padStart(2, "0")} OF {String(siblings.length).padStart(2, "0")}</span>
+            <h2>{lesson.title} <em>{lesson.pattern}</em></h2>
+            <p>{lesson.goal}</p>
+          </div>
+          {lesson.labTopic && <button type="button" className="deva-course-lab" onClick={() => window.dispatchEvent(new CustomEvent("codexsheet:goto", { detail: { view: "cslabs", topic: lesson.labTopic } }))}><CirclePlay size={13}/> Try it in the lab</button>}
+        </header>
+        <div className="deva-course-split">
       <section className="deva-course-stage-panel" aria-label="Animation panel">
         <div className="deva-course-panel-head"><span><CirclePlay size={13}/> {lesson.stage === "stack" ? "STACK VIEW" : "ARRAY STAGE"}</span><span>{lesson.complexity}</span></div>
-        <DevaStage lesson={lesson} step={step} stepIndex={stepIndex} playing={playing} />
-        <div className="deva-course-step-summary"><span>STEP {String(stepIndex + 1).padStart(2, "0")} OF {String(steps.length).padStart(2, "0")}</span><strong>{step.title}</strong><p>{step.narration}</p></div>
+        <DsaVisualization lesson={lesson} step={step} stepIndex={stepIndex} playing={playing} />
         {teaching && <div className="deva-course-teacher" aria-label="AI teacher">
           <GuruFace mood={teacherMood} speaking={teaching} moodLabel={translate(teacherMood === "proud" ? "mood.proud" : "mood.think", teacherLang)} className="deva-course-teacher-face" />
           <p className="deva-course-teacher-line">{spokenLine(lesson.id, step, stepIndex, teacherLang)}</p>
@@ -318,11 +340,13 @@ export default function DsaCourseStudio() {
         </div>
       </section>
     </div>
-    <section className="deva-course-notes" aria-label="Lesson notes">
+        <section className="deva-course-notes" aria-label="Lesson notes">
       <article><span><Lightbulb size={14}/> THE IDEA</span><p>{lesson.concept}</p></article>
       <article><span><BookOpen size={14}/> WHEN TO USE IT</span><p>{lesson.whenToUse}</p></article>
       <article><span><TriangleAlert size={14}/> COMMON PITFALLS</span><ul>{lesson.pitfalls.map((item) => <li key={item}>{item}</li>)}</ul></article>
       <article className="deva-course-practice"><span><Target size={14}/> PRACTICE CHALLENGE</span><p>{lesson.practice}</p></article>
-    </section>
+        </section>
+      </div>
+    </div>
   </section>;
 }

@@ -158,7 +158,7 @@
 :root[data-theme="red"] .students-avatar.small { width: 22px; height: 22px; font-size: 9px; }
 
 /* 5. The room. A log that scrolls, a composer that does not move. */
-:root[data-theme="red"] .students-room { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 460px; overflow: hidden; }
+:root[data-theme="red"] .students-room { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 460px; overflow: hidden; }
 :root[data-theme="red"] .students-room-empty {
   display: grid;
   place-content: center;
@@ -172,16 +172,6 @@
 :root[data-theme="red"] .students-room-empty svg { color: var(--st-line); }
 :root[data-theme="red"] .students-room-empty strong { color: var(--st-ink); font-size: 15px; }
 :root[data-theme="red"] .students-room-empty p { margin: 0; font-size: 13px; }
-:root[data-theme="red"] .students-room-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--st-hair);
-}
-:root[data-theme="red"] .students-room-head strong { display: block; font-size: 14px; }
-:root[data-theme="red"] .students-room-head small { color: var(--st-faint); font-size: 11.5px; }
 :root[data-theme="red"] .students-back {
   display: inline-flex;
   align-items: center;
@@ -211,6 +201,8 @@
   display: grid;
   gap: 3px;
   max-width: 76%;
+  width: fit-content;
+  justify-self: start;
   padding: 9px 12px;
   border: 1px solid var(--st-line);
   border-radius: 12px 12px 12px 4px;
@@ -218,7 +210,7 @@
   margin: 0;
 }
 :root[data-theme="red"] .students-line span { font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-:root[data-theme="red"] .students-line em { color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; font-style: normal; }
+:root[data-theme="red"] .students-line time { justify-self: end; color: var(--st-faint); font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; }
 :root[data-theme="red"] .students-line.mine { justify-self: end; border-color: #3a1d22; border-radius: 12px 12px 4px 12px; background: var(--st-soft); }
 :root[data-theme="red"] .students-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding: 12px 14px; border-top: 1px solid var(--st-hair); }
 :root[data-theme="red"] .students-compose textarea {
@@ -778,4 +770,211 @@
   :root[data-theme="red"] .students-panes.board { grid-template-columns:minmax(0,1fr); }
   :root[data-theme="red"] .students-panes.board .students-people { grid-column:1; grid-row:auto; }
   :root[data-theme="red"] .students-post { padding:13px; }
+}
+
+:root[data-theme="red"] .students-pane-head { display: contents; }
+:root[data-theme="red"] .students-pane-switch {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--st-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--st-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-pane-switch:hover { border-color: var(--st-red); color: var(--st-ink); }
+:root[data-theme="red"] .students-dm-notice { display: none; }
+:root[data-theme="red"] .students-dm-notice-open {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-dm-notice-open strong { color: var(--st-ink); font-size: 13px; font-weight: 650; }
+:root[data-theme="red"] .students-dm-notice-open span { overflow: hidden; color: var(--st-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="red"] .students-dm-notice-close {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--st-faint);
+  cursor: pointer;
+}
+:root[data-theme="red"] .students-dm-notice-close:hover { border-color: var(--st-red); color: var(--st-red); }
+
+@media (max-width: 720px) {
+  :root[data-theme="red"] .students-pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 12px; }
+  :root[data-theme="red"] .students-pane-head .students-pane-title { padding-right: 0; }
+  :root[data-theme="red"] .students-pane-switch { display: inline-flex; }
+  :root[data-theme="red"] .students-dm-notice {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    border: 1px solid #513036;
+    border-left: 2px solid var(--st-red);
+    border-radius: 10px;
+    background: #1b1113;
+    color: var(--st-muted);
+  }
+  :root[data-theme="red"] .students-dm-notice > svg { flex: 0 0 auto; color: var(--st-red); }
+  :root[data-theme="red"] .students-panes.messages { grid-template-columns: minmax(0, 1fr); }
+  :root[data-theme="red"] .students-panes.messages .students-people { grid-column: auto; grid-row: auto; }
+  :root[data-theme="red"] .students-panes.messages .students-room { display: none; }
+  :root[data-theme="red"] .students-panes.messages.pane-threads .students-people { display: none; }
+  :root[data-theme="red"] .students-panes.messages.pane-people .students-inbox { display: none; }
+  :root[data-theme="red"] .students-panes.messages.has-open .students-inbox,
+  :root[data-theme="red"] .students-panes.messages.has-open .students-people { display: none; }
+  :root[data-theme="red"] .students-panes.messages.has-open .students-room { display: grid; min-height: min(68vh, 560px); }
+  :root[data-theme="red"] .students.students-chatting .students-head { display: none; }
+  :root[data-theme="red"] .students.students-chatting .students-panes.messages.has-open .students-room { min-height: max(420px, calc(100vh - 132px)); min-height: max(420px, calc(100dvh - 132px)); }
+  :root[data-theme="red"] .students-panes.messages.has-profile .students-inbox,
+  :root[data-theme="red"] .students-panes.messages.has-profile .students-room { display: none; }
+  :root[data-theme="red"] .students-panes.messages.has-profile .students-people { display: grid; }
+  :root[data-theme="red"] .students-panes.messages .students-log { max-height: none; }
+  :root[data-theme="red"] .students-thread { min-height: 56px; }
+  :root[data-theme="red"] .students-compose { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  :root[data-theme="red"] .students-compose textarea,
+  :root[data-theme="red"] .students-compose input { font-size: 16px; }
+  :root[data-theme="red"] .students-compose .students-send { min-height: 44px; }
+}
+
+@media (min-width: 1121px) {
+  :root[data-theme="red"] .students-panes.messages {
+    grid-template-columns: minmax(250px, 0.78fr) minmax(440px, 1.8fr) minmax(250px, 0.78fr);
+    height: clamp(520px, calc(100dvh - 360px), 700px);
+    min-height: 520px;
+    max-height: 700px;
+    align-items: stretch;
+  }
+  :root[data-theme="red"] .students-panes.messages .students-inbox {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  :root[data-theme="red"] .students-panes.messages .students-threads {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  :root[data-theme="red"] .students-panes.messages .students-room,
+  :root[data-theme="red"] .students-panes.messages .students-room-empty {
+    height: 100%;
+    min-height: 0;
+  }
+  :root[data-theme="red"] .students-panes.messages .students-log {
+    min-height: 0;
+    max-height: none;
+  }
+  :root[data-theme="red"] .students-panes.messages .students-people {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+:root[data-theme="red"] .students-room-back {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-color: #382629;
+  border-radius: 11px;
+  background: rgba(24, 16, 18, .92);
+  color: #c9aeb2;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+:root[data-theme="red"] .students-room-back:hover {
+  border-color: #81404a;
+  background: #281619;
+  color: #ffe4e7;
+}
+:root[data-theme="red"] .students-log {
+  gap: 10px;
+  padding: 64px clamp(14px, 3vw, 28px) 20px;
+  background: radial-gradient(ellipse at 50% 0, rgba(69, 30, 36, .12), transparent 58%);
+  scrollbar-color: #433034 transparent;
+  scrollbar-width: thin;
+}
+:root[data-theme="red"] .students-line {
+  min-width: 72px;
+  padding: 10px 13px 7px;
+  border-color: #342629;
+  border-radius: 15px 15px 15px 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .1);
+}
+:root[data-theme="red"] .students-line.mine {
+  border-color: #65303a;
+  border-radius: 15px 15px 5px 15px;
+  background: linear-gradient(145deg, #32181e, #251316);
+}
+:root[data-theme="red"] .students-line span { line-height: 1.6; }
+:root[data-theme="red"] .students-line time { margin-top: 1px; }
+:root[data-theme="red"] .students-log-empty {
+  justify-self: center;
+  max-width: 34ch;
+  margin: 18px 0;
+  padding: 11px 15px;
+  border: 1px solid #342629;
+  border-radius: 12px;
+  background: rgba(25, 17, 19, .8);
+  line-height: 1.6;
+}
+:root[data-theme="red"] .students-room .students-compose {
+  gap: 6px 10px;
+  padding: 13px 16px 12px;
+  border-top-color: #302124;
+  background: linear-gradient(180deg, #151011, #120d0e);
+}
+:root[data-theme="red"] .students-room .students-compose textarea {
+  min-height: 44px;
+  max-height: 150px;
+  padding: 11px 13px;
+  border-color: #3a2a2d;
+  border-radius: 12px;
+  background: #0e0a0b;
+  line-height: 1.5;
+}
+:root[data-theme="red"] .students-room .students-compose textarea::placeholder { color: #776a6c; }
+:root[data-theme="red"] .students-room .students-compose textarea:focus {
+  border-color: #81404a;
+  box-shadow: 0 0 0 3px rgba(246, 59, 74, .09);
+}
+:root[data-theme="red"] .students-room .students-compose .students-send {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  box-shadow: 0 5px 14px rgba(246, 59, 74, .16);
+}
+:root[data-theme="red"] .students-room .students-compose .students-send:disabled { box-shadow: none; }
+:root[data-theme="red"] .students-compose-hint {
+  grid-column: 1 / -1;
+  padding-left: 3px;
+  color: var(--st-faint);
+  font-size: 10.5px;
+}
+
+@media (max-width: 720px) {
+  :root[data-theme="red"] .students-room-back { top: 10px; left: 10px; }
+  :root[data-theme="red"] .students-log { padding: 58px 12px 16px; }
+  :root[data-theme="red"] .students-room .students-compose { padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
 }

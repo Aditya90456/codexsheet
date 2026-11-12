@@ -268,3 +268,227 @@
   .deva-course-unit .deva-course-outline>button { flex-basis:calc(50% - 5px); }
   .deva-course-step-summary { padding:9px 10px; }
 }
+
+/* Course catalog layout: keep the curriculum in view while the lesson stays focused. */
+.deva-course {
+  gap: 20px;
+  padding: clamp(16px, 2.2vw, 28px);
+  border-color: #342629;
+  background:
+    radial-gradient(820px 360px at 90% 0, rgba(161, 41, 58, .13), transparent 68%),
+    linear-gradient(145deg, #171012, #0d090a 72%);
+}
+.deva-course-head {
+  align-items: center;
+  padding: 4px 2px 6px;
+}
+.deva-course-head > div:first-child { max-width: 720px; }
+.deva-course-head h2 {
+  margin: 8px 0 6px;
+  color: #fff3f4;
+  font-size: clamp(29px, 3.8vw, 46px);
+  letter-spacing: -.06em;
+}
+.deva-course-head p {
+  max-width: 62ch;
+  color: #c1aeb1;
+  font-size: 13px;
+}
+.deva-course-headside {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+}
+.deva-course-headside > span {
+  display: grid;
+  gap: 4px;
+  min-width: 118px;
+  padding: 12px 14px;
+  border: 1px solid #39292c;
+  border-radius: 12px;
+  color: #b89da1;
+  background: linear-gradient(145deg, #211517, #171011);
+  font-size: 10px;
+}
+.deva-course-headside > span strong { color: #ffe3e7; font: 700 20px 'DM Mono', monospace; }
+.deva-course-layout {
+  display: grid;
+  grid-template-columns: minmax(235px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.deva-course-sidebar {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  max-height: calc(100dvh - 32px);
+  padding: 13px;
+  overflow: auto;
+  border: 1px solid #342629;
+  border-radius: 14px;
+  background: linear-gradient(155deg, #171012, #100b0c);
+  scrollbar-color: #493034 transparent;
+  scrollbar-width: thin;
+}
+.deva-course-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.deva-course-sidebar-head > div { display: grid; gap: 3px; }
+.deva-course-sidebar-head > div > span,
+.deva-course-lesson-meta {
+  color: #b5878d;
+  font: 700 8px 'DM Mono', monospace;
+  letter-spacing: .12em;
+}
+.deva-course-sidebar-head > div > strong { color: #f7e5e7; font-size: 13px; }
+.deva-course-sidebar-head > div > strong i { color: #9e8589; font-style: normal; font-weight: 500; }
+.deva-course-sidebar-head > b { color: #ffabb7; font: 700 15px 'DM Mono', monospace; }
+.deva-course-sidebar > .deva-course-progress-track { height: 6px; }
+.deva-course-sidebar-caption { margin: -2px 0 4px; color: #998487; font-size: 10px; }
+.deva-course-units {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.deva-course-unit,
+.deva-course-unit.open {
+  flex: initial;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #302326;
+  border-radius: 10px;
+  background: #130d0e;
+  box-shadow: none;
+}
+.deva-course-unit.open { border-color: #694047; background: #171011; }
+.deva-course-unit > summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 11px 30px 11px 11px;
+  cursor: pointer;
+  list-style: none;
+}
+.deva-course-unit > summary::-webkit-details-marker { display: none; }
+.deva-course-unit > summary::after {
+  position: absolute;
+  right: 12px;
+  color: #9b747a;
+  content: "+";
+  font: 15px 'DM Mono', monospace;
+}
+.deva-course-unit[open] > summary::after { content: "−"; }
+.deva-course-unit > summary > span {
+  grid-column: 1 / -1;
+  color: #9d7177;
+  font: 700 7px 'DM Mono', monospace;
+  letter-spacing: .1em;
+}
+.deva-course-unit > summary > strong { color: #e8d4d7; font-size: 11px; line-height: 1.4; }
+.deva-course-unit > summary > small { color: #ab8a8f; font: 700 8px 'DM Mono', monospace; }
+.deva-course-unit > summary > i { display: none; }
+.deva-course-unit .deva-course-outline {
+  display: grid;
+  gap: 3px;
+  padding: 0 6px 7px;
+}
+.deva-course-unit .deva-course-outline > button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 3px 7px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 7px;
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+}
+.deva-course-unit .deva-course-outline > button > span {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border: 1px solid #3b2b2e;
+  border-radius: 50%;
+  color: #a38a8e;
+  font-size: 8px;
+}
+.deva-course-unit .deva-course-outline > button > strong {
+  overflow: hidden;
+  color: #cfbcbf;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deva-course-unit .deva-course-outline > button > small { color: #90777b; font-size: 8px; }
+.deva-course-unit .deva-course-outline > button:hover { border-color: #3d292d; background: #1d1315; }
+.deva-course-unit .deva-course-outline > button.active {
+  border-color: #66323b;
+  background: linear-gradient(100deg, #31171c, #211315);
+  box-shadow: inset 2px 0 #f06173;
+}
+.deva-course-unit .deva-course-outline > button.active > strong { color: #ffe2e6; }
+.deva-course-unit .deva-course-outline > button.active > span { border-color: #a84c59; color: #ffabb7; }
+.deva-course-unit .deva-course-outline > button.complete > span { border-color: #385443; color: #9bd3aa; }
+.deva-course-main { display: grid; gap: 12px; min-width: 0; }
+.deva-course-lesson-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid #342629;
+  border-radius: 13px;
+  background: linear-gradient(105deg, #1d1315, #140e0f);
+}
+.deva-course-lesson-head > div { min-width: 0; }
+.deva-course-lesson-head h2 {
+  margin: 6px 0 5px;
+  color: #fff0f2;
+  font-size: clamp(22px, 2.4vw, 30px);
+  letter-spacing: -.045em;
+}
+.deva-course-lesson-head h2 em {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 4px 8px;
+  border: 1px solid #512a30;
+  border-radius: 999px;
+  color: #efa0aa;
+  background: #241416;
+  font: 600 9px 'DM Mono', monospace;
+  letter-spacing: 0;
+  vertical-align: 4px;
+}
+.deva-course-lesson-head p { margin: 0; color: #bca9ac; font-size: 11px; line-height: 1.6; }
+.deva-course-lesson-head .deva-course-lab { flex: 0 0 auto; padding: 9px 12px; border-radius: 9px; font-size: 9px; letter-spacing: .04em; }
+.deva-course-main .deva-course-split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.deva-course-main .deva-course-notes { padding-top: 0; }
+
+@media (max-width: 1280px) {
+  .deva-course-layout { grid-template-columns: minmax(220px, 250px) minmax(0, 1fr); gap: 12px; }
+  .deva-course-main .deva-course-split { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 820px) {
+  .deva-course-head { align-items: flex-start; }
+  .deva-course-headside { width: 100%; }
+  .deva-course-headside > span { flex: 1; }
+  .deva-course-layout { grid-template-columns: minmax(0, 1fr); }
+  .deva-course-sidebar { position: static; max-height: 420px; }
+}
+@media (max-width: 700px) {
+  .deva-course { gap: 13px; padding: 12px; }
+  .deva-course-head h2 { font-size: 30px; }
+  .deva-course-lesson-head { align-items: flex-start; flex-direction: column; padding: 13px; }
+  .deva-course-lesson-head h2 { font-size: 24px; }
+  .deva-course-lesson-head h2 em { margin: 4px 0 0; vertical-align: middle; }
+  .deva-course-sidebar { max-height: 360px; padding: 10px; }
+}

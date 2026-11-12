@@ -398,3 +398,135 @@
   white-space: nowrap;
 }
 .mentorship-whatsapp:hover { filter: brightness(1.08); }
+
+/* ── Topmate session booking panel ───────────────────────────────────────── */
+.mentorship-topmate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 20px;
+  align-items: center;
+  max-width: 1080px;
+  margin: 0 auto 20px;
+  padding: 28px 28px 26px;
+  border: 1px solid var(--ms-accent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ms-accent) 5%, var(--ms-surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ms-accent) 14%, transparent);
+}
+
+.mentorship-topmate-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--ms-accent);
+  font: 700 10px/1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .18em;
+}
+
+.mentorship-topmate-copy h2 {
+  margin: 0 0 10px;
+  font-size: clamp(20px, 2.4vw, 26px);
+  line-height: 1.15;
+  letter-spacing: -.02em;
+}
+
+.mentorship-topmate-copy > p {
+  margin: 0 0 16px;
+  color: var(--ms-muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.mentorship-topmate-list {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.mentorship-topmate-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--ms-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mentorship-topmate-list li svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ms-accent);
+}
+
+.mentorship-topmate-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 22px;
+  border: none;
+  border-radius: 12px;
+  background: var(--ms-accent);
+  color: var(--ms-accent-ink);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: filter .15s, transform .15s;
+}
+
+.mentorship-topmate-cta:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.mentorship-topmate-note {
+  margin: 10px 0 0;
+  color: var(--ms-muted);
+  font: 11px/1.4 "DM Mono", ui-monospace, monospace;
+  letter-spacing: .04em;
+}
+
+.mentorship-topmate-portrait {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.mentorship-topmate-portrait img {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--ms-accent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ms-accent) 25%, transparent);
+}
+
+.mentorship-topmate-portrait span {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mentorship-topmate-portrait small {
+  color: var(--ms-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.mentorship-faq {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  max-width: 1080px;
+  margin: 20px auto 0;
+}
+
+@media (max-width: 720px) {
+  .mentorship-topmate {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px 18px;
+  }
+  .mentorship-topmate-portrait {
+    display: none;
+  }
+}

@@ -203,6 +203,14 @@ export async function loadThreads(): Promise<Network<ThreadRow[]>> {
   };
 }
 
+export async function loadUnreadDms(): Promise<Network<number>> {
+  const db = client();
+  if (!db) return { rows: 0, problem: NO_CLIENT };
+  const { data, error } = await db.rpc("student_unread_dms");
+  if (error) return { rows: 0, problem: error.message };
+  return { rows: num(data), problem: "" };
+}
+
 /** One page of a thread, oldest first. Pass the oldest id you hold to walk back. */
 export async function loadHistory(chatId: number, before?: number, limit = 40): Promise<Network<DmMessage[]>> {
   const db = client();
@@ -452,4 +460,3 @@ export async function markFeedSeen(): Promise<void> {
   if (!db) return;
   await db.rpc("student_mark_feed_seen");
 }
-

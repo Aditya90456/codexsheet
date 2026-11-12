@@ -81,9 +81,11 @@ import DailyTaskRail from "./DailyTaskRail";
 import { expectedByDay, planDays, taskForDay } from "./dailyTasks";
 import { lessonLectures } from "./love-babbar-lessons";
 import { DashboardHub, ResumeTrack, resumeRows, type HubCounts } from "./DashboardHub";
-import DsaCourseStudio from "./DsaCourseStudio";
+import DsaCoursePage from "./DsaCoursePage";
+import ProgrammingBasicsCourse from "./ProgrammingBasicsArticles";
 import StudyPlanner from "./StudyPlanner";
 import StudentNetwork from "./StudentNetwork";
+import { loadUnreadDms } from "./studentGraph";
 import MentorshipPayments from "./MentorshipPayments";
 import MenteeSpace from "./MenteeSpace";
 import Marketplace from "./Marketplace";
@@ -167,7 +169,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "lessons" | "network";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "lessons" | "network";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -177,6 +179,7 @@ export const viewPaths: Record<WorkspaceView, string> = {
   companies: "/companies",
   "dsa-ide": "/ide/dsa",
   "dsa-course": "/learn/dsa",
+  "programming-basics": "/learn/programming",
   guru: "/guru",
   cslabs: "/cslabs",
   leaderboard: "/leaderboard",
@@ -209,7 +212,7 @@ const siteOrigin = "https://www.codexsheet.in";
 export const selfHeadedViews: WorkspaceView[] = [
   "home", "guru", "leaderboard", "certificate", "verify", "patterns",
   "companies", "cslabs", "articles", "jobs", "lessons", "radar", "experiences",
-  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course",
+  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics",
 ];
 
 const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
@@ -229,6 +232,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
   "dsa-ide": { title: "DSA code editor with real test judging — CodexSheet", description: "Write Python, Java, C++ or JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
   "dsa-course": { title: "Animated DSA course — CodexSheet", description: "A lesson-by-lesson DSA course where every data structure is shown moving, not described." },
+  "programming-basics": { title: "Programming basics in Python, Java & C++ — CodexSheet", description: "A hands-on beginner course covering programming foundations in Python, Java, and C++, with runnable examples and short lessons." },
   guru: { title: "Guru — the free AI DSA teacher — CodexSheet", description: "Guru teaches one DSA topic at a time, checks your reasoning and hands you the problem that follows." },
   cslabs: {
     title: "Free algorithm labs — 22 animated DSA and CS simulations",
@@ -311,6 +315,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "radar", label: "2027 interview radar", icon: Radar },
       { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
       { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
+      { view: "programming-basics", label: "Programming basics", icon: GraduationCap },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
       { view: "cslabs", label: "Algorithm Labs", icon: Activity },
       { view: "roadmap", label: "Roadmap", icon: MapIcon },
@@ -1406,6 +1411,8 @@ function App() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatReadsByMessage, setChatReadsByMessage] = useState<Record<number, string[]>>({});
   const [chatUnreadIds, setChatUnreadIds] = useState<number[]>([]);
+  const [studentDmUnread, setStudentDmUnread] = useState(0);
+  const [messagesNavRequest, setMessagesNavRequest] = useState(0);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(
     typeof Notification === "undefined" ? "unsupported" : Notification.permission,
   );
@@ -1745,6 +1752,44 @@ function App() {
       setChatError(`Could not enable browser notifications. ${detail}`);
     }
   }
+
+  useEffect(() => {
+    if (!isLoaded || !user) {
+      setStudentDmUnread(0);
+      return;
+    }
+
+    let active = true;
+    const refreshUnreadDms = async () => {
+      const { rows, problem } = await loadUnreadDms();
+      if (!active) return;
+      if (problem) {
+        console.error(`Could not load unread message count. ${problem}`);
+        return;
+      }
+      setStudentDmUnread(rows);
+    };
+
+    void refreshUnreadDms();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshUnreadDms();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    const channel = supabase?.channel(`student-dm-nav-${user.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "student_dm_messages" }, () => {
+        void refreshUnreadDms();
+      })
+      .subscribe();
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      if (channel && supabase) void supabase.removeChannel(channel);
+    };
+  }, [isLoaded, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2439,6 +2484,19 @@ function App() {
         </button>
         <div className={`navbar-collapse collapse${navOpen ? " show" : ""}`} id="workspace-nav">
         <nav className="view-switcher navbar-nav" aria-label="Workspace views">
+          <button
+            type="button"
+            className={`nav-notifications${activeView === "network" ? " active" : ""}`}
+            aria-label={studentDmUnread > 0 ? `Messages, ${studentDmUnread} unread` : "Messages"}
+            aria-pressed={activeView === "network"}
+            onClick={() => {
+              setMessagesNavRequest((request) => request + 1);
+              navigateToView("network");
+            }}
+          >
+            <Bell size={16} /> Messages
+            {studentDmUnread > 0 && <span className="chat-unread-badge">{studentDmUnread > 99 ? "99+" : studentDmUnread}</span>}
+          </button>
           <button className={activeView === "problems" || activeView === "companies" ? "active" : ""} aria-pressed={activeView === "problems" || activeView === "companies"} onClick={() => navigateToView("problems")}>
             <Rows3 size={16} /> {tr("nav.problems")}
             <span>{visibleProblems.length}</span>
@@ -2581,14 +2639,15 @@ function App() {
       {activeView === "experiences" && <InterviewExperiences userId={user?.id ?? ""} />}
       {activeView === "radar" && <InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} />}
       {activeView === "leaderboard" && <Leaderboard userId={user?.id ?? ""} />}
-      {activeView === "network" && <StudentNetwork userId={user?.id ?? ""} />}
+      {activeView === "network" && <StudentNetwork userId={user?.id ?? ""} messagesRequest={messagesNavRequest} onUnreadCountChange={setStudentDmUnread} />}
       {activeView === "certificate" && <Certificates userId={user?.id ?? ""} />}
       {activeView === "verify" && <VerifyPage />}
       {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
       {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} focusProblem={editorProblem} />}
-      {activeView === "dsa-course" && <DsaCourseStudio />}
+      {activeView === "dsa-course" && <DsaCoursePage />}
+      {activeView === "programming-basics" && <ProgrammingBasicsCourse />}
       {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}
       {activeView === "cslabs" && <CsLabs onOpenMentorship={() => navigateToView("mentorship")} />}
       {activeView === "dashboard" && (

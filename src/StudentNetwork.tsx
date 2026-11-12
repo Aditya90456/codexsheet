@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { refreshRealtimeAuth, supabase } from "./lib/supabase";
+import MessagesUI from "./MessagesUI";
 import {
   LANGUAGE_LABEL,
   commentOn,
@@ -94,8 +95,18 @@ function notDeployed(message: string) {
   return /schema cache|relation .* does not exist/i.test(message);
 }
 
-export default function StudentNetwork({ userId = "" }: { userId?: string }) {
+export default function StudentNetwork({
+  userId = "",
+  messagesRequest = 0,
+  onUnreadCountChange,
+}: {
+  userId?: string;
+  messagesRequest?: number;
+  onUnreadCountChange?: (count: number) => void;
+}) {
   const [tab, setTab] = useState<"board" | "messages">("board");
+  const [mobilePane, setMobilePane] = useState<"threads" | "people">("threads");
+  const [dmNotice, setDmNotice] = useState<{ chatId: number; name: string; text: string } | null>(null);
   const [feedTab, setFeedTab] = useState<FeedTab>("all");
   const [feed, setFeed] = useState<BoardPost[]>([]);
   const [olderPost, setOlderPost] = useState<number | null>(null);
@@ -128,10 +139,14 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
   const readingRef = useRef<number | null>(null);
   const tabRef = useRef<"board" | "messages">("board");
 
-  const refreshInbox = useCallback(() => {
+  const refreshInbox = useCallback((noticeChatId?: number) => {
     if (!userId) return;
     void loadThreads().then(({ rows, problem }) => {
-      if (!problem) setThreads(rows);
+      if (problem) return;
+      setThreads(rows);
+      if (noticeChatId === undefined) return;
+      const thread = rows.find((item) => item.chatId === noticeChatId);
+      if (thread && thread.unread > 0) setDmNotice({ chatId: thread.chatId, name: thread.name, text: thread.lastMessage || "New message" });
     });
   }, [userId]);
 
@@ -192,9 +207,17 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
 
   useEffect(() => { refreshInbox(); }, [refreshInbox]);
 
+  useEffect(() => {
+    if (messagesRequest > 0) {
+      setTab("messages");
+      setMobilePane("threads");
+    }
+  }, [messagesRequest]);
+
   const openThread = useCallback(async (chatId: number, peerId: string, name: string) => {
     openRef.current = chatId;
     setOpen({ chatId, peerId, name });
+    setDmNotice((current) => (current?.chatId === chatId ? null : current));
     setProfile(null);
     setEditing(false);
     setMessages([]);
@@ -216,12 +239,15 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
       .channel(`student-dms-${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "student_dm_messages" }, (payload) => {
         const row = payload.new as { id: number; chat_id: number; sender_id: string; content: string; created_at: string };
+        const incoming = row.sender_id !== userId;
         if (openRef.current === row.chat_id) {
           setMessages((list) => (list.some((item) => item.id === row.id) ? list : [...list, { id: row.id, from: row.sender_id, content: row.content, at: row.created_at }]));
           void markThreadRead(row.chat_id);
         }
         if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
-        refreshTimer.current = window.setTimeout(refreshInbox, 400);
+        refreshTimer.current = window.setTimeout(() => {
+          refreshInbox(incoming && openRef.current !== row.chat_id ? row.chat_id : undefined);
+        }, 400);
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "student_posts" }, () => {
         if (tabRef.current !== "board") setBoardNew((count) => count + 1);
@@ -253,6 +279,12 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
   useEffect(() => { tail.current?.scrollIntoView({ block: "end" }); }, [messages.length]);
 
   useEffect(() => {
+    if (!dmNotice) return;
+    const timer = window.setTimeout(() => setDmNotice(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [dmNotice]);
+
+  useEffect(() => {
     if (!profile) return;
     let alive = true;
     void loadFollowList(profile.userId, listKind).then(({ rows }) => { if (alive) setAcquaintances(rows); });
@@ -260,6 +292,8 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
   }, [listKind, profile]);
 
   const unread = useMemo(() => threads.reduce((total, thread) => total + thread.unread, 0), [threads]);
+
+  useEffect(() => { onUnreadCountChange?.(unread); }, [onUnreadCountChange, unread]);
 
   async function pickPerson(peerId: string) {
     setNote("");
@@ -270,11 +304,22 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
     setEditing(false);
     // The card lives in the people pane, so tapping an author on the board walks
     // the student over to it instead of opening something invisible.
+    setMobilePane("people");
     setTab("messages");
   }
 
   async function pickThread(thread: ThreadRow) {
     await openThread(thread.chatId, thread.peerId, thread.name);
+  }
+
+  async function openDmNotice() {
+    if (!dmNotice) return;
+    const target = threads.find((item) => item.chatId === dmNotice.chatId);
+    setDmNotice(null);
+    setMobilePane("threads");
+    setTab("messages");
+    if (target) await openThread(target.chatId, target.peerId, target.name);
+    else refreshInbox();
   }
 
   async function toggleFollow(target: { userId: string; youFollow: boolean }) {
@@ -441,7 +486,7 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
   }
 
   return (
-    <section className="students" aria-labelledby="students-title">
+    <section className={`students${tab === "messages" && open ? " students-chatting" : ""}`} aria-labelledby="students-title">
       <header className="students-head">
         <span className="students-kicker">
           <Users size={13} /> CODEXSHEET NETWORK · {loading ? "COUNTING" : `${people.length + 1} STUDENTS`}
@@ -454,11 +499,11 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
           that is what keeps the doubt channels real.
         </p>
         <div className="students-tabs" role="tablist" aria-label="Network">
-          <button type="button" role="tab" aria-selected={tab === "board"} className={tab === "board" ? "active" : ""} onClick={() => setTab("board")}>
+          <button type="button" role="tab" aria-selected={tab === "board"} aria-label={boardNew > 0 ? `Board, ${boardNew} new posts` : "Board"} className={tab === "board" ? "active" : ""} onClick={() => setTab("board")}>
             <Share2 size={13} /> Board
             {boardNew > 0 && <b className="students-pill">{boardNew}</b>}
           </button>
-          <button type="button" role="tab" aria-selected={tab === "messages"} className={tab === "messages" ? "active" : ""} onClick={() => setTab("messages")}>
+          <button type="button" role="tab" aria-selected={tab === "messages"} aria-label={unread > 0 ? `Messages, ${unread} unread` : "Messages"} className={tab === "messages" ? "active" : ""} onClick={() => { setTab("messages"); setMobilePane("threads"); }}>
             <Inbox size={13} /> Messages
             {unread > 0 && <b className="students-pill">{unread}</b>}
           </button>
@@ -466,8 +511,20 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
       </header>
 
       {note && <p className="students-note" role="status">{note}</p>}
+      {dmNotice && (
+        <div className="students-dm-notice" role="status">
+          <Inbox size={14} aria-hidden="true" />
+          <button type="button" className="students-dm-notice-open" onClick={() => void openDmNotice()}>
+            <strong>{dmNotice.name}</strong>
+            <span>{dmNotice.text}</span>
+          </button>
+          <button type="button" className="students-dm-notice-close" onClick={() => setDmNotice(null)} aria-label="Dismiss message notification">
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
-      <div className={`students-panes${tab === "board" ? " board" : ""}`}>
+      <div className={`students-panes ${tab === "board" ? "board" : `messages pane-${mobilePane}${open ? " has-open" : ""}${profile ? " has-profile" : ""}`}`}>
         {tab === "board" ? (
           <section className="students-board" aria-label="The board">
             {boardDown ? (
@@ -648,26 +705,31 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
         ) : (
           <>
             <aside className="students-inbox" aria-label="Your threads">
-              <h2 className="students-pane-title"><Inbox size={13} /> MESSAGES</h2>
+              <div className="students-pane-head">
+                <h2 className="students-pane-title"><Inbox size={13} /> MESSAGES</h2>
+                <button type="button" className="students-pane-switch" onClick={() => setMobilePane("people")}><Users size={13} /> People</button>
+              </div>
               {!threads.length && !loading && (
-                <p className="students-pane-empty"><MessageCircleOff size={14} /> No threads yet. Pick a student on the right and say hello.</p>
+                <p className="students-pane-empty"><MessageCircleOff size={14} /> No threads yet. Find a student in the network and say hello.</p>
               )}
               <ul className="students-threads">
                 {threads.map((thread) => (
                   <li key={thread.chatId}>
                     <button
                       type="button"
-                      className={`students-thread${open?.chatId === thread.chatId ? " active" : ""}`}
+                      className={`students-thread${open?.chatId === thread.chatId ? " active" : ""}${thread.unread > 0 ? " unread" : ""}`}
                       onClick={() => void pickThread(thread)}
                     >
                       <span className="students-avatar" aria-hidden="true">{initials(thread.name)}</span>
                       <span className="students-thread-copy">
-                        <strong>{thread.name}</strong>
-                        <span>{thread.lastMessage || "Say something first"}</span>
-                      </span>
-                      <span className="students-thread-when">
-                        <em>{since(thread.at)}</em>
-                        {thread.unread > 0 && <b className="students-pill">{thread.unread}</b>}
+                        <span className="students-thread-top">
+                          <strong>{thread.name}</strong>
+                          <em>{since(thread.at)}</em>
+                        </span>
+                        <span className="students-thread-bottom">
+                          <span className="students-thread-preview">{thread.lastMessage || "Say something first"}</span>
+                          {thread.unread > 0 && <b className="students-pill">{thread.unread}</b>}
+                        </span>
                       </span>
                     </button>
                   </li>
@@ -675,55 +737,31 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
               </ul>
             </aside>
     
-            <div className="students-room" aria-label="Conversation">
-              {!open ? (
-                <div className="students-room-empty">
-                  <Users size={22} />
-                  <strong>Nothing open</strong>
-                  <p>Choose a thread on the left, or search the network and start one.</p>
-                </div>
-              ) : (
-                <>
-                  <header className="students-room-head">
-                    <button type="button" className="students-back" onClick={() => setOpen(null)}><ArrowLeft size={14} /> Back</button>
-                    <div>
-                      <strong>{open.name}</strong>
-                      <small>{profileHint(open.peerId, people)}</small>
-                    </div>
-                  </header>
-                  <div className="students-log">
-                    {older !== null && <button type="button" className="students-older" onClick={() => void showOlder()}>Older messages</button>}
-                    {!messages.length && <p className="students-log-empty">First message. Ask the thing you were too proud to ask in the group chat.</p>}
-                    {messages.map((message) => (
-                      <p className={`students-line${message.from === userId ? " mine" : ""}`} key={message.id}>
-                        <span>{message.content}</span>
-                        <em>{clock(message.at)}</em>
-                      </p>
-                    ))}
-                    <div ref={tail} />
-                  </div>
-                  <div className="students-compose">
-                    <textarea
-                      value={draft}
-                      rows={2}
-                      maxLength={2000}
-                      placeholder={`Message ${open.name}…`}
-                      aria-label={`Message ${open.name}`}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }}
-                    />
-                    <button type="button" className="students-send" onClick={() => void send()} disabled={busy === "send" || draft.trim() === ""}>
-                      {busy === "send" ? <LoaderCircle size={14} className="spin" /> : <Send size={14} />} Send
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <MessagesUI
+              activeChat={open}
+              messages={messages}
+              userId={userId}
+              older={older}
+              draft={draft}
+              sending={busy === "send"}
+              tailRef={(node) => { tail.current = node; }}
+              onBack={() => setOpen(null)}
+              onLoadOlder={() => void showOlder()}
+              onDraftChange={setDraft}
+              onSend={() => void send()}
+              formatTime={clock}
+            />
     
             <aside className="students-people" aria-label="The network">
               {!profile ? (
                 <>
-                  <h2 className="students-pane-title"><Users size={13} /> EVERYONE</h2>
+                  <div className="students-pane-head">
+                    <h2 className="students-pane-title"><Users size={13} /> EVERYONE</h2>
+                    <button type="button" className="students-pane-switch" onClick={() => setMobilePane("threads")}>
+                      <Inbox size={13} /> Threads
+                      {unread > 0 && <b className="students-pill">{unread}</b>}
+                    </button>
+                  </div>
                   <label className="students-search">
                     <Search size={13} />
                     <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name or handle" aria-label="Search students" />
@@ -832,13 +870,4 @@ export default function StudentNetwork({ userId = "" }: { userId?: string }) {
       </div>
     </section>
   );
-}
-
-function profileHint(peerId: string, people: StudentCard[]) {
-  const card = people.find((person) => person.userId === peerId);
-  if (!card) return "in the network";
-  if (card.youFollow && card.followsYou) return "you follow each other";
-  if (card.youFollow) return "you follow them";
-  if (card.followsYou) return "follows you";
-  return `${card.solved}/250 solved`;
 }
