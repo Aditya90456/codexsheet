@@ -40,16 +40,16 @@ export default function DsaCoursePage() {
     <section className="dsa-course-page" aria-label="DSA course">
       <header className="dsa-course-hero">
         <div className="dsa-course-hero-copy">
-          <span className="dsa-course-eyebrow"><Sparkles size={13} /> THE CODEXSHEET DSA COURSE</span>
+          <span className="dsa-course-eyebrow"><Sparkles size={13} /> ANIMATED DSA COURSE</span>
           <h2>Understand the pattern.<br /><em>Then write the code.</em></h2>
-          <p>Learn core algorithms through step-by-step visual walkthroughs, a hands-on editor, and focused practice.</p>
+          <p>Watch core algorithms unfold step by step, then explore the idea in a hands-on editor and focused practice.</p>
           <button type="button" className="dsa-course-continue" onClick={() => nextLesson && setSelectedLessonId(nextLesson.id)}>
             <Play size={15} fill="currentColor" /> {completed.size ? "Continue learning" : "Start learning"}
             <ArrowRight size={15} />
           </button>
         </div>
         <div className="dsa-course-hero-aside" aria-label="Course information">
-          <span>VISUAL, STEP-BY-STEP LESSONS</span>
+          <span>ANIMATED, STEP-BY-STEP LESSONS</span>
           <strong>From first principle<br />to working solution.</strong>
           <div className="dsa-course-hero-stats">
             <span><b>{courseUnits.length}</b> units</span>

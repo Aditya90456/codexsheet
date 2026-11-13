@@ -2,7 +2,8 @@
   "functions": {
     "api/execute.py": { "maxDuration": 30 },
     "api/tutor.py": { "maxDuration": 60 },
-    "api/plan.py": { "maxDuration": 60 }
+    "api/plan.py": { "maxDuration": 60 },
+    "api/translate.py": { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }

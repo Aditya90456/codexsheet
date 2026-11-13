@@ -52,11 +52,8 @@ import {
   RotateCcw,
   CodeXml,
   Palette,
-  BriefcaseBusiness,
-  MapPin,
-  Bookmark,
+  FileText,
   Building2,
-  SlidersHorizontal,
   Layers3,
   Lock,
   MousePointer2,
@@ -69,6 +66,7 @@ import {
   Lightbulb,
   Activity,
   Layers,
+  LayoutGrid,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -76,10 +74,8 @@ import CsLabs from "./CsLabs";
 import { refreshRealtimeAuth, setClerkTokenGetter, supabase } from "./lib/supabase";
 import DsaIde from "./DsaIde";
 import ProblemStudyPanel from "./ProblemStudyPanel";
-import LessonVideoRail from "./LessonVideoRail";
 import DailyTaskRail from "./DailyTaskRail";
 import { expectedByDay, planDays, taskForDay } from "./dailyTasks";
-import { lessonLectures } from "./love-babbar-lessons";
 import { DashboardHub, ResumeTrack, resumeRows, type HubCounts } from "./DashboardHub";
 import DsaCoursePage from "./DsaCoursePage";
 import ProgrammingBasicsCourse from "./ProgrammingBasicsArticles";
@@ -99,6 +95,8 @@ import CompanyProblems from "./CompanyProblems";
 import PatternTest from "./PatternTest";
 import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
+import LanguagePicker from "./LanguagePicker";
+import ResumeBuilder from "./ResumeBuilder";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { uiLanguages, useT, type MessageKey } from "./i18n";
 import { mentorProfile, rupees } from "./mentorship";
@@ -169,7 +167,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "jobs" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "lessons" | "network";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "network";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -192,14 +190,13 @@ export const viewPaths: Record<WorkspaceView, string> = {
   chat: "/chat",
   notes: "/notes",
   articles: "/articles",
-  jobs: "/jobs",
+  resume: "/resume",
   mentorship: "/mentorship",
   mentees: "/mentees",
   marketplace: "/marketplace",
   studio: "/mentor-studio",
   experiences: "/experiences",
   radar: "/radar",
-  lessons: "/lessons",
   network: "/network",
 };
 
@@ -211,7 +208,7 @@ const siteOrigin = "https://www.codexsheet.in";
 // wrong. Anything not listed here is a plain rail and gets the band.
 export const selfHeadedViews: WorkspaceView[] = [
   "home", "guru", "leaderboard", "certificate", "verify", "patterns",
-  "companies", "cslabs", "articles", "jobs", "lessons", "radar", "experiences",
+  "companies", "cslabs", "articles", "resume", "radar", "experiences",
   "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics",
 ];
 
@@ -257,7 +254,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   chat: { title: "Mentor chat — CodexSheet", description: "Ask your mentor between sessions and get an answer the same day." },
   notes: { title: "Your DSA notes — CodexSheet", description: "The notes you write while practising, kept next to the problem they belong to." },
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
-  jobs: { title: "Interview opportunities for DSA students — CodexSheet", description: "Roles and internships worth preparing for, collected in one place." },
+  resume: { title: "Resume builder — CodexSheet", description: "Build a polished resume with a live preview and save a PDF. Your draft stays in this browser." },
   mentorship: {
     title: `CodexSheet ${rupees(accessPass.price)} All Access — every paid rail, plus 1:1 mentor sessions`,
     description: `One ${rupees(accessPass.price)} CodexSheet All Access payment opens all three paid rails: the 250-problem DSA sheet with its 84-day task plan, the 12-week roadmap board and the 16 pattern films with their PPT decks. A 45-minute 1:1 Google Meet with Aditya is ${rupees(productById("session")!.price)} and bought per session. Pay on his Paytm QR, confirmed the moment the claim lands, refundable within 5 days. The rest of the workspace is free, and anyone who paid for an older rail keeps every rail.`,
@@ -280,16 +277,13 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "CodexSheet Network — share code, follow students and ask in private",
     description: "The CodexSheet network: post the code you wrote for the 250-problem sheet and let the batch like, dislike or pick it apart in the comments, follow the students whose approach you want, and open a private thread to ask the doubt you have been sitting on.",
   },
-  lessons: {
-    title: "140 free DSA video lessons, topic by topic — CodexSheet",
-    description: "Every lecture of the CodeHelp / Love Babbar placement series as its own lesson, sorted onto the 12 topics of the CodexSheet DSA sheet. Free, no sign-in, and each lecture says how many problems of its topic are waiting on the sheet.",
-  },
 };
 
 function viewFromLocation(): WorkspaceView {
   const params = new URLSearchParams(window.location.search);
   const path = window.location.pathname.replace(/\/$/, "") || "/";
   if (path === "/artcles") return "articles";
+  if (path === "/jobs") return "resume";
   const match = (Object.entries(viewPaths) as Array<[WorkspaceView, string]>).find(([, route]) => route === path);
   return match?.[0] ?? "dashboard";
 }
@@ -329,6 +323,12 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "chat", label: "Group chat", icon: MessageCircle },
       { view: "network", label: "Network", icon: Users },
       { view: "experiences", label: "Interview experiences", icon: Building2 },
+    ],
+  },
+  {
+    label: "Career",
+    items: [
+      { view: "resume", label: "Resume builder", icon: FileText },
     ],
   },
   {
@@ -450,7 +450,7 @@ export function HomePage({
               <li><strong>{problems.length}</strong><span>problems</span></li>
               <li><strong>{patterns.length}</strong><span>patterns</span></li>
               <li><strong>{roadmapStages.length}</strong><span>stages</span></li>
-              <li><strong>{uiLanguages.length}</strong><span>languages, free</span></li>
+              <li><strong>{uiLanguages.length - 1}</strong><span>Indian languages, free</span></li>
             </ul>
           </div>
 
@@ -500,7 +500,6 @@ export function HomePage({
         </ol>
         <div className="home-path-foot">
           <button className="home-link" type="button" onClick={() => onNavigate("patterns")}>{patterns.length} pattern films, with the deck for each <ArrowRight size={15} /></button>
-          <button className="home-link" type="button" onClick={() => onNavigate("lessons")}>{lessonLectures.length} video lessons, free <ArrowRight size={15} /></button>
           <button className="home-link" type="button" onClick={() => onNavigate("guru")}>Guru, the AI teacher <ArrowRight size={15} /></button>
         </div>
       </section>
@@ -515,7 +514,7 @@ export function HomePage({
             <span className="home-tier-price">FREE</span>
             <div className="home-tier-body">
               <strong>The workspace</strong>
-              <p>The Deva editor with real judged submissions, Guru in {uiLanguages.length} Indian languages, the Algorithm Labs, {lessonLectures.length} video lessons, notes, group chat, the leaderboard, your certificate and the 2027 radar - open with a Google sign-in.</p>
+              <p>The Deva editor with real judged submissions, Guru in {uiLanguages.length - 1} Indian languages, the Algorithm Labs, notes, group chat, the leaderboard, your certificate and the 2027 radar - open with a Google sign-in.</p>
             </div>
             <span className="home-tier-action">{signedIn ? "Yours already" : "Google sign-in"}</span>
           </li>
@@ -643,39 +642,6 @@ function DsaOverviewLoop() {
     </div></section>
     <div className="overview-caption"><span>CONCEPTS IN MOTION</span><span>ANIMATED LEARNING MAP · LOOPING</span></div>
   </div>;
-}
-
-const jobListings = [
-  { id: 1, title: "Frontend Engineer, New Grad", company: "Stripe", location: "Bengaluru, India", mode: "Hybrid", type: "Full-time", level: "Entry level", salary: "₹18L – ₹28L", posted: "2 days ago", tags: ["React", "TypeScript", "Design systems"], color: "#635bff" },
-  { id: 2, title: "Software Engineer I", company: "Razorpay", location: "Bengaluru, India", mode: "On-site", type: "Full-time", level: "Entry level", salary: "₹14L – ₹22L", posted: "1 day ago", tags: ["Java", "Distributed systems", "APIs"], color: "#168a68" },
-  { id: 3, title: "Associate Software Engineer", company: "Atlassian", location: "Remote · India", mode: "Remote", type: "Full-time", level: "Entry level", salary: "₹16L – ₹25L", posted: "3 days ago", tags: ["JavaScript", "Problem solving", "Cloud"], color: "#1868db" },
-  { id: 4, title: "Product Engineer Intern", company: "Postman", location: "Bengaluru, India", mode: "Hybrid", type: "Internship", level: "Internship", salary: "₹50K – ₹80K / mo", posted: "5 days ago", tags: ["Node.js", "React", "Open source"], color: "#ff6c37" },
-  { id: 5, title: "Software Development Engineer", company: "PhonePe", location: "Pune, India", mode: "Hybrid", type: "Full-time", level: "Entry level", salary: "₹15L – ₹24L", posted: "1 week ago", tags: ["Kotlin", "Backend", "Algorithms"], color: "#5f259f" },
-];
-
-function JobsPage() {
-  const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
-  const [workMode, setWorkMode] = useState("Any work mode");
-  const [jobType, setJobType] = useState("Any job type");
-  const [saved, setSaved] = useState<number[]>([]);
-  const visibleJobs = jobListings.filter((job) => {
-    const text = `${job.title} ${job.company} ${job.tags.join(" ")}`.toLowerCase();
-    return text.includes(query.trim().toLowerCase()) && job.location.toLowerCase().includes(location.trim().toLowerCase()) && (workMode === "Any work mode" || job.mode === workMode) && (jobType === "Any job type" || job.type === jobType);
-  });
-  return <main className="jobs-page">
-    <section className="jobs-hero">
-      <div className="jobs-hero-copy"><span className="jobs-kicker"><BriefcaseBusiness size={14}/> THE NEXT CHAPTER</span><h2>Find work that<br/><em>moves you forward.</em></h2><p>Explore early career roles from teams building products people love. Your next opportunity starts with one good search.</p><div className="jobs-hero-meta"><span><i/> CURATED FOR DEVELOPERS</span><span>OPPORTUNITY BOARD · 2026</span></div></div>
-      <div className="jobs-hero-art" aria-hidden="true"><div className="jobs-orbit jobs-orbit-one"/><div className="jobs-orbit jobs-orbit-two"/><div className="jobs-art-card"><span className="jobs-art-icon"><BriefcaseBusiness size={20}/></span><span>YOUR NEXT MOVE</span><strong>Good things<br/>are in progress.</strong><div><i/><i/><i/></div></div><span className="jobs-art-star">✳</span><span className="jobs-art-plus">＋</span></div>
-    </section>
-    <section className="jobs-board">
-      <div className="jobs-board-heading"><div><span className="jobs-kicker">OPPORTUNITY BOARD</span><h3>Make your next move.</h3><p>Roles worth a closer look, gathered in one place.</p></div><span className="jobs-live-count"><i/>{jobListings.length} OPEN ROLES</span></div>
-      <div className="jobs-search-panel"><label className="jobs-search-field"><Search size={17}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Role, company, or skill" aria-label="Search roles, companies, or skills"/></label><label className="jobs-search-field"><MapPin size={17}/><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or remote" aria-label="Filter by location"/></label><label className="jobs-select-field"><SlidersHorizontal size={16}/><select value={workMode} onChange={(event) => setWorkMode(event.target.value)} aria-label="Filter by work mode"><option>Any work mode</option><option>Remote</option><option>Hybrid</option><option>On-site</option></select></label><label className="jobs-select-field"><select value={jobType} onChange={(event) => setJobType(event.target.value)} aria-label="Filter by job type"><option>Any job type</option><option>Full-time</option><option>Internship</option></select><ChevronDown size={15}/></label><button className="jobs-search-button" type="button" onClick={() => {}}>Search <ArrowRight size={15}/></button></div>
-      <div className="jobs-list-head"><span>{visibleJobs.length} {visibleJobs.length === 1 ? "ROLE" : "ROLES"} TO EXPLORE</span><span>SORTED BY RELEVANCE <ChevronDown size={13}/></span></div>
-      {visibleJobs.length ? <div className="jobs-list">{visibleJobs.map((job, index) => <article className="job-card" key={job.id}><span className="job-index">{String(index + 1).padStart(2,"0")}</span><div className="job-company-mark" style={{ "--company-color": job.color } as CSSProperties}><Building2 size={20}/></div><div className="job-main"><div className="job-title-row"><h4>{job.title}</h4><span className="job-level">{job.level}</span></div><div className="job-company-line"><strong>{job.company}</strong><i/> <span><MapPin size={13}/>{job.location}</span><i/> <span>{job.mode}</span></div><div className="job-tags">{job.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><div className="job-side"><span className="job-salary">{job.salary}</span><span className="job-posted">Posted {job.posted}</span><div className="job-actions"><button type="button" className={`job-save ${saved.includes(job.id) ? "saved" : ""}`} onClick={() => setSaved((current) => current.includes(job.id) ? current.filter((id) => id !== job.id) : [...current, job.id])} aria-label={saved.includes(job.id) ? `Unsave ${job.title}` : `Save ${job.title}`}><Bookmark size={15}/></button><a href={`https://www.google.com/search?q=${encodeURIComponent(`${job.title} ${job.company} careers`)}`} target="_blank" rel="noreferrer">View role <ArrowRight size={14}/></a></div></div></article>)}</div> : <div className="jobs-empty"><Search size={20}/><strong>No roles match those filters</strong><span>Try a broader search or clear your filters.</span><button type="button" onClick={() => {setQuery("");setLocation("");setWorkMode("Any work mode");setJobType("Any job type");}}>Clear filters</button></div>}
-      <div className="jobs-note"><span>✳</span><p><strong>Good work takes many forms.</strong> Keep building your skills while you look — every practice session moves you closer.</p><span>CODEXSHEET · CAREER NOTES</span></div>
-    </section>
-  </main>;
 }
 
 const seniorLldPhases = [
@@ -2387,31 +2353,12 @@ function App() {
 
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
-  // money still gets taught and still gets to see the algorithms run. The lesson
-  // videos are the same promise: Babbar's own lectures, free, no sign-in.
-  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "lessons");
+  // money still gets taught and still gets to see the algorithms run.
+  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
   }
-
-  // One rail, three places: under the sheet on /problems, on its own /lessons
-  // page, and on the public /lessons page for a student who has not signed in.
-  const lessonRail = (
-    <LessonVideoRail
-      problems={problems}
-      pattern={pattern}
-      sheetLocked={sheetLocked}
-      onOpenTopic={(topicName) => {
-        setSheetMode("topic");
-        setSheetGroup(topicName);
-        setStatus("All status");
-        setPattern("All patterns");
-        navigateToView("problems");
-        window.setTimeout(() => document.querySelector(".problem-library-controls")?.scrollIntoView({ behavior: "smooth", block: "center" }), 40);
-      }}
-    />
-  );
 
   if (publicView) {
     if (activeView === "home") {
@@ -2430,9 +2377,6 @@ function App() {
           <StudentFooter />
         </main>
       );
-    }
-    if (activeView === "lessons") {
-      return <main className="lessons-public ui-scope">{lessonRail}<StudentFooter /></main>;
     }
     if (activeView === "guru") {
       return <main className="guru-public ui-scope"><DsaGuru onOpenMentorship={() => navigateToView("mentorship")} /><StudentFooter /></main>;
@@ -2460,86 +2404,127 @@ function App() {
 
   return (
     <main className="app-shell ui-scope">
-      <header className="topbar navbar">
-        <button type="button" className="navbar-brand brand-lockup" onClick={() => navigateToView("home")} aria-label="CodexSheet home">
-          <img className="brand-primary-image" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" />
-          <span className="workspace-name">DSA practice workspace</span>
-        </button>
-        <div className="nav-badges" aria-label="Your standing on the sheet">
-          <span className="nav-badge nav-badge-rank">
-            <Crown size={14} />
-            <span><strong>{sheetRank.title}</strong><small>Level {sheetRank.level} · {sheetRank.xp} XP</small></span>
-          </span>
-          <span className="nav-badge nav-badge-streak">
-            <Flame size={14} />
-            <span><strong>{practiceStreak.current}</strong><small>{practiceStreak.current === 1 ? "day" : "days"} streak</small></span>
-          </span>
-          <span className="nav-badge nav-badge-sheet">
-            <span className="nav-badge-count"><strong>{solved}</strong><small>/{problems.length} solved</small></span>
-            <i className="nav-badge-track"><b style={{ width: `${percent}%` }} /></i>
-          </span>
+
+      {/* ══ Sidebar ══════════════════════════════════════════════════════ */}
+      <aside className={`sidebar${navOpen ? " sidebar-open" : ""}`} aria-label="Workspace navigation">
+
+        {/* Brand */}
+        <div className="sidebar-brand">
+          <button type="button" className="brand-lockup" onClick={() => navigateToView("home")} aria-label="CodexSheet home">
+            <img className="brand-primary-image" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" />
+          </button>
         </div>
-        <button type="button" className="navbar-toggler" aria-expanded={navOpen} aria-controls="workspace-nav" aria-label={navOpen ? "Close navigation" : "Open navigation"} onClick={() => setNavOpen((open) => !open)}>
-          <span className="navbar-toggler-icon" />
-        </button>
-        <div className={`navbar-collapse collapse${navOpen ? " show" : ""}`} id="workspace-nav">
-        <nav className="view-switcher navbar-nav" aria-label="Workspace views">
-          <button
-            type="button"
-            className={`nav-notifications${activeView === "network" ? " active" : ""}`}
-            aria-label={studentDmUnread > 0 ? `Messages, ${studentDmUnread} unread` : "Messages"}
+        <LanguagePicker placement="sidebar" />
+
+        {/* Primary nav */}
+        <nav className="sidebar-nav" aria-label="Workspace views">
+
+          <button type="button"
+            className={`sidebar-item${activeView === "network" ? " active" : ""}`}
             aria-pressed={activeView === "network"}
-            onClick={() => {
-              setMessagesNavRequest((request) => request + 1);
-              navigateToView("network");
-            }}
+            onClick={() => { setMessagesNavRequest((r) => r + 1); navigateToView("network"); setNavOpen(false); }}
           >
-            <Bell size={16} /> Messages
-            {studentDmUnread > 0 && <span className="chat-unread-badge">{studentDmUnread > 99 ? "99+" : studentDmUnread}</span>}
+            <Bell size={16} /><span>Messages</span>
+            {studentDmUnread > 0 && <em className="sidebar-badge">{studentDmUnread > 99 ? "99+" : studentDmUnread}</em>}
           </button>
-          <button className={activeView === "problems" || activeView === "companies" ? "active" : ""} aria-pressed={activeView === "problems" || activeView === "companies"} onClick={() => navigateToView("problems")}>
-            <Rows3 size={16} /> {tr("nav.problems")}
-            <span>{visibleProblems.length}</span>
+
+          <button type="button"
+            className={`sidebar-item${activeView === "problems" || activeView === "companies" ? " active" : ""}`}
+            aria-pressed={activeView === "problems" || activeView === "companies"}
+            onClick={() => { navigateToView("problems"); setNavOpen(false); }}
+          >
+            <Rows3 size={16} /><span>{tr("nav.problems")}</span>
+            <em className="sidebar-count">{visibleProblems.length}</em>
           </button>
-          <button className={activeView === "leaderboard" ? "active" : ""} aria-pressed={activeView === "leaderboard"} onClick={() => navigateToView("leaderboard")}>
-            <Trophy size={16} /> Leaderboard
+
+          <button type="button"
+            className={`sidebar-item${activeView === "leaderboard" ? " active" : ""}`}
+            aria-pressed={activeView === "leaderboard"}
+            onClick={() => { navigateToView("leaderboard"); setNavOpen(false); }}
+          >
+            <Trophy size={16} /><span>Leaderboard</span>
           </button>
-          <button className={activeView === "lessons" ? "active" : ""} aria-pressed={activeView === "lessons"} onClick={() => navigateToView("lessons")}>
-            <Video size={16} /> Lessons
-            <span>{lessonLectures.length}</span>
-          </button>
-          <details className="nav-more" onClick={(event: { target: EventTarget; currentTarget: HTMLDetailsElement }) => { if ((event.target as HTMLElement).closest("button")) event.currentTarget.open = false; }}>
-          <summary className={moreMenuViews.includes(activeView) ? "active" : ""}>More <ChevronDown size={14} /></summary>
-            <div className="nav-more-menu">
-              {navMenuGroups.map((group) => (
-                <section className="nav-more-group" key={group.label}>
-                  <span className="nav-more-label">{group.label}</span>
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    const unread = item.view === "chat" ? chatUnreadIds.length : 0;
-                    return (
-                      <button key={item.view} className={activeView === item.view ? "active" : ""} aria-pressed={activeView === item.view} onClick={() => navigateToView(item.view)}>
-                        <Icon size={16} /> {item.labelKey ? tr(item.labelKey) : item.label}
-                        {unread > 0 && <span className="chat-unread-badge">{unread > 99 ? "99+" : unread}</span>}
-                      </button>
-                    );
-                  })}
-                </section>
-              ))}
+
+          {/* Groups from navMenuGroups */}
+          {navMenuGroups.map((group) => (
+            <div key={group.label} className="sidebar-group">
+              <span className="sidebar-group-label">{group.label}</span>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const unread = item.view === "chat" ? chatUnreadIds.length : 0;
+                return (
+                  <button key={item.view} type="button"
+                    className={`sidebar-item${activeView === item.view ? " active" : ""}`}
+                    aria-pressed={activeView === item.view}
+                    onClick={() => { navigateToView(item.view); setNavOpen(false); }}
+                  >
+                    <Icon size={16} /><span>{item.labelKey ? tr(item.labelKey) : item.label}</span>
+                    {unread > 0 && <em className="sidebar-badge">{unread > 99 ? "99+" : unread}</em>}
+                  </button>
+                );
+              })}
             </div>
-          </details>
+          ))}
         </nav>
-        <div className="top-actions ms-auto">
-            {isLoaded ? user ? (
-              <UserButton />
-            ) : (
+
+        {/* Stat chips */}
+        <div className="sidebar-stats" aria-label="Your standing on the sheet">
+          <div className="sidebar-stat sidebar-stat-sheet">
+            <span className="sidebar-stat-row">
+              <strong>{solved}</strong><small>/{problems.length} solved</small>
+            </span>
+            <i className="sidebar-stat-track"><b style={{ width: `${percent}%` }} /></i>
+          </div>
+          <div className="sidebar-stat">
+            <Crown size={12} className="sidebar-stat-icon sidebar-stat-rank-icon" />
+            <span><strong>{sheetRank.title}</strong><small>Lv {sheetRank.level} · {sheetRank.xp} XP</small></span>
+          </div>
+          <div className="sidebar-stat">
+            <Flame size={12} className="sidebar-stat-icon sidebar-stat-streak-icon" />
+            <span><strong>{practiceStreak.current}</strong><small>{practiceStreak.current === 1 ? "day" : "days"} streak</small></span>
+          </div>
+        </div>
+
+        {/* Account */}
+        <div className="sidebar-account">
+          {isLoaded ? user ? (
+            <UserButton />
+          ) : (
+            <SignInButton mode="modal" forceRedirectUrl={window.location.href}>
+              <button className="primary-button" style={{ minHeight: 34, fontSize: 11, padding: "0 13px", width: "100%" }}>Sign in</button>
+            </SignInButton>
+          ) : null}
+        </div>
+
+      </aside>
+
+      {/* Mobile overlay backdrop */}
+      {navOpen && <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setNavOpen(false)} />}
+
+      {/* ══ Main content area ════════════════════════════════════════════ */}
+      <div className="main-content">
+
+        {/* Mobile topbar */}
+        <header className="mobile-topbar">
+          <button type="button" className="navbar-toggler"
+            aria-expanded={navOpen}
+            aria-controls="sidebar"
+            aria-label={navOpen ? "Close menu" : "Open menu"}
+            onClick={() => setNavOpen((o) => !o)}
+          >
+            <span className="navbar-toggler-icon" aria-hidden="true" />
+          </button>
+          <button type="button" className="brand-lockup" onClick={() => navigateToView("home")} aria-label="CodexSheet home">
+            <img className="brand-primary-image" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" style={{ width: 108 }} />
+          </button>
+          <div className="top-actions" style={{ marginLeft: "auto" }}>
+            {isLoaded ? user ? <UserButton /> : (
               <SignInButton mode="modal" forceRedirectUrl={window.location.href}>
-                <button className="btn btn-primary btn-sm primary-button">Sign in</button>
+                <button className="primary-button" style={{ minHeight: 32, fontSize: 10, padding: "0 11px" }}>Sign in</button>
               </SignInButton>
             ) : null}
-        </div>
-        </div>
-      </header>
+          </div>
+        </header>
       <section className="workspace-header">
         {!selfHeadedViews.includes(activeView) && <div className="title-row">
           <div>
@@ -2571,7 +2556,7 @@ function App() {
                   : activeView === "experiences" ? "Interview experiences"
                   : activeView === "mentees" ? "Mentees"
                   : activeView === "network" ? "CodexSheet Network"
-                  : activeView === "articles" ? "Articles" : activeView === "jobs" ? "Job search" : "CodexSheet"}
+                  : activeView === "articles" ? "Articles" : activeView === "resume" ? "Resume builder" : "CodexSheet"}
               </span>
             </div>
             <h1>
@@ -2595,7 +2580,7 @@ function App() {
                     ? "Group chat"
                       : activeView === "notes"
                         ? "Personal notebook"
-                : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : activeView === "network" ? "Share your code, read theirs" : activeView === "jobs" ? "Roles worth preparing for" : "Your workspace"}{" "}
+                : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : activeView === "network" ? "Share your code, read theirs" : activeView === "resume" ? "Create a resume that tells your story" : "Your workspace"}{" "}
               <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
             </h1>
             <p>
@@ -2619,7 +2604,7 @@ function App() {
                     ? "Talk through DSA problems and share ideas with the study group."
                       : activeView === "notes"
                         ? "Keep private study notes that sync with your account."
-                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "experiences" ? "Round-by-round accounts written by the candidate who sat in the room. Nothing here is scraped." : activeView === "network" ? "Post the solution you just wrote, let the batch react and argue in the comments, and message any student privately." : activeView === "jobs" ? "Explore early career roles and find a team where you can grow." : "Pick up the rail you need - everything here is tied to your account."}
+                        : activeView === "articles" ? "Build a clear mental model for the patterns you will meet in the problem library." : activeView === "experiences" ? "Round-by-round accounts written by the candidate who sat in the room. Nothing here is scraped." : activeView === "network" ? "Post the solution you just wrote, let the batch react and argue in the comments, and message any student privately." : activeView === "resume" ? "Build and preview a polished resume. Your draft stays on this device." : "Pick up the rail you need - everything here is tied to your account."}
             </p>
           </div>
         </div>}
@@ -2631,7 +2616,7 @@ function App() {
         onOpenProduct={openCheckout}
       />}
       {activeView === "articles" && <ArticlesPage onOpenIde={() => navigateToView("dsa-ide")} />}
-      {activeView === "jobs" && <JobsPage />}
+      {activeView === "resume" && <ResumeBuilder />}
       {activeView === "mentorship" && <MentorshipPayments userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} initialProduct={checkoutProduct} unlocks={unlocks} />}
       {activeView === "mentees" && <MenteeSpace userId={user?.id ?? null} userEmail={user?.email ?? ""} />}
       {activeView === "marketplace" && <Marketplace userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} onOpenStudio={() => navigateToView("studio")} onNavigateHome={() => navigateToView("mentorship")} />}
@@ -2669,7 +2654,7 @@ function App() {
                 <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
                 <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
                 <button className="dashboard-tool-link" onClick={() => navigateToView("companies")}><UsersRound size={15} /> Company sets</button>
-                <button className="dashboard-tool-link" onClick={() => navigateToView("jobs")}><BriefcaseBusiness size={15} /> Job board</button>
+                <button className="dashboard-tool-link" onClick={() => navigateToView("resume")}><FileText size={15} /> Resume builder</button>
               </div>
             </div>
             <div className="dashboard-welcome-progress" aria-label={`${percent}% complete`}>
@@ -3188,6 +3173,18 @@ function App() {
           </div>
           <div className="problem-hero-progress"><div className="problem-progress-ring" style={{ "--progress": `${percent}%` } as CSSProperties}><div><strong>{percent}%</strong><span>COMPLETE</span></div></div><span className="problem-progress-caption"><strong>{solved} <small>/ {problems.length}</small></strong> problems solved</span><div className="problem-progress-track"><i style={{ width: `${percent}%` }}/></div><span className="problem-progress-rank"><strong>LEVEL {sheetRank.level}</strong><span>{sheetRank.title}</span><i className="problem-rank-track"><b style={{ width: `${sheetRank.percent}%` }}/></i><em>{sheetRank.toNext ? `${sheetRank.toNext} XP to ${sheetRanks[sheetRank.level]?.title ?? sheetRank.title}` : `${sheetRank.xp} XP - top rank`}</em></span><span className="problem-progress-foot">Every problem makes you sharper.</span><span className="problem-progress-spark">✳</span></div>
         </div>
+        <nav className="sheet-learning-links" aria-label="Continue learning">
+          <button type="button" className="sheet-learning-link sheet-learning-course" onClick={() => navigateToView("dsa-course")}>
+            <span className="sheet-learning-icon"><BookOpen size={17}/></span>
+            <span><strong>Learn with the animated DSA course</strong><small>Watch algorithms step by step, then try the code.</small></span>
+            <ArrowRight size={16}/>
+          </button>
+          <button type="button" className="sheet-learning-link sheet-learning-notes" onClick={() => navigateToView("notes")}>
+            <span className="sheet-learning-icon"><NotebookPen size={17}/></span>
+            <span><strong>Open your personal notes</strong><small>Save insights here or add a note to any problem.</small></span>
+            <ArrowRight size={16}/>
+          </button>
+        </nav>
         <div className="sheet-hausla">
           <span className="sheet-hausla-flame"><Flame size={15}/></span>
           <span className="sheet-hausla-copy"><strong>{hausla.line}</strong><small>{hausla.sub}</small></span>
@@ -3276,13 +3273,10 @@ function App() {
         </div>
         {sheetReward && <div className={`sheet-reward${sheetReward.milestone ? " milestone" : ""}`} key={sheetReward.id} role="status" aria-live="polite"><span className="sheet-reward-icon"><Sparkles size={18}/></span><div className="sheet-reward-copy"><strong>{sheetReward.headline}</strong><span>{sheetReward.detail}</span></div><em className="sheet-reward-xp">+{sheetReward.xp} XP</em><button type="button" className="sheet-reward-close" onClick={() => setSheetReward(null)} aria-label="Dismiss"><X size={14}/></button></div>}
       </section>}
-      {/* Free, and outside the lock: the lessons are the reason a student buys the
-          sheet, so hiding them behind it would hide the pitch. */}
-      {activeView === "problems" && lessonRail}
-      {activeView === "lessons" && <section className="lessons-page">{lessonRail}</section>}
       {patternTestOpen && <PatternTest pattern={patternTestOpen} onClose={() => setPatternTestOpen(null)} />}
 
       <StudentFooter compact />
+      </div>{/* /main-content */}
     </main>
   );
 }

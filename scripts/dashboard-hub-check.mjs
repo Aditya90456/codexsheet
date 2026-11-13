@@ -67,7 +67,7 @@ is("every card names a real route", dead.length === 0, dead.map((card) => card.v
 is("no card is listed twice", new Set(cards.map((card) => card.view)).size === cards.length);
 
 // 2. ...and every rail a student works with has to be on the board.
-const required = ["problems", "patterns", "dsa-ide", "cslabs", "calendar", "notes", "dsa-course", "lessons", "articles", "guru", "roadmap", "radar", "network", "chat", "experiences", "leaderboard", "certificate", "mentorship", "marketplace", "jobs"];
+const required = ["problems", "patterns", "dsa-ide", "cslabs", "calendar", "notes", "dsa-course", "lessons", "articles", "guru", "roadmap", "radar", "network", "chat", "experiences", "leaderboard", "certificate", "mentorship", "marketplace", "resume"];
 const missing = required.filter((view) => !cards.some((card) => card.view === view));
 is("the board covers every working rail", missing.length === 0, missing.join(", "));
 

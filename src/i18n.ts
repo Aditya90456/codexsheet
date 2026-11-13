@@ -1,10 +1,11 @@
-// CodexSheet speaks the languages its students actually study in. The UI keeps a
-// deliberately small translated surface (the free path: landing, the workspace,
-// Guru, mentorship) and everything else falls back to English, while the AI
-// teacher itself answers in the chosen language through /api/tutor.
+// The language selector covers India's 22 scheduled languages. Most UI copy
+// still falls back to English; Guru can respond in the selected language.
 import { useEffect, useState } from "react";
 
-export type UiLanguage = "en" | "hi" | "bn" | "ta" | "te" | "mr" | "gu";
+export type UiLanguage =
+  | "en" | "as" | "bn" | "brx" | "doi" | "gu" | "hi" | "kn" | "ks" | "kok"
+  | "mai" | "ml" | "mni" | "mr" | "ne" | "or" | "pa" | "sa" | "sat" | "sd"
+  | "ta" | "te" | "ur";
 
 export type LanguageOption = {
   id: UiLanguage;
@@ -16,12 +17,28 @@ export type LanguageOption = {
 
 export const uiLanguages: LanguageOption[] = [
   { id: "en", native: "English", english: "English", speechLocale: "en-IN", scriptHint: "Latin" },
-  { id: "hi", native: "हिन्दी", english: "Hindi", speechLocale: "hi-IN", scriptHint: "Devanagari" },
+  { id: "as", native: "অসমীয়া", english: "Assamese", speechLocale: "as-IN", scriptHint: "Assamese" },
   { id: "bn", native: "বাংলা", english: "Bengali", speechLocale: "bn-IN", scriptHint: "Bengali" },
+  { id: "brx", native: "बड़ो", english: "Bodo", speechLocale: "brx-IN", scriptHint: "Devanagari" },
+  { id: "doi", native: "डोगरी", english: "Dogri", speechLocale: "doi-IN", scriptHint: "Devanagari" },
+  { id: "gu", native: "ગુજરાતી", english: "Gujarati", speechLocale: "gu-IN", scriptHint: "Gujarati" },
+  { id: "hi", native: "हिन्दी", english: "Hindi", speechLocale: "hi-IN", scriptHint: "Devanagari" },
+  { id: "kn", native: "ಕನ್ನಡ", english: "Kannada", speechLocale: "kn-IN", scriptHint: "Kannada" },
+  { id: "ks", native: "کٲشُر", english: "Kashmiri", speechLocale: "ks-IN", scriptHint: "Arabic" },
+  { id: "kok", native: "कोंकणी", english: "Konkani", speechLocale: "kok-IN", scriptHint: "Devanagari" },
+  { id: "mai", native: "मैथिली", english: "Maithili", speechLocale: "mai-IN", scriptHint: "Devanagari" },
+  { id: "ml", native: "മലയാളം", english: "Malayalam", speechLocale: "ml-IN", scriptHint: "Malayalam" },
+  { id: "mni", native: "ꯃꯤꯇꯩꯂꯣꯟ", english: "Manipuri (Meitei)", speechLocale: "mni-IN", scriptHint: "Meitei Mayek" },
+  { id: "mr", native: "मराठी", english: "Marathi", speechLocale: "mr-IN", scriptHint: "Devanagari" },
+  { id: "ne", native: "नेपाली", english: "Nepali", speechLocale: "ne-IN", scriptHint: "Devanagari" },
+  { id: "or", native: "ଓଡ଼ିଆ", english: "Odia", speechLocale: "or-IN", scriptHint: "Odia" },
+  { id: "pa", native: "ਪੰਜਾਬੀ", english: "Punjabi", speechLocale: "pa-IN", scriptHint: "Gurmukhi" },
+  { id: "sa", native: "संस्कृतम्", english: "Sanskrit", speechLocale: "sa-IN", scriptHint: "Devanagari" },
+  { id: "sat", native: "ᱥᱟᱱᱛᱟᱲᱤ", english: "Santali", speechLocale: "sat-IN", scriptHint: "Ol Chiki" },
+  { id: "sd", native: "سنڌي", english: "Sindhi", speechLocale: "sd-IN", scriptHint: "Arabic" },
   { id: "ta", native: "தமிழ்", english: "Tamil", speechLocale: "ta-IN", scriptHint: "Tamil" },
   { id: "te", native: "తెలుగు", english: "Telugu", speechLocale: "te-IN", scriptHint: "Telugu" },
-  { id: "mr", native: "मराठी", english: "Marathi", speechLocale: "mr-IN", scriptHint: "Devanagari" },
-  { id: "gu", native: "ગુજરાતી", english: "Gujarati", speechLocale: "gu-IN", scriptHint: "Gujarati" },
+  { id: "ur", native: "اردو", english: "Urdu", speechLocale: "ur-IN", scriptHint: "Arabic" },
 ];
 
 export const languageInstruction: Record<UiLanguage, string> = {
@@ -32,6 +49,22 @@ export const languageInstruction: Record<UiLanguage, string> = {
   te: "సులభమైన తెలుగులో సమాధానం చెప్పు. సాంకేతిక పేర్లను (hash map, two pointers, DP, array) ఇంగ్లీషులోనే ఉంచు. ",
   mr: "सोप्या मराठीत उत्तर दे, देवनागरी लिपीत. तांत्रिक नावे (hash map, two pointers, DP, array) इंग्रजीतच ठेव.",
   gu: "સરળ ગુજરાતીમાં જવાબ આપ. તકનીકી નામો (hash map, two pointers, DP, array) અંગ્રેજીમાં જ રાખ.",
+  as: "Answer in simple Assamese. Keep technical names (hash map, two pointers, DP, array) in English.",
+  brx: "Answer in simple Bodo. Keep technical names (hash map, two pointers, DP, array) in English.",
+  doi: "Answer in simple Dogri. Keep technical names (hash map, two pointers, DP, array) in English.",
+  kn: "Answer in simple Kannada. Keep technical names (hash map, two pointers, DP, array) in English.",
+  ks: "Answer in simple Kashmiri. Keep technical names (hash map, two pointers, DP, array) in English.",
+  kok: "Answer in simple Konkani. Keep technical names (hash map, two pointers, DP, array) in English.",
+  mai: "Answer in simple Maithili. Keep technical names (hash map, two pointers, DP, array) in English.",
+  ml: "Answer in simple Malayalam. Keep technical names (hash map, two pointers, DP, array) in English.",
+  mni: "Answer in simple Manipuri (Meitei). Keep technical names (hash map, two pointers, DP, array) in English.",
+  ne: "Answer in simple Nepali. Keep technical names (hash map, two pointers, DP, array) in English.",
+  or: "Answer in simple Odia. Keep technical names (hash map, two pointers, DP, array) in English.",
+  pa: "Answer in simple Punjabi. Keep technical names (hash map, two pointers, DP, array) in English.",
+  sa: "Answer in simple Sanskrit. Keep technical names (hash map, two pointers, DP, array) in English.",
+  sat: "Answer in simple Santali. Keep technical names (hash map, two pointers, DP, array) in English.",
+  sd: "Answer in simple Sindhi. Keep technical names (hash map, two pointers, DP, array) in English.",
+  ur: "Answer in simple Urdu. Keep technical names (hash map, two pointers, DP, array) in English.",
 };
 
 export const languageSpeechName: Record<UiLanguage, string> = {
@@ -42,6 +75,22 @@ export const languageSpeechName: Record<UiLanguage, string> = {
   te: "Telugu (India)",
   mr: "Marathi (India)",
   gu: "Gujarati (India)",
+  as: "Assamese (India)",
+  brx: "Bodo (India)",
+  doi: "Dogri (India)",
+  kn: "Kannada (India)",
+  ks: "Kashmiri (India)",
+  kok: "Konkani (India)",
+  mai: "Maithili (India)",
+  ml: "Malayalam (India)",
+  mni: "Manipuri (India)",
+  ne: "Nepali (India)",
+  or: "Odia (India)",
+  pa: "Punjabi (India)",
+  sa: "Sanskrit (India)",
+  sat: "Santali (India)",
+  sd: "Sindhi (India)",
+  ur: "Urdu (India)",
 };
 
 const messages = {
@@ -67,7 +116,7 @@ const messages = {
   "home.cta1": { en: "Open the sheet", hi: "शीट खोलो", bn: "শীট খোলো", ta: "ஷீட்டை திற", te: "షీట్ తెరవండి", mr: "शीट उघडा", gu: "શીટ ખોલો" },
   "home.cta2": { en: "Sign in free", hi: "मुफ़्त साइन इन करो", bn: "ফ্রি সাইন ইন করো", ta: "இலவசமாக உள்நுழை", te: "ఉచితంగా సైన్ ఇన్ చేయండి", mr: "मोफत साइन इन करा", gu: "મફત સાઇન ઇન કરો" },
   "home.ctaPass": { en: "Unlock everything · {price}", hi: "सब कुछ अनलॉक · {price}", bn: "সব আনলক · {price}", ta: "அனைத்தையும் திற · {price}", te: "అన్నీ అన్‌లాక్ · {price}", mr: "सर्व काही अनलॉक · {price}", gu: "બધું અનલોક · {price}" },
-  "guru.kicker": { en: "FREE · AI TEACHER · 7 INDIAN LANGUAGES", hi: "मुफ़्त · AI टीचर · 7 भारतीय भाषाएँ", bn: "ফ্রি · AI শিক্ষক · ৭টি ভারতীয় ভাষা", ta: "இலவசம் · AI ஆசிரியர் · 7 இந்திய மொழிகள்", te: "ఉచితం · AI ఉపాధ్యాయుడు · 7 భారతీయ భాషలు", mr: "मोफत · AI शिक्षक · 7 भारतीय भाषा", gu: "મફત · AI શિક્ષક · 7 ભારતીય ભાષાઓ" },
+  "guru.kicker": { en: "FREE · AI TEACHER · 22 INDIAN LANGUAGES", hi: "मुफ़्त · AI टीचर · 22 भारतीय भाषाएँ", bn: "ফ্রি · AI শিক্ষক · ২২টি ভারতীয় ভাষা", ta: "இலவசம் · AI ஆசிரியர் · 22 இந்திய மொழிகள்", te: "ఉచితం · AI ఉపాధ్యాయుడు · 22 భారతీయ భాషలు", mr: "मोफत · AI शिक्षक · 22 भारतीय भाषा", gu: "મફત · AI શિક્ષક · 22 ભારતીય ભાષાઓ" },
   "guru.title": { en: "Guru teaches you DSA out loud.", hi: "गुरु तुम्हें DSA बोलकर सिखाता है।", bn: "গুরু তোমাকে DSA বলে বুঝিয়ে শেখায়।", ta: "குரு உங்களுக்கு DSA சொல்லித் தருவார்.", te: "గురు మీకు DSA నోటితోనే బోధిస్తాడు.", mr: "गुरु तुला DSA बोलून शिकवतो.", gu: "ગુરુ તમને DSA બોલીને શીખવે છે." },
   "guru.body": {
     en: "Ask in your language, get a 3D figure on the board, and hear the lesson spoken. Guru shows his face — he smiles when you get it, frowns when you skip the basics, and never judges you for being poor.",
@@ -151,10 +200,9 @@ const listeners = new Set<() => void>();
 
 function inferLanguage(): UiLanguage {
   const stored = (typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null) as UiLanguage | null;
-  if (stored && stored in languageInstruction) return stored;
+  if (stored && uiLanguages.some((option) => option.id === stored)) return stored;
   const nav = typeof navigator !== "undefined" ? navigator.language.toLowerCase() : "en";
-  const match = (Object.keys(languageInstruction) as UiLanguage[]).find((id) => id !== "en" && nav.startsWith(id));
-  return match ?? "en";
+  return uiLanguages.find((option) => option.id !== "en" && nav.startsWith(option.id))?.id ?? "en";
 }
 
 let current: UiLanguage = inferLanguage();
@@ -211,6 +259,74 @@ export function useT(): (key: MessageKey, vars?: Record<string, string>) => stri
     if (vars) for (const [name, replacement] of Object.entries(vars)) value = value.split(`{${name}}`).join(replacement);
     return value;
   };
+}
+
+export function useRemoteTranslations(texts: string[]) {
+  const lang = useUiLanguage();
+  const source = JSON.stringify(texts);
+  const [translations, setTranslations] = useState<string[]>(texts);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const sourceTexts = JSON.parse(source) as string[];
+    setTranslations(sourceTexts);
+    setError(null);
+    if (lang === "en") return () => { active = false; };
+
+    const cacheKey = `codexsheet.ui-translation.${lang}.${source}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed: unknown = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length === sourceTexts.length && parsed.every((value) => typeof value === "string")) {
+          setTranslations(parsed);
+          return () => { active = false; };
+        }
+      }
+    } catch {
+      // A storage failure should not prevent the live translation request.
+    }
+
+    const controller = new AbortController();
+    void fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language: lang, texts: sourceTexts }),
+      signal: controller.signal,
+    }).then(async (response) => {
+      const data: unknown = await response.json();
+      if (!response.ok) {
+        const message = typeof data === "object" && data !== null && "error" in data && typeof data.error === "string"
+          ? data.error
+          : "Interface translation is unavailable right now.";
+        throw new Error(message);
+      }
+      if (typeof data !== "object" || data === null || !("translations" in data) ||
+        !Array.isArray(data.translations) || data.translations.length !== sourceTexts.length ||
+        !data.translations.every((value) => typeof value === "string")) {
+        throw new Error("The translation service returned an invalid response.");
+      }
+      const translated = data.translations as string[];
+      if (!active) return;
+      setTranslations(translated);
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(translated));
+      } catch {
+        // The current screen still works when translation caching is unavailable.
+      }
+    }).catch((reason: unknown) => {
+      if (!active || (reason instanceof DOMException && reason.name === "AbortError")) return;
+      setError(reason instanceof Error ? reason.message : "Interface translation is unavailable right now.");
+    });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [lang, source]);
+
+  return { translations, error };
 }
 
 export function languageOption(lang: UiLanguage): LanguageOption {

@@ -8,6 +8,7 @@ import { Mail, MessageSquareText, Send } from "lucide-react";
 import { supabasePublic } from "./lib/supabase";
 import { mentorEmail } from "./mentorship";
 import { useT } from "./i18n";
+import LanguagePicker from "./LanguagePicker";
 
 const emailShape = /^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/;
 // Students type the gmail username they remember rather than the full address,
@@ -79,6 +80,7 @@ export default function StudentFooter({ compact = false }: { compact?: boolean }
           <Mail size={13} /> {mentorEmail}
         </a>
         <span className="site-footer-rights">codexsheet@2026</span>
+        <LanguagePicker placement="footer" />
         {/* A crawler cannot follow the workspace nav — it is all buttons. */}
         <nav className="site-footer-links" aria-label="Free pages">
           <a href="/cslabs">Algorithm labs</a>

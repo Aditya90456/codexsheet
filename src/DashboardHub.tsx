@@ -10,10 +10,10 @@ import {
   Activity,
   ArrowRight,
   BookOpen,
-  BriefcaseBusiness,
   Building2,
   CalendarDays,
   CodeXml,
+  FileText,
   GraduationCap,
   Layers,
   Map as MapIcon,
@@ -27,12 +27,10 @@ import {
   Target,
   Trophy,
   Users,
-  Video,
   type LucideIcon,
 } from "lucide-react";
 import type { WorkspaceView } from "./App";
 import { courseLessons } from "./deva-course-lessons";
-import { lessonLectures } from "./love-babbar-lessons";
 import { radarQuestions } from "./interviewRadar2027";
 import { roadmapStages } from "./dsaPatterns";
 import { uiLanguages } from "./i18n";
@@ -63,16 +61,15 @@ export function hubGroups(counts: HubCounts): HubGroup[] {
         { view: "dsa-ide", icon: CodeXml, name: "Deva editor", note: "Run it against hidden tests.", count: "4 languages" },
         { view: "cslabs", icon: Activity, name: "Algorithm Labs", note: "Watch the algorithm move.", count: "no sign-in" },
         { view: "calendar", icon: CalendarDays, name: "Practice calendar", note: "The days you actually showed up.", count: `${counts.activeDays} active` },
-        { view: "notes", icon: NotebookPen, name: "Notebook", note: "Private, tied to your account.", count: "" },
+        { view: "notes", icon: NotebookPen, name: "Personal notes", note: "Private notes that sync with your account.", count: "" },
       ],
     },
     {
       label: "Learn",
       cards: [
-        { view: "dsa-course", icon: BookOpen, name: "DSA course", note: "Lesson by lesson, with the code beside it.", count: `${courseLessons.length} lessons` },
-        { view: "lessons", icon: Video, name: "Lesson films", note: "The whole sheet, explained on screen.", count: `${lessonLectures.length} films` },
+        { view: "dsa-course", icon: BookOpen, name: "Animated DSA course", note: "Watch each algorithm move, then work through the code.", count: `${courseLessons.length} lessons` },
         { view: "articles", icon: Rows3, name: "Field notes", note: "Approach, worked steps, trade-offs, FAQ.", count: "deep dives" },
-        { view: "guru", icon: Sparkles, name: "Guru", note: "It teaches, then checks your reasoning.", count: `${uiLanguages.length} languages` },
+        { view: "guru", icon: Sparkles, name: "Guru", note: "It teaches, then checks your reasoning.", count: `${uiLanguages.length - 1} Indian languages` },
         { view: "roadmap", icon: MapIcon, name: "Roadmap", note: "A plan around your season, not a list.", count: `${roadmapStages.length} stages` },
         { view: "radar", icon: Radar, name: "2027 radar", note: "What the loop is actually asking now.", count: `${radarQuestions.length} questions` },
       ],
@@ -92,7 +89,7 @@ export function hubGroups(counts: HubCounts): HubGroup[] {
       cards: [
         { view: "mentorship", icon: GraduationCap, name: "1:1 mentorship", note: "Google Meet calls with Aditya.", count: "" },
         { view: "marketplace", icon: Store, name: "Mentor marketplace", note: "Other mentors, their own prices.", count: "" },
-        { view: "jobs", icon: BriefcaseBusiness, name: "Job board", note: "Early-career roles worth prepping for.", count: "" },
+        { view: "resume", icon: FileText, name: "Resume builder", note: "Build and export a polished resume.", count: "" },
       ],
     },
   ];

@@ -100,7 +100,11 @@ Whether you're starting from scratch or revising before an interview, CodexSheet
 
 ### Gemini problem help
 
-The Deva editor's **AI help** panel and the course studio's **Ask Deva** panel use a Vercel serverless function and Google Gemini. Add `GOOGLE_AI_API_KEY` to the Vercel project environment variables (server-side only; do not use a `VITE_` prefix), then redeploy. Requests require a valid Clerk sign-in and use only the selected problem details and the student's status. Gemini interactions are sent with `store: false`.
+The Deva editor's **AI help** panel and the course studio's **Ask Deva** panel use a Vercel serverless function and Google Gemini. Configure the server-side `GEMINI_API_KEY` environment variable in Vercel (never expose it with a `VITE_` prefix), then redeploy. Requests require a valid Clerk sign-in and use only the selected problem details and the student's status. Gemini interactions are sent with `store: false`.
+
+### Resume builder
+
+The **Resume builder** lets you add contact details, a profile, experience, education, projects, and skills with a live resume preview. Drafts are saved only in the browser's local storage on the current device. Use **Print / Save PDF** to export; CodexSheet does not upload resume details.
 
 ### 📋 Curated DSA Sheet
 
