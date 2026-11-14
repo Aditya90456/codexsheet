@@ -4,20 +4,20 @@ import {
   Bot,
   Check,
   ChevronRight,
-  Clock3,
   Code2,
   Flame,
   LoaderCircle,
   Play,
   RotateCcw,
-  Search,
   Sparkles,
   Trophy,
   Zap,
 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
 import "./human-vs-ai.css";
 
 type TestCase = { args: unknown[]; expected: unknown };
@@ -37,15 +37,28 @@ type Challenge = {
 };
 type TestStatus = "Accepted" | "Wrong Answer" | "Compile Error" | "Runtime Error" | "TLE" | "Runner Error";
 type TestResult = { passed: number; total: number; details: string[]; status: TestStatus; runtimeMs?: number; error?: string };
-type RoundStatus = "ready" | "running" | "human-won" | "ai-won";
-type GameStats = { level: number; wins: number; losses: number; streak: number; xp: number; bestTime: number | null };
-type CompanyFilter = "All companies" | InterviewCompany;
-type AiState = "idle" | "thinking" | "racing" | "error";
+type RoundStatus = "ready" | "running" | "human-won" | "ai-won" | "tie";
+type GameStats = { level: number; wins: number; losses: number; streak: number; xp: number };
+type AiState = "idle" | "thinking" | "ready" | "error";
+type JudgeState = "idle" | "thinking" | "error" | "done";
+type JudgeScore = { correctness: number; efficiency: number; readability: number; maintainability: number; feedback: string };
+type AiJudgement = { human: JudgeScore; byte: JudgeScore; summary: string };
 
 const storageKey = "codexsheet-human-vs-ai-v1";
-const emptyStats: GameStats = { level: 1, wins: 0, losses: 0, streak: 0, xp: 0, bestTime: null };
-const interviewCompanies: CompanyFilter[] = ["All companies", "Amazon", "Google", "Meta", "Apple", "Netflix", "Nvidia"];
+const emptyStats: GameStats = { level: 1, wins: 0, losses: 0, streak: 0, xp: 0 };
 const companyTagSource = "https://github.com/snehasishroy/leetcode-companywise-interview-questions";
+const javascriptHighlighting = syntaxHighlighting(HighlightStyle.define([
+  { tag: tags.keyword, color: "#d68bd0" },
+  { tag: tags.function(tags.variableName), color: "#7dcfff" },
+  { tag: tags.definition(tags.variableName), color: "#f2c578" },
+  { tag: tags.variableName, color: "#e6d9eb" },
+  { tag: tags.propertyName, color: "#e7b77d" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#a6da95" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#fab387" },
+  { tag: tags.comment, color: "#817788", fontStyle: "italic" },
+  { tag: tags.operator, color: "#d6a0dd" },
+  { tag: tags.typeName, color: "#9bd5b0" },
+]));
 const challenges: Challenge[] = [
   {
     id: "palindrome",
@@ -674,29 +687,17 @@ const challenges: Challenge[] = [
   },
 ];
 
-const roundSeconds = 45 * 60;
-const interviewPatterns = [...new Set(challenges.map((item) => item.pattern))];
-
 function difficultyForLevel(level: number): Challenge["difficulty"] {
   if (level <= 25) return "Easy";
   if (level <= 70) return "Medium";
   return "Hard";
 }
 
-function aiTargetSeconds(level: number, difficulty: Challenge["difficulty"]) {
-  const speed = Math.max(26, 180 - (level - 1) * 1.55);
-  const difficultyFactor = difficulty === "Easy" ? 1 : difficulty === "Medium" ? 0.82 : 0.68;
-  return Math.max(12, Math.round(speed * difficultyFactor));
-}
-
-function filterChallenges(company: CompanyFilter, pattern: string, query: string, level: number) {
-  const search = query.trim().toLowerCase();
-  return challenges.filter((item) =>
-    item.difficulty === difficultyForLevel(level) &&
-    (company === "All companies" || item.companies.includes(company)) &&
-    (pattern === "All patterns" || item.pattern === pattern) &&
-    (!search || item.title.toLowerCase().includes(search) || item.pattern.toLowerCase().includes(search))
-  );
+function challengeForLevel(level: number) {
+  const difficulty = difficultyForLevel(level);
+  const levelChallenges = challenges.filter((item) => item.difficulty === difficulty);
+  const firstLevel = difficulty === "Easy" ? 1 : difficulty === "Medium" ? 26 : 71;
+  return levelChallenges[(level - firstLevel) % levelChallenges.length];
 }
 
 function readStats(): GameStats {
@@ -710,7 +711,6 @@ function readStats(): GameStats {
       losses: Number.isInteger(saved.losses) && saved.losses! >= 0 ? saved.losses! : 0,
       streak: Number.isInteger(saved.streak) && saved.streak! >= 0 ? saved.streak! : 0,
       xp: Number.isInteger(saved.xp) && saved.xp! >= 0 ? saved.xp! : 0,
-      bestTime: typeof saved.bestTime === "number" && Number.isFinite(saved.bestTime) && saved.bestTime > 0 ? saved.bestTime : null,
     };
   } catch {
     return emptyStats;
@@ -864,56 +864,104 @@ async function requestAiSolution(challenge: Challenge, level: number) {
   return (fencedCode?.[1] ?? data.answer).trim();
 }
 
-function formatTime(seconds: number) {
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+function isJudgeScore(value: unknown): value is JudgeScore {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const score = value as Partial<JudgeScore>;
+  return ["correctness", "efficiency", "readability", "maintainability"].every((key) => {
+    const part = score[key as keyof JudgeScore];
+    return typeof part === "number" && Number.isFinite(part) && part >= 0 && part <= 100;
+  }) && typeof score.feedback === "string" && score.feedback.length > 0;
+}
+
+function parseAiJudgement(answer: string): AiJudgement {
+  const json = answer.match(/\{[\s\S]*\}/)?.[0];
+  if (!json) throw new Error("The AI judge returned an invalid review. Retry the review.");
+  let value: unknown;
+  try {
+    value = JSON.parse(json);
+  } catch {
+    throw new Error("The AI judge returned unreadable review data. Retry the review.");
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("The AI judge returned an incomplete review. Retry the review.");
+  }
+  const result = value as Partial<AiJudgement>;
+  if (!isJudgeScore(result.human) || !isJudgeScore(result.byte) || typeof result.summary !== "string" || !result.summary.trim()) {
+    throw new Error("The AI judge returned an incomplete review. Retry the review.");
+  }
+  return { human: result.human, byte: result.byte, summary: result.summary.trim() };
+}
+
+function qualityScore(score: JudgeScore) {
+  return Math.round(score.correctness * 0.5 + score.efficiency * 0.2 + score.readability * 0.15 + score.maintainability * 0.15);
+}
+
+async function requestAiJudgement(challenge: Challenge, humanCode: string, humanTests: TestResult, byteCode: string, byteTests: TestResult) {
+  const messages = [
+    `Judge both JavaScript solutions for overall code quality. Score correctness, efficiency, readability, and maintainability from 0 to 100. The app weights these as correctness 50%, efficiency 20%, readability 15%, and maintainability 15%. Return only JSON with this shape: {"human":{"correctness":0,"efficiency":0,"readability":0,"maintainability":0,"feedback":"..."},"byte":{"correctness":0,"efficiency":0,"readability":0,"maintainability":0,"feedback":"..."},"summary":"..."}.`,
+    `Problem: ${challenge.title}\n${challenge.prompt}\nRequired function: ${challenge.fn}\nTest evidence for Human: ${humanTests.passed}/${humanTests.total} passed; status ${humanTests.status}; ${humanTests.error ?? humanTests.details.join("; ")}`,
+    `Human submission:\n${humanCode}`,
+    `Byte submission:\n${byteCode}\nTest evidence for Byte: ${byteTests.passed}/${byteTests.total} passed; status ${byteTests.status}; ${byteTests.error ?? byteTests.details.join("; ")}`,
+  ];
+  const response = await fetch("/api/tutor", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      persona: "battle-judge",
+      model: "gemini-3.6-flash",
+      messages: messages.map((content) => ({ role: "user", content })),
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  const data = await response.json() as { answer?: string; error?: string };
+  if (!response.ok) throw new Error(data.error ?? "The AI judge could not review the submissions. Retry the review.");
+  if (!data.answer?.trim()) throw new Error("The AI judge returned an empty review. Retry the review.");
+  return parseAiJudgement(data.answer);
 }
 
 export default function HumanVsAi() {
-  const [challengeId, setChallengeId] = useState(challenges[0].id);
-  const challenge = challenges.find((item) => item.id === challengeId) ?? challenges[0];
-  const [companyFilter, setCompanyFilter] = useState<CompanyFilter>("All companies");
-  const [patternFilter, setPatternFilter] = useState("All patterns");
-  const [query, setQuery] = useState("");
   const [stats, setStats] = useState<GameStats>(readStats);
-  const visibleChallenges = filterChallenges(companyFilter, patternFilter, query, stats.level);
-  const selectedQuestionIsVisible = visibleChallenges.some((item) => item.id === challenge.id);
-  const [code, setCode] = useState(() => readDraft(challenges[0].id, challenges[0].starter));
+  const [challengeId, setChallengeId] = useState(() => challengeForLevel(stats.level).id);
+  const challenge = challenges.find((item) => item.id === challengeId) ?? challenges[0];
+  const [code, setCode] = useState(() => readDraft(challenge.id, challenge.starter));
   const statsRef = useRef(stats);
   statsRef.current = stats;
   const [status, setStatus] = useState<RoundStatus>("ready");
   const [activeLevel, setActiveLevel] = useState(stats.level);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [humanSubmission, setHumanSubmission] = useState<string | null>(null);
   const [aiCode, setAiCode] = useState("");
+  const [aiVisibleLength, setAiVisibleLength] = useState(0);
   const [aiResult, setAiResult] = useState<TestResult | null>(null);
   const [aiState, setAiState] = useState<AiState>("idle");
   const [aiError, setAiError] = useState("");
+  const [judgement, setJudgement] = useState<AiJudgement | null>(null);
+  const [judgeState, setJudgeState] = useState<JudgeState>("idle");
+  const [judgeError, setJudgeError] = useState("");
+  const [judgeAttempt, setJudgeAttempt] = useState(0);
   const [running, setRunning] = useState(false);
   const [storageError, setStorageError] = useState("");
   const settledRef = useRef(false);
   const roundIdRef = useRef(0);
-  const aiCompletionTimerRef = useRef<number | null>(null);
 
-  const targetLevel = status === "running" || status === "human-won" || status === "ai-won" ? activeLevel : stats.level;
-  const targetSolveSeconds = aiTargetSeconds(targetLevel, challenge.difficulty);
+  const targetLevel = status === "running" || status === "human-won" || status === "ai-won" || status === "tie" ? activeLevel : stats.level;
   const levelProgress = Math.min(100, stats.level);
+  const roundFinished = status === "human-won" || status === "ai-won" || status === "tie";
 
   useEffect(() => {
-    if (status !== "running" || startedAt === null) return;
-    const updateClock = () => {
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-      setElapsedSeconds(elapsed);
-      if (elapsed >= roundSeconds) settleRound(true, roundSeconds);
-    };
-    const timer = window.setInterval(updateClock, 250);
+    setAiVisibleLength(0);
+    if (!aiCode) return;
+    const timer = window.setInterval(() => {
+      setAiVisibleLength((current) => {
+        const next = Math.min(current + 8, aiCode.length);
+        if (next >= aiCode.length) window.clearInterval(timer);
+        return next;
+      });
+    }, 18);
     return () => window.clearInterval(timer);
-  }, [startedAt, status]);
+  }, [aiCode]);
 
-  useEffect(() => () => {
-    roundIdRef.current += 1;
-    if (aiCompletionTimerRef.current !== null) window.clearTimeout(aiCompletionTimerRef.current);
-  }, []);
+  useEffect(() => () => { roundIdRef.current += 1; }, []);
 
   useEffect(() => {
     try {
@@ -924,27 +972,24 @@ export default function HumanVsAi() {
     }
   }, [challenge.id, code]);
 
-  function settleRound(humanWon: boolean, time: number) {
+  function settleRound(winner: "human" | "byte" | "tie") {
     if (settledRef.current) return;
     settledRef.current = true;
     roundIdRef.current += 1;
-    if (aiCompletionTimerRef.current !== null) {
-      window.clearTimeout(aiCompletionTimerRef.current);
-      aiCompletionTimerRef.current = null;
-    }
-    setStatus(humanWon ? "human-won" : "ai-won");
+    setStatus(winner === "human" ? "human-won" : winner === "byte" ? "ai-won" : "tie");
     setRunning(false);
     const current = statsRef.current;
-    const next: GameStats = humanWon
+    const next: GameStats = winner === "human"
       ? {
           ...current,
           level: Math.min(100, current.level + 1),
           wins: current.wins + 1,
           streak: current.streak + 1,
           xp: current.xp + 100,
-          bestTime: current.bestTime === null ? time : Math.min(current.bestTime, time),
         }
-      : { ...current, losses: current.losses + 1, streak: 0 };
+      : winner === "byte"
+        ? { ...current, losses: current.losses + 1, streak: 0 }
+        : current;
     statsRef.current = next;
     setStats(next);
     try {
@@ -955,8 +1000,7 @@ export default function HumanVsAi() {
     }
   }
 
-  async function runAiOpponent(roundId: number, roundStartedAt: number, roundLevel: number, roundChallenge: Challenge) {
-    const targetSeconds = aiTargetSeconds(roundLevel, roundChallenge.difficulty);
+  async function runAiOpponent(roundId: number, roundLevel: number, roundChallenge: Challenge) {
     setAiState("thinking");
     try {
       const generatedCode = await requestAiSolution(roundChallenge, roundLevel);
@@ -965,148 +1009,107 @@ export default function HumanVsAi() {
       if (roundIdRef.current !== roundId || settledRef.current) return;
       setAiCode(generatedCode);
       setAiResult(result);
-      if (result.status !== "Accepted") {
-        setAiState("error");
-        setAiError(`Byte's generated code did not pass its tests (${result.status}).`);
-        settleRound(true, Math.floor((Date.now() - roundStartedAt) / 1000));
-        return;
-      }
-
-      setAiState("racing");
-      const remainingMs = targetSeconds * 1000 - (Date.now() - roundStartedAt);
-      if (remainingMs <= 0) {
-        settleRound(false, Math.floor((Date.now() - roundStartedAt) / 1000));
-        return;
-      }
-      aiCompletionTimerRef.current = window.setTimeout(() => {
-        if (roundIdRef.current !== roundId || settledRef.current) return;
-        settleRound(false, Math.floor((Date.now() - roundStartedAt) / 1000));
-      }, remainingMs);
+      setAiState("ready");
     } catch (error) {
       if (roundIdRef.current !== roundId || settledRef.current) return;
       roundIdRef.current += 1;
       settledRef.current = true;
       setStatus("ready");
-      setStartedAt(null);
-      setElapsedSeconds(0);
       setAiState("error");
       setAiError(error instanceof Error ? error.message : "Byte could not connect. Try starting the match again.");
     }
   }
 
   function startRound() {
-    if (!selectedQuestionIsVisible) return;
-    const now = Date.now();
     const roundLevel = statsRef.current.level;
     roundIdRef.current += 1;
     const roundId = roundIdRef.current;
     settledRef.current = false;
     setTestResult(null);
+    setHumanSubmission(null);
     setAiCode("");
     setAiResult(null);
     setAiError("");
+    setJudgement(null);
+    setJudgeState("idle");
+    setJudgeError("");
     setAiState("thinking");
-    setElapsedSeconds(0);
     setActiveLevel(roundLevel);
-    setStartedAt(now);
     setStatus("running");
-    void runAiOpponent(roundId, now, roundLevel, challenge);
+    void runAiOpponent(roundId, roundLevel, challenge);
   }
 
   function replay() {
-    const rematchPool = visibleChallenges.filter((item) => item.id !== challenge.id);
-    const nextChallenge = rematchPool[Math.floor(Math.random() * rematchPool.length)] ?? visibleChallenges[0] ?? challenge;
+    const nextChallenge = challengeForLevel(stats.level);
     roundIdRef.current += 1;
-    if (aiCompletionTimerRef.current !== null) window.clearTimeout(aiCompletionTimerRef.current);
     setChallengeId(nextChallenge.id);
     setCode(readDraft(nextChallenge.id, nextChallenge.starter));
     settledRef.current = false;
     setTestResult(null);
+    setHumanSubmission(null);
     setAiCode("");
     setAiResult(null);
     setAiError("");
+    setJudgement(null);
+    setJudgeState("idle");
+    setJudgeError("");
     setAiState("idle");
-    setElapsedSeconds(0);
-    setStartedAt(null);
     setStatus("ready");
-  }
-
-  function selectChallenge(id: string) {
-    const next = challenges.find((item) => item.id === id);
-    if (!next || !visibleChallenges.some((item) => item.id === id) || id === challenge.id || status === "running") return;
-    roundIdRef.current += 1;
-    setChallengeId(id);
-    setCode(readDraft(id, next.starter));
-    setTestResult(null);
-    setAiCode("");
-    setAiResult(null);
-    setAiError("");
-    setAiState("idle");
-    setElapsedSeconds(0);
-    setStartedAt(null);
-    setStatus("ready");
-  }
-
-  function selectCompany(company: CompanyFilter) {
-    if (status === "running") return;
-    setCompanyFilter(company);
-    const matching = filterChallenges(company, patternFilter, query, statsRef.current.level);
-    if (!matching.some((item) => item.id === challenge.id)) {
-      const next = matching[0];
-      if (next) {
-        roundIdRef.current += 1;
-        setChallengeId(next.id);
-        setCode(readDraft(next.id, next.starter));
-        setTestResult(null);
-        setAiCode("");
-        setAiResult(null);
-        setAiError("");
-        setAiState("idle");
-        setStartedAt(null);
-        setElapsedSeconds(0);
-        setStatus("ready");
-      }
-    }
   }
 
   async function submitCode() {
-    if (status !== "running" || running || settledRef.current) return;
+    if (status !== "running" || running || humanSubmission !== null || settledRef.current) return;
     setRunning(true);
     setTestResult(null);
+    const submittedCode = code;
     try {
-      const result = await runInWorker(code, challenge);
+      const result = await runInWorker(submittedCode, challenge);
       setTestResult(result);
-      if (result.total > 0 && result.passed === result.total && !result.error && !settledRef.current && startedAt !== null) {
-        const finishedIn = Math.floor((Date.now() - startedAt) / 1000);
-        setElapsedSeconds(finishedIn);
-        if (finishedIn < roundSeconds) settleRound(true, finishedIn);
-        else settleRound(false, roundSeconds);
-      }
+      setHumanSubmission(submittedCode);
     } catch (error) {
-      setTestResult({
+      const result: TestResult = {
         passed: 0,
         total: challenge.cases.length,
         details: [],
         status: "Runner Error",
         error: error instanceof Error ? error.message : "The tests could not run.",
-      });
+      };
+      setTestResult(result);
+      setHumanSubmission(submittedCode);
     } finally {
       setRunning(false);
     }
   }
 
-  const botProgress = status === "ai-won" ? 100 : Math.min(100, (elapsedSeconds / targetSolveSeconds) * 100);
-  const roundFinished = status === "human-won" || status === "ai-won";
+  useEffect(() => {
+    if (status !== "running" || humanSubmission === null || !testResult || !aiCode || !aiResult || judgeState !== "idle") return;
+    const roundId = roundIdRef.current;
+    let cancelled = false;
+    setJudgeState("thinking");
+    void requestAiJudgement(challenge, humanSubmission, testResult, aiCode, aiResult).then((review) => {
+      if (cancelled || roundIdRef.current !== roundId) return;
+      setJudgement(review);
+      setJudgeState("done");
+      const humanScore = qualityScore(review.human);
+      const byteScore = qualityScore(review.byte);
+      settleRound(humanScore > byteScore ? "human" : byteScore > humanScore ? "byte" : "tie");
+    }).catch((error: unknown) => {
+      if (cancelled || roundIdRef.current !== roundId) return;
+      setJudgeError(error instanceof Error ? error.message : "The AI judge could not review the submissions. Retry the review.");
+      setJudgeState("error");
+    });
+    return () => { cancelled = true; };
+  }, [status, humanSubmission, testResult, aiCode, aiResult, judgeAttempt]);
 
   return (
     <main className="human-ai-page">
       <header className="human-ai-hero">
         <div className="human-ai-hero-copy">
-          <span className="human-ai-eyebrow"><Sparkles size={13} /> CODEXSHEET BATTLE · ROUND {stats.wins + stats.losses + 1} · LEVEL {activeLevel}</span>
+          <span className="human-ai-eyebrow"><Sparkles size={13} /> CODEXSHEET BATTLE · ROUND {stats.wins + stats.losses + 1} · LEVEL {targetLevel}</span>
           <span className="human-ai-auth-badge">SIGN IN REQUIRED · LEVELS SAVE ON THIS DEVICE</span>
           <span className="human-ai-level-badge">AI LEVEL {stats.level} / 100 · {difficultyForLevel(stats.level).toUpperCase()}</span>
           <h1>CodexSheet <em>Battle</em></h1>
-          <p>Byte writes and tests a solution with Gemini. Beat the AI to climb through 100 increasingly difficult levels.</p>
+          <p>You and Byte solve one question per level. Submit both solutions and an AI judge picks the stronger code.</p>
         </div>
         <div className="human-ai-scoreboard" aria-label="Your game stats">
           <div><Bot size={15} /><strong>{stats.level}</strong><span>LEVEL</span></div>
@@ -1116,39 +1119,14 @@ export default function HumanVsAi() {
         </div>
       </header>
 
-      <section className="human-ai-challenges" aria-label="Choose a challenge">
-        <div className="human-ai-section-label"><span>CHOOSE YOUR INTERVIEW TRACK</span><small>Question tags are community-sourced</small></div>
-        <div className="human-ai-company-filters" role="group" aria-label="Filter questions by interview company">
-          {interviewCompanies.map((company) => {
-            const count = company === "All companies" ? challenges.length : challenges.filter((item) => item.companies.includes(company)).length;
-            return <button key={company} type="button" className={companyFilter === company ? "active" : ""} aria-pressed={companyFilter === company} disabled={status === "running"} onClick={() => selectCompany(company)}>{company}<small>{count}</small></button>;
-          })}
-        </div>
-        <div className="human-ai-library-toolbar">
-          <label className="human-ai-search"><Search size={14} /><input value={query} disabled={status === "running"} onChange={(event) => setQuery(event.target.value)} placeholder="Search current-level challenges" aria-label="Search available DSA challenges" /></label>
-          <div className="human-ai-level-meter"><span>LEVEL {stats.level} / 100</span><strong>{difficultyForLevel(stats.level)} AI</strong><i><b style={{ width: `${levelProgress}%` }} /></i></div>
-          <label><span>PATTERN</span><select value={patternFilter} disabled={status === "running"} onChange={(event) => setPatternFilter(event.target.value)} aria-label="Filter by DSA pattern"><option>All patterns</option>{interviewPatterns.map((pattern) => <option key={pattern}>{pattern}</option>)}</select></label>
-          <button type="button" className="human-ai-clear-filters" disabled={status === "running" || (companyFilter === "All companies" && patternFilter === "All patterns" && !query)} onClick={() => { setCompanyFilter("All companies"); setPatternFilter("All patterns"); setQuery(""); }}>Reset filters</button>
-        </div>
-        <div className="human-ai-section-label human-ai-question-label"><span>PICK YOUR LEVEL {stats.level} CHALLENGE · {difficultyForLevel(stats.level).toUpperCase()}</span><small>{visibleChallenges.length} available · random rematch</small></div>
-        <div className="human-ai-challenge-list">
-          {visibleChallenges.map((item, index) => (
-            <button
-              type="button"
-              key={item.id}
-              className={`human-ai-challenge${challenge.id === item.id ? " active" : ""}`}
-              aria-pressed={challenge.id === item.id}
-              disabled={status === "running"}
-              onClick={() => selectChallenge(item.id)}
-            >
-              <span className="human-ai-challenge-number">{String(index + 1).padStart(2, "0")}</span>
-              <strong>{item.title}</strong>
-              <small>{item.difficulty} · {item.pattern}</small>
-              <span className="human-ai-challenge-companies">{(companyFilter === "All companies" ? item.companies.slice(0, 3) : [companyFilter, ...item.companies.filter((company) => company !== companyFilter).slice(0, 2)]).join(" · ")}</span>
-              {challenge.id === item.id && <ChevronRight size={14} />}
-            </button>
-          ))}
-          {!visibleChallenges.length && <p className="human-ai-library-empty">No questions match those filters. Try another company, level, pattern, or search.</p>}
+      <section className="human-ai-challenges" aria-label={`Level ${targetLevel} question`}>
+        <div className="human-ai-section-label"><span>YOUR LEVEL {targetLevel} QUESTION</span><small>One focused challenge per level</small></div>
+        <div className="human-ai-challenge active" aria-current="step">
+          <span className="human-ai-challenge-number">{String(targetLevel).padStart(2, "0")}</span>
+          <strong>{challenge.title}</strong>
+          <small>{challenge.difficulty} · {challenge.pattern}</small>
+          <span className="human-ai-challenge-companies">{challenge.companies.slice(0, 3).join(" · ")}</span>
+          <span className="human-ai-level-meter"><span>LEVEL {targetLevel} / 100</span><strong>{difficultyForLevel(targetLevel)} AI</strong><i><b style={{ width: `${levelProgress}%` }} /></i></span>
         </div>
       </section>
 
@@ -1165,8 +1143,8 @@ export default function HumanVsAi() {
               <div key={index}><code>{JSON.stringify(test.args)}</code><span>→</span><code>{JSON.stringify(test.expected)}</code></div>
             ))}
           </div>
-          <div className="human-ai-round-length"><Clock3 size={14} /><span><strong>45 minutes</strong><small>One focused round. Your draft saves as you code.</small></span></div>
-          <div className="human-ai-disclosure"><Bot size={14} /><span>Byte generates and runs code through the configured Gemini service. Company tags are community-reported signals, not official interview guarantees.</span></div>
+          <div className="human-ai-round-length"><Code2 size={14} /><span><strong>One final submission</strong><small>The judge scores correctness, efficiency, readability, and maintainability.</small></span></div>
+          <div className="human-ai-disclosure"><Bot size={14} /><span>Byte writes a competing solution. Both submissions are test-run locally, then Gemini reviews code quality. Company tags are community-reported signals, not official guarantees.</span></div>
         </section>
 
         <section className="human-ai-match" aria-label="Human versus AI match">
@@ -1178,41 +1156,74 @@ export default function HumanVsAi() {
             <span className="human-ai-versus">VS</span>
             <div className="human-ai-player bot">
               <span className="human-ai-avatar"><Bot size={19} /></span>
-              <span><strong>BYTE</strong><small>{status === "ai-won" ? "Solved it" : status === "human-won" ? "Outcoded!" : aiState === "thinking" ? "Writing code…" : aiState === "racing" ? "Solution tested" : "Gemini AI"}</small></span>
+              <span><strong>BYTE</strong><small>{status === "ai-won" ? "Judge's pick" : status === "human-won" ? "Outscored" : status === "tie" ? "Tied" : aiState === "thinking" ? "Writing code…" : aiState === "ready" ? "Submitted" : "Gemini AI"}</small></span>
             </div>
           </div>
-          <div className="human-ai-race">
-            <div className="human-ai-race-label"><span><Clock3 size={13} /> {status === "ready" ? "READY WHEN YOU ARE" : status === "running" ? aiState === "thinking" ? "BYTE IS WRITING CODE" : "THE RACE IS ON" : status === "human-won" ? "YOU BEAT BYTE" : "BYTE GOT THERE FIRST"}</span><strong>{formatTime(Math.max(0, roundSeconds - elapsedSeconds))}</strong></div>
-            <div className="human-ai-race-track"><span style={{ width: `${botProgress}%` }} /></div>
-            <small>{status === "running" ? `Level ${activeLevel} · Byte target ${formatTime(targetSolveSeconds)} · your limit ${formatTime(roundSeconds)}` : status === "ready" ? `45:00 for you · Byte's target is ${formatTime(targetSolveSeconds)}` : status === "human-won" ? `You solved it in ${formatTime(elapsedSeconds)} · +100 XP · level ${stats.level}` : "Compare Byte's generated solution, then try the next rematch."}</small>
+          <div className="human-ai-review-status">
+            <div className="human-ai-review-label"><span><Sparkles size={13} /> AI CODE-QUALITY JUDGE</span><strong>{judgeState === "thinking" ? "ANALYZING" : judgeState === "done" ? status === "tie" ? "TIE" : "VERDICT READY" : status === "human-won" ? "YOU WIN" : status === "ai-won" ? "BYTE WINS" : status === "tie" ? "TIE" : "AWAITING SUBMISSIONS"}</strong></div>
+            <div className={`human-ai-review-track${judgeState === "thinking" ? " analyzing" : ""}`}><span style={{ width: judgeState === "done" ? "100%" : judgeState === "thinking" ? "65%" : "0%" }} /></div>
+            <small>{judgeState === "thinking" ? "Gemini is comparing correctness, efficiency, readability, and maintainability." : humanSubmission !== null ? aiCode ? "Both solutions submitted. The AI judge is preparing its review." : "Your submission is in. Waiting for Byte to finish writing." : status === "ready" ? "Write your solution, then submit it for an AI quality review." : "Submit your code to start the AI judge review."}</small>
           </div>
-          <div className="human-ai-editor">
-            <div className="human-ai-editor-bar"><span><i /><i /><i /></span><strong>solution.js</strong><button type="button" disabled={status === "running"} onClick={() => { setCode(challenge.starter); setTestResult(null); }}><RotateCcw size={12} /> Reset</button></div>
-            <CodeMirror
-              value={code}
-              height="310px"
-              extensions={[javascript(), EditorView.lineWrapping]}
-              onChange={(value: string) => { setCode(value); setTestResult(null); }}
-              readOnly={roundFinished}
-              basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: true, bracketMatching: true }}
-              aria-label="JavaScript code editor"
-            />
+          <div className="human-ai-editors">
+            <div className="human-ai-editor">
+              <div className="human-ai-editor-bar"><span><i /><i /><i /></span><strong>human-solution.js</strong><button type="button" disabled={running || (status === "running" && humanSubmission !== null)} onClick={() => { setCode(challenge.starter); setTestResult(null); }}><RotateCcw size={12} /> Reset</button></div>
+              <CodeMirror
+                value={code}
+                height="310px"
+                extensions={[javascript(), javascriptHighlighting, EditorView.lineWrapping]}
+                onChange={(value: string) => { setCode(value); setTestResult(null); }}
+                readOnly={roundFinished || running || humanSubmission !== null}
+                basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: true, bracketMatching: true }}
+                aria-label="Human JavaScript code editor"
+              />
+            </div>
+            <div className="human-ai-editor human-ai-ai-editor">
+              <div className="human-ai-editor-bar">
+                <span><i /><i /><i /></span>
+                <strong>byte-solution.js</strong>
+                {aiState === "thinking" && <span className="human-ai-typing-label">writing<span className="human-ai-typing-dots"><i /><i /><i /></span></span>}
+              </div>
+              {aiCode ? (
+                <CodeMirror
+                  value={aiCode.slice(0, aiVisibleLength)}
+                  height="310px"
+                  extensions={[javascript(), javascriptHighlighting, EditorView.lineWrapping]}
+                  readOnly
+                  basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: false, bracketMatching: true }}
+                  aria-label="Byte's AI-generated JavaScript code"
+                />
+              ) : (
+                <div className={`human-ai-ai-placeholder${aiState === "thinking" ? " writing" : ""}`} role={aiState === "thinking" ? "status" : undefined}>
+                  <Bot size={23} />
+                  <strong>{aiState === "thinking" ? "Byte is reading the challenge" : aiState === "error" ? "Byte couldn't write a solution" : status === "human-won" ? "You solved it before Byte finished" : status === "ai-won" ? "Byte's solution isn't available" : status === "running" ? "Waiting for Byte…" : "Start the match to watch Byte write code"}</strong>
+                  {aiState === "thinking" && <span className="human-ai-typing-dots"><i /><i /><i /></span>}
+                </div>
+              )}
+              {aiResult && <div className={`human-ai-ai-result${aiResult.status === "Accepted" ? " success" : ""}`}>{aiResult.status} · {aiResult.passed}/{aiResult.total} tests passed</div>}
+            </div>
           </div>
           <div className="human-ai-actions">
             {status === "ready" ? (
-              <button type="button" className="human-ai-primary" onClick={startRound} disabled={!selectedQuestionIsVisible}><Play size={15} fill="currentColor" /> {aiState === "error" ? "Retry match" : "Start match"}</button>
-            ) : status === "running" ? (
+              <button type="button" className="human-ai-primary" onClick={startRound}><Play size={15} fill="currentColor" /> {aiState === "error" ? "Retry match" : "Start match"}</button>
+            ) : status === "running" ? humanSubmission === null ? (
               <button type="button" className="human-ai-primary" onClick={submitCode} disabled={running}>
-                {running ? "Running your tests…" : <><Zap size={15} /> Run all tests</>}
+                {running ? "Running tests…" : <><Zap size={15} /> Submit for AI review</>}
+              </button>
+            ) : judgeState === "error" ? (
+              <button type="button" className="human-ai-primary" onClick={() => { setJudgeError(""); setJudgeState("idle"); setJudgeAttempt((attempt) => attempt + 1); }}><RotateCcw size={15} /> Retry AI review</button>
+            ) : (
+              <button type="button" className="human-ai-primary" disabled>
+                {judgeState === "thinking" ? "AI judge is analyzing…" : "Submitted · waiting for review"}
               </button>
             ) : (
-              <button type="button" className="human-ai-primary" onClick={replay}><RotateCcw size={15} /> Rematch</button>
+              <button type="button" className="human-ai-primary" onClick={replay}><RotateCcw size={15} /> {status === "tie" ? "Rematch this level" : "Next level"}</button>
             )}
-            {status === "running" && <span>Browser sandbox · 2-second limit</span>}
-            {roundFinished && <span className={`human-ai-verdict ${status}`}><Check size={13} /> {status === "human-won" ? "100 XP earned" : "Every loss is a lesson"}</span>}
+            {status === "running" && <span>{humanSubmission ? "Submission locked" : "Submit once · tests run in browser"}</span>}
+            {roundFinished && <span className={`human-ai-verdict ${status}`}><Check size={13} /> {status === "human-won" ? "100 XP earned" : status === "tie" ? "Scores tied · no level change" : "Every loss is a lesson"}</span>}
           </div>
-          {aiState === "thinking" && status === "running" && <p className="human-ai-ai-status" role="status"><LoaderCircle size={13} className="human-ai-spinner" /> Gemini is writing Byte's solution and checking it in the browser sandbox.</p>}
+          {aiState === "thinking" && status === "running" && <p className="human-ai-ai-status" role="status"><LoaderCircle size={13} className="human-ai-spinner" /> Gemini is writing Byte's solution and running its tests.</p>}
           {aiError && <p className="human-ai-ai-error" role="alert"><AlertCircle size={13} />{aiError}</p>}
+          {judgeError && <p className="human-ai-ai-error" role="alert"><AlertCircle size={13} />{judgeError}</p>}
           {testResult && (
             <div className={`human-ai-test-result${testResult.status === "Accepted" ? " success" : testResult.status === "Wrong Answer" ? "" : " error"}`} role="status">
               <strong>{testResult.status} · {testResult.passed}/{testResult.total} tests passed</strong>
@@ -1221,16 +1232,26 @@ export default function HumanVsAi() {
               {testResult.details.map((detail) => <span key={detail}>{detail}</span>)}
             </div>
           )}
-          {roundFinished && (
-            <div className="human-ai-solution">
-              <div><span>BYTE'S GEMINI SOLUTION · {aiResult?.status ?? "UNAVAILABLE"}</span><small>{aiResult ? `${aiResult.passed}/${aiResult.total} tests passed · Compare approaches.` : "Byte could not return a solution this round."}</small></div>
-              {aiCode && <pre><code>{aiCode}</code></pre>}
+          {judgement && (
+            <div className="human-ai-judge-report" role="status">
+              <div className="human-ai-judge-report-head"><strong>AI judge's decision</strong><span>Human {qualityScore(judgement.human)} · Byte {qualityScore(judgement.byte)}</span></div>
+              <p>{judgement.summary}</p>
+              <div className="human-ai-judge-scores">
+                {([["Human", judgement.human], ["Byte", judgement.byte]] as const).map(([name, score]) => (
+                  <section key={name}>
+                    <strong>{name} · {qualityScore(score)}/100</strong>
+                    <span>Correctness {score.correctness} · Efficiency {score.efficiency}</span>
+                    <span>Readability {score.readability} · Maintainability {score.maintainability}</span>
+                    <p>{score.feedback}</p>
+                  </section>
+                ))}
+              </div>
             </div>
           )}
           {storageError && <p className="human-ai-storage-note" role="status">{storageError}</p>}
         </section>
       </div>
-      <footer className="human-ai-footnote"><span><Sparkles size={13} /> Think clearly. Type bravely. Learn every round.</span><span>Best time · {stats.bestTime === null ? "—" : formatTime(stats.bestTime)}</span><a href={companyTagSource} target="_blank" rel="noreferrer">Company-tag source <ChevronRight size={11} /></a></footer>
+      <footer className="human-ai-footnote"><span><Sparkles size={13} /> Correctness 50% · efficiency 20% · readability 15% · maintainability 15%</span><a href={companyTagSource} target="_blank" rel="noreferrer">Company-tag source <ChevronRight size={11} /></a></footer>
     </main>
   );
 }
