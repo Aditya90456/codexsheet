@@ -108,7 +108,7 @@ The **Resume builder** lets you add contact details, a profile, experience, educ
 
 ### CodexSheet Battle
 
-Play CodexSheet Battle free, without signing in: a 45-minute JavaScript code duel against Byte with 17 interview questions and a different random question on each rematch. Search by title, then filter by Amazon, Google, Meta, Apple, Netflix, Nvidia, difficulty, and DSA pattern. Company tags are community-sourced LeetCode signals, not official hiring guarantees; see the linked [company-tag dataset](https://github.com/snehasishroy/leetcode-companywise-interview-questions). The editor runs code in a dedicated browser worker and reports compile errors, runtime errors, wrong answers, execution time, and time-limit exceeded (TLE). Drafts, wins, streaks, and XP are saved locally in the browser. The built-in rival is a game benchmark, not a live AI model.
+Sign in or create an account to play CodexSheet Battle: a 45-minute JavaScript code duel against Byte, who generates a solution with the configured Gemini service and runs it in the browser sandbox. Win to advance through 100 levels; question difficulty unlocks from Easy to Medium to Hard, while Byte's target time gets shorter each level. Rematches pick a different question from the current level. Company tags are community-reported signals, not official hiring guarantees; see the [company-tag dataset](https://github.com/snehasishroy/leetcode-companywise-interview-questions). Drafts, wins, levels, streaks, and XP are saved locally in the browser.
 
 ### DSA 250 Problem Library
 

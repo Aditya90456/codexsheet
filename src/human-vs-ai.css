@@ -32,7 +32,7 @@
 }
 
 .human-ai-eyebrow svg { color: #fa7e83; }
-.human-ai-free-badge { display: inline-flex; margin-top: 15px; padding: 5px 8px; border: 1px solid #37604b; border-radius: 99px; background: #101914; color: #9cddb2; font: 600 8px "DM Mono", monospace; letter-spacing: .1em; }
+.human-ai-auth-badge { display: inline-flex; margin-top: 15px; padding: 5px 8px; border: 1px solid #634047; border-radius: 99px; background: #1b1113; color: #f1a3a2; font: 600 8px "DM Mono", monospace; letter-spacing: .1em; }
 .human-ai-hero h1 {
   margin: 9px 0 7px;
   color: #fff7f5;

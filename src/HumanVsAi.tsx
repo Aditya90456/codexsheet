@@ -1103,7 +1103,7 @@ export default function HumanVsAi() {
       <header className="human-ai-hero">
         <div className="human-ai-hero-copy">
           <span className="human-ai-eyebrow"><Sparkles size={13} /> CODEXSHEET BATTLE · ROUND {stats.wins + stats.losses + 1} · LEVEL {activeLevel}</span>
-          <span className="human-ai-free-badge">FREE TO PLAY · NO SIGN-IN</span>
+          <span className="human-ai-auth-badge">SIGN IN REQUIRED · LEVELS SAVE ON THIS DEVICE</span>
           <span className="human-ai-level-badge">AI LEVEL {stats.level} / 100 · {difficultyForLevel(stats.level).toUpperCase()}</span>
           <h1>CodexSheet <em>Battle</em></h1>
           <p>Byte writes and tests a solution with Gemini. Beat the AI to climb through 100 increasingly difficult levels.</p>
