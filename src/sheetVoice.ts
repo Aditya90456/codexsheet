@@ -19,7 +19,7 @@ export const sheetVoice = {
   heroLine1: "Instinct banao,",
   heroLine2: "har question tod do.",
   heroBody: (total: number, topicCount: number, patternCount: number, weeks: number) =>
-    `Saare ${total} problem real LeetCode question hain, public index pe verify kiye hue. Library do tarah se cut hoti hai - ${topicCount} topic aur ${patternCount} pattern, upar se ${weeks}-week ka stage ladder. Koi bhi row kholo: pehchaan, seedhi ke steps, us pattern ke trap, aur ek live board jo algorithm tumhare saamne chalata hai.`,
+    `${total} LeetCode questions, organized from the public NeetCode index. Explore ${topicCount} topics, ${patternCount} patterns, a ${weeks}-week practice ladder, and community-reported company interview tags. Tags are practice signals, not official hiring guarantees.`,
   heroOpen: "Library kholo",
   heroSaveNote: "Progress apne aap save hoti rehti hai",
   stats: { solved: "SOLVE KIYE", progress: "CHAL RAHA HAI", patterns: "CORE PATTERN" },
@@ -40,7 +40,7 @@ export const sheetVoice = {
   filters: { pattern: "PATTERN", difficulty: "LEVEL", status: "STATUS" },
   filterAll: { pattern: "Sab pattern", difficulty: "Sab level", status: "Sab status" },
   toolbar: (group: string, mode: SheetVoiceMode) => group || `saare ${sheetModeVoice[mode].label.toLowerCase()}`,
-  verified: "TITLE, SLUG AUR LEVEL LEETCODE PE SE VERIFY KIYE HUE",
+  verified: "DATA SOURCES",
   approach: "Approach",
   studying: "Padh raha hai",
   solveNow: "Ho gaya",

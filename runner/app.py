@@ -116,6 +116,10 @@ When the student asks for a diagram/visualization, or a diagram would make the c
 For arrays and pointers: {\"type\":\"array\",\"title\":\"Two pointers\",\"values\":[\"1\",\"2\",\"3\"],\"pointers\":[{\"index\":0,\"label\":\"left\"},{\"index\":2,\"label\":\"right\"}]}
 For trees, graphs, and algorithm flow: {\"type\":\"flowchart\",\"title\":\"BFS\",\"nodes\":[{\"id\":\"start\",\"label\":\"Start at A\",\"x\":50,\"y\":15},{\"id\":\"visit\",\"label\":\"Visit neighbors\",\"x\":50,\"y\":55}],\"edges\":[{\"from\":\"start\",\"to\":\"visit\",\"label\":\"dequeue\"}]}
 For flowcharts, keep x and y between 8 and 92, give every node a unique short id, and ensure edges reference existing ids. Keep labels concise. The block must contain valid JSON only, with no HTML, Mermaid directives, or JavaScript."""
+BATTLE_SOLVER_SYSTEM_PROMPT = """You are Byte, the coding opponent in CodexSheet Battle.
+Return only one complete JavaScript function implementation, with no markdown fences or explanation.
+Use the exact requested function name and signature. Solve the stated problem correctly, including edge cases, and aim for the best practical time and space complexity.
+The level is the opponent's strength: higher levels require an especially efficient, robust solution. Do not copy the sample outputs or hard-code test cases. Never include code that accesses the network, browser APIs, or the filesystem."""
 
 # Guru is the free teacher for students who cannot pay: a personality with a
 # face, not a neutral assistant. The app draws the 3D board itself, so Guru is
@@ -441,7 +445,11 @@ def tutor():
     messages = data.get("messages") if isinstance(data, dict) else None
     persona = (data.get("persona", "tutor") if isinstance(data, dict) else "tutor") or "tutor"
     language = str(data.get("language", "en") if isinstance(data, dict) else "en").strip().lower()[:5]
-    system_prompt = GURU_SYSTEM_PROMPT if persona == "guru" else TUTOR_SYSTEM_PROMPT
+    system_prompt = (
+        GURU_SYSTEM_PROMPT if persona == "guru"
+        else BATTLE_SOLVER_SYSTEM_PROMPT if persona == "battle-solver"
+        else TUTOR_SYSTEM_PROMPT
+    )
     instruction = GURU_LANGUAGE_INSTRUCTIONS.get(language)
     if instruction:
         system_prompt = f"{system_prompt}\n\nLanguage for this reply: {instruction}"
@@ -496,7 +504,7 @@ def tutor():
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
                         temperature=0.35,
-                        max_output_tokens=1_000,
+                        max_output_tokens=2_200 if persona == "battle-solver" else 1_000,
                     ),
                 )
                 break

@@ -4288,6 +4288,20 @@ tbody tr:hover  { background: #fff4f5; }
 .sheet-learning-icon { display:grid; place-items:center; width:36px; height:36px; border:1px solid #f1d8dd; border-radius:10px; color:#b6384a; background:#fff; }
 .sheet-learning-link>svg { color:#a66b73; transition:transform .16s ease; }
 .sheet-learning-link:hover>svg { transform:translateX(3px); }
+
+.problem-library-controls { grid-template-columns:minmax(190px,1.3fr) repeat(4,minmax(90px,.7fr)); }
+.problem-row-company-tags { display:flex; flex-wrap:wrap; gap:4px; }
+.problem-row-company-tags>span { padding:2px 6px; border:1px solid #dfe9dc; border-radius:999px; color:#62765e; background:#f6faf3; font:700 7px 'DM Mono',monospace; }
+.problem-company-source-error { display:flex; align-items:center; gap:8px; margin:0; padding:9px 14px; border-bottom:1px solid #f1e7d9; color:#8d6c40; background:#fffaf2; font-size:9px; }
+.problem-company-source-error button { border:0; color:#66815d; background:transparent; font:700 9px inherit; text-decoration:underline; cursor:pointer; }
+.problem-list-toolbar>span:last-child a { color:#71866a; text-decoration:underline; }
+:root[data-theme="red"] .problem-row-company-tags>span { border-color:#3b292c; color:#c8a9ae; background:#211719; }
+:root[data-theme="red"] .problem-company-source-error { border-color:#392d25; color:#dfbd8e; background:#211a15; }
+:root[data-theme="red"] .problem-company-source-error button,:root[data-theme="red"] .problem-list-toolbar>span:last-child a { color:#ec91a0; }
+@media(max-width:1080px) {
+  .problem-library-controls { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .problem-library-controls .problem-search { grid-column:1/-1; }
+}
 :root[data-theme="red"] .sheet-learning-link { border-color:#292022; color:#f3dfe2; background:linear-gradient(125deg,#191113,#140f10); }
 :root[data-theme="red"] .sheet-learning-link:hover { border-color:#86404a; background:#1b1214; }
 :root[data-theme="red"] .sheet-learning-link strong { color:#f4e3e5; }

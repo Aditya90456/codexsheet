@@ -108,7 +108,11 @@ The **Resume builder** lets you add contact details, a profile, experience, educ
 
 ### CodexSheet Battle
 
-Play a 45-minute JavaScript code duel against Byte, with a different random question on every rematch. The editor runs code in an isolated browser worker and reports compile errors, runtime errors, wrong answers, execution time, and time-limit exceeded (TLE). Drafts, wins, streaks, and XP are saved locally in the browser. The built-in rival is a game benchmark, not a live AI model.
+Play CodexSheet Battle free, without signing in: a 45-minute JavaScript code duel against Byte with 17 interview questions and a different random question on each rematch. Search by title, then filter by Amazon, Google, Meta, Apple, Netflix, Nvidia, difficulty, and DSA pattern. Company tags are community-sourced LeetCode signals, not official hiring guarantees; see the linked [company-tag dataset](https://github.com/snehasishroy/leetcode-companywise-interview-questions). The editor runs code in a dedicated browser worker and reports compile errors, runtime errors, wrong answers, execution time, and time-limit exceeded (TLE). Drafts, wins, streaks, and XP are saved locally in the browser. The built-in rival is a game benchmark, not a live AI model.
+
+### DSA 250 Problem Library
+
+Browse the 250-question sheet sourced from the [NeetCode LeetCode index](https://github.com/neetcode-gh/leetcode), then filter by topic, pattern, difficulty, progress status, or community-reported Amazon, Google, Meta, Apple, Netflix, and Nvidia tags. Company tags are community signals, not official hiring guarantees; see the [tag dataset](https://github.com/snehasishroy/leetcode-companywise-interview-questions). Update Todo / In progress / Solved, save personal notes, and continue a selected question in the code editor. Existing progress and notes remain attached to each problem.
 
 ### 📋 Curated DSA Sheet
 
