@@ -67,6 +67,7 @@ import {
   Activity,
   Layers,
   LayoutGrid,
+  Bot,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -97,6 +98,7 @@ import DsaGuru from "./DsaGuru";
 import StudentFooter from "./StudentFooter";
 import LanguagePicker from "./LanguagePicker";
 import ResumeBuilder from "./ResumeBuilder";
+import HumanVsAi from "./HumanVsAi";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { uiLanguages, useT, type MessageKey } from "./i18n";
 import { mentorProfile, rupees } from "./mentorship";
@@ -167,7 +169,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "network";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "network" | "arena";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -198,6 +200,7 @@ export const viewPaths: Record<WorkspaceView, string> = {
   experiences: "/experiences",
   radar: "/radar",
   network: "/network",
+  arena: "/battle",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -209,7 +212,7 @@ const siteOrigin = "https://www.codexsheet.in";
 export const selfHeadedViews: WorkspaceView[] = [
   "home", "guru", "leaderboard", "certificate", "verify", "patterns",
   "companies", "cslabs", "articles", "resume", "radar", "experiences",
-  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics",
+  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics", "arena",
 ];
 
 const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
@@ -277,6 +280,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "CodexSheet Network — share code, follow students and ask in private",
     description: "The CodexSheet network: post the code you wrote for the 250-problem sheet and let the batch like, dislike or pick it apart in the comments, follow the students whose approach you want, and open a private thread to ask the doubt you have been sitting on.",
   },
+  arena: {
+    title: "CodexSheet Battle — Human vs AI Code Duel",
+    description: "Race a built-in AI rival through quick JavaScript challenges. Run your code privately in your browser, earn XP, and build your winning streak.",
+  },
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -308,6 +315,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "patterns", label: "Pattern library", icon: Layers },
       { view: "radar", label: "2027 interview radar", icon: Radar },
       { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
+      { view: "arena", label: "CodexSheet Battle", icon: Bot },
       { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
       { view: "programming-basics", label: "Programming basics", icon: GraduationCap },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
@@ -2354,7 +2362,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar");
+  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "arena");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2395,6 +2403,9 @@ function App() {
     }
     if (activeView === "patterns") {
       return <main className="patterns-public ui-scope"><PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} /><StudentFooter /></main>;
+    }
+    if (activeView === "arena") {
+      return <main className="human-ai-public ui-scope"><HumanVsAi /><StudentFooter /></main>;
     }
     if (activeView === "verify") {
       return <main className="cert-public ui-scope"><VerifyPage /><StudentFooter /></main>;
@@ -2631,6 +2642,7 @@ function App() {
       {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} focusProblem={editorProblem} />}
+      {activeView === "arena" && <HumanVsAi />}
       {activeView === "dsa-course" && <DsaCoursePage />}
       {activeView === "programming-basics" && <ProgrammingBasicsCourse />}
       {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}

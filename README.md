@@ -106,6 +106,10 @@ The Deva editor's **AI help** panel and the course studio's **Ask Deva** panel u
 
 The **Resume builder** lets you add contact details, a profile, experience, education, projects, and skills with a live resume preview. Drafts are saved only in the browser's local storage on the current device. Use **Print / Save PDF** to export; CodexSheet does not upload resume details.
 
+### CodexSheet Battle
+
+Play a 45-minute JavaScript code duel against Byte, with a different random question on every rematch. The editor runs code in an isolated browser worker and reports compile errors, runtime errors, wrong answers, execution time, and time-limit exceeded (TLE). Drafts, wins, streaks, and XP are saved locally in the browser. The built-in rival is a game benchmark, not a live AI model.
+
 ### 📋 Curated DSA Sheet
 
 A structured collection of important coding problems.
