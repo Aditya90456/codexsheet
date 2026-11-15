@@ -18,6 +18,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import { gsap } from "gsap";
 import "./human-vs-ai.css";
 
 type TestCase = { args: unknown[]; expected: unknown };
@@ -39,6 +40,8 @@ type TestStatus = "Accepted" | "Wrong Answer" | "Compile Error" | "Runtime Error
 type TestResult = { passed: number; total: number; details: string[]; status: TestStatus; runtimeMs?: number; error?: string };
 type RoundStatus = "ready" | "running" | "human-won" | "ai-won" | "tie";
 type GameStats = { level: number; wins: number; losses: number; streak: number; xp: number };
+type BattleUniverse = "dhurandhar" | "cop" | "spy" | "marvel";
+type BattleCharacter = { id: string; name: string; role: string; universe: BattleUniverse; initials: string; style: string; trait: string };
 type AiState = "idle" | "thinking" | "ready" | "error";
 type JudgeState = "idle" | "thinking" | "error" | "done";
 type JudgeScore = { correctness: number; efficiency: number; readability: number; maintainability: number; feedback: string };
@@ -47,6 +50,47 @@ type AiJudgement = { human: JudgeScore; byte: JudgeScore; summary: string };
 const storageKey = "codexsheet-human-vs-ai-v1";
 const emptyStats: GameStats = { level: 1, wins: 0, losses: 0, streak: 0, xp: 0 };
 const companyTagSource = "https://github.com/snehasishroy/leetcode-companywise-interview-questions";
+const battleUniverses: { id: BattleUniverse; label: string; shortLabel: string; description: string }[] = [
+  { id: "dhurandhar", label: "Dhurandhar", shortLabel: "Dhurandhar", description: "Characters from the 2025 film" },
+  { id: "cop", label: "Rohit Shetty Cop Universe", shortLabel: "Cop universe", description: "Singham · Simmba · Sooryavanshi" },
+  { id: "spy", label: "YRF Spy Universe", shortLabel: "Spy universe", description: "Tiger · War · Pathaan" },
+  { id: "marvel", label: "Marvel Universe", shortLabel: "Marvel", description: "Marvel heroes and rivals" },
+];
+const battleCharacters: BattleCharacter[] = [
+  { id: "hamza-jaskirat", name: "Hamza / Jaskirat", role: "Undercover Indian operative", universe: "dhurandhar", initials: "HJ", style: "direct", trait: "Undercover focus" },
+  { id: "rehman-dakait", name: "Rehman Dakait", role: "Lyari gang leader", universe: "dhurandhar", initials: "RD", style: "sharp", trait: "Strategic pressure" },
+  { id: "chaudhary-aslam", name: "Chaudhary Aslam", role: "SP · Lyari Task Force", universe: "dhurandhar", initials: "CA", style: "calm", trait: "Steady investigation" },
+  { id: "ajay-sanyal", name: "Ajay Sanyal", role: "Intelligence Bureau director", universe: "dhurandhar", initials: "AS", style: "calm", trait: "Big-picture thinking" },
+  { id: "bajirao-singam", name: "Bajirao Singham", role: "Deputy Commissioner of Police", universe: "cop", initials: "BS", style: "direct", trait: "Decisive problem-solving" },
+  { id: "sangram-simmba", name: 'Sangram "Simmba" Bhalerao', role: "Police inspector", universe: "cop", initials: "SB", style: "sharp", trait: "Fast on the action" },
+  { id: "veer-sooryavanshi", name: "Veer Sooryavanshi", role: "Anti-terrorism squad chief", universe: "cop", initials: "VS", style: "calm", trait: "Calm under pressure" },
+  { id: "tiger-rathore", name: "Tiger · Avinash Singh Rathore", role: "R&AW agent", universe: "spy", initials: "TR", style: "direct", trait: "Mission-first focus" },
+  { id: "zoya", name: "Zoya", role: "Former ISI agent", universe: "spy", initials: "ZY", style: "sharp", trait: "Adaptable thinking" },
+  { id: "kabir-dhaliwal", name: "Kabir Dhaliwal", role: "R&AW agent", universe: "spy", initials: "KD", style: "calm", trait: "Reads the whole board" },
+  { id: "pathaan", name: "Pathaan", role: "JOCR agent", universe: "spy", initials: "PT", style: "direct", trait: "Resilient by design" },
+  { id: "jim", name: "Jim", role: "Mercenary leader", universe: "spy", initials: "JM", style: "sharp", trait: "Unpredictable tactics" },
+  { id: "agent-vikram", name: "Agent Vikram", role: "Special Units officer", universe: "spy", initials: "AV", style: "calm", trait: "Persistent pursuit" },
+  { id: "iron-man", name: "Iron Man", role: "Armored Avenger", universe: "marvel", initials: "IM", style: "direct", trait: "Build, adapt, outthink" },
+  { id: "spider-man", name: "Spider-Man", role: "Friendly neighborhood hero", universe: "marvel", initials: "SM", style: "sharp", trait: "Quick thinking" },
+  { id: "captain-america", name: "Captain America", role: "Super-soldier leader", universe: "marvel", initials: "CA", style: "calm", trait: "Steady under pressure" },
+  { id: "black-panther", name: "Black Panther", role: "Wakandan protector", universe: "marvel", initials: "BP", style: "sharp", trait: "Precision and patience" },
+  { id: "thor", name: "Thor", role: "Asgardian warrior", universe: "marvel", initials: "TH", style: "direct", trait: "Bold problem-solving" },
+  { id: "black-widow", name: "Black Widow", role: "Master spy", universe: "marvel", initials: "BW", style: "calm", trait: "Observe, then act" },
+];
+
+function randomOpponentFor(playerId: string, previousOpponentId?: string) {
+  const nextOpponents = battleCharacters.filter((character) => character.id !== playerId && character.id !== previousOpponentId);
+  const availableOpponents = nextOpponents.length
+    ? nextOpponents
+    : battleCharacters.filter((character) => character.id !== playerId);
+  return availableOpponents[Math.floor(Math.random() * availableOpponents.length)] ?? battleCharacters[0];
+}
+
+function initialOpponentFor(playerId: string) {
+  if (playerId === "hamza-jaskirat") return battleCharacters.find((character) => character.id === "tiger-rathore") ?? randomOpponentFor(playerId);
+  return randomOpponentFor(playerId);
+}
+
 const javascriptHighlighting = syntaxHighlighting(HighlightStyle.define([
   { tag: tags.keyword, color: "#d68bd0" },
   { tag: tags.function(tags.variableName), color: "#7dcfff" },
@@ -717,6 +761,15 @@ function readStats(): GameStats {
   }
 }
 
+function readBattleCharacter() {
+  try {
+    const savedId = window.localStorage.getItem(`${storageKey}:character`);
+    return battleCharacters.find((character) => character.id === savedId)?.id ?? battleCharacters[0].id;
+  } catch {
+    return battleCharacters[0].id;
+  }
+}
+
 function readDraft(id: string, fallback: string) {
   try {
     return window.localStorage.getItem(`${storageKey}:draft:${id}`) ?? fallback;
@@ -921,6 +974,11 @@ async function requestAiJudgement(challenge: Challenge, humanCode: string, human
 
 export default function HumanVsAi() {
   const [stats, setStats] = useState<GameStats>(readStats);
+  const [selectedCharacterId, setSelectedCharacterId] = useState(readBattleCharacter);
+  const [selectedUniverse, setSelectedUniverse] = useState<BattleUniverse>(() => battleCharacters.find((character) => character.id === readBattleCharacter())?.universe ?? "dhurandhar");
+  const selectedCharacter = battleCharacters.find((character) => character.id === selectedCharacterId) ?? battleCharacters[0];
+  const [opponentCharacterId, setOpponentCharacterId] = useState(() => initialOpponentFor(selectedCharacter.id).id);
+  const opponentCharacter = battleCharacters.find((character) => character.id === opponentCharacterId) ?? battleCharacters[0];
   const [challengeId, setChallengeId] = useState(() => challengeForLevel(stats.level).id);
   const challenge = challenges.find((item) => item.id === challengeId) ?? challenges[0];
   const [code, setCode] = useState(() => readDraft(challenge.id, challenge.starter));
@@ -941,12 +999,31 @@ export default function HumanVsAi() {
   const [judgeAttempt, setJudgeAttempt] = useState(0);
   const [running, setRunning] = useState(false);
   const [storageError, setStorageError] = useState("");
+  const [matchPreloading, setMatchPreloading] = useState(false);
   const settledRef = useRef(false);
   const roundIdRef = useRef(0);
+  const characterSelectRef = useRef<HTMLElement | null>(null);
+  const faceoffRef = useRef<HTMLDivElement | null>(null);
+  const matchIntroRef = useRef<HTMLDivElement | null>(null);
+  const pendingMatchRef = useRef<{ roundId: number; roundLevel: number; challenge: Challenge } | null>(null);
 
   const targetLevel = status === "running" || status === "human-won" || status === "ai-won" || status === "tie" ? activeLevel : stats.level;
   const levelProgress = Math.min(100, stats.level);
   const roundFinished = status === "human-won" || status === "ai-won" || status === "tie";
+
+  function chooseCharacter(character: BattleCharacter) {
+    setSelectedCharacterId(character.id);
+    setSelectedUniverse(character.universe);
+    if (opponentCharacterId === character.id) {
+      setOpponentCharacterId(randomOpponentFor(character.id, opponentCharacterId).id);
+    }
+    try {
+      window.localStorage.setItem(`${storageKey}:character`, character.id);
+      setStorageError("");
+    } catch {
+      setStorageError("Character selection could not be saved in this browser.");
+    }
+  }
 
   useEffect(() => {
     setAiVisibleLength(0);
@@ -960,6 +1037,26 @@ export default function HumanVsAi() {
     }, 18);
     return () => window.clearInterval(timer);
   }, [aiCode]);
+
+  useEffect(() => {
+    if (!characterSelectRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const context = gsap.context(() => {
+      gsap.from(".human-ai-faceoff", { y: 18, autoAlpha: 0, duration: .55, ease: "power3.out" });
+      gsap.from(".human-ai-universe-tabs button", { y: 14, autoAlpha: 0, duration: .38, stagger: .07, delay: .08, ease: "power2.out" });
+      gsap.from(".human-ai-character-card", { y: 18, autoAlpha: 0, duration: .4, stagger: .045, delay: .16, ease: "power2.out" });
+    }, characterSelectRef);
+    return () => context.revert();
+  }, []);
+
+  useEffect(() => {
+    if (!faceoffRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const context = gsap.context(() => {
+      gsap.fromTo(".human-ai-faceoff-player", { x: -24, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: .38, ease: "power3.out" });
+      gsap.fromTo(".human-ai-faceoff-opponent", { x: 24, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: .38, ease: "power3.out" });
+      gsap.fromTo(".human-ai-faceoff-vs", { scale: .25, rotation: -70, autoAlpha: 0 }, { scale: 1, rotation: 0, autoAlpha: 1, duration: .48, ease: "back.out(1.7)", delay: .08 });
+    }, faceoffRef);
+    return () => context.revert();
+  }, [selectedCharacter.id, opponentCharacter.id]);
 
   useEffect(() => () => { roundIdRef.current += 1; }, []);
 
@@ -1020,8 +1117,41 @@ export default function HumanVsAi() {
     }
   }
 
+  useEffect(() => {
+    if (!matchPreloading) return;
+    const pendingMatch = pendingMatchRef.current;
+    if (!pendingMatch) {
+      setMatchPreloading(false);
+      return;
+    }
+
+    const beginMatch = () => {
+      pendingMatchRef.current = null;
+      setMatchPreloading(false);
+      void runAiOpponent(pendingMatch.roundId, pendingMatch.roundLevel, pendingMatch.challenge);
+    };
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !matchIntroRef.current) {
+      beginMatch();
+      return;
+    }
+
+    const context = gsap.context(() => {
+      const timeline = gsap.timeline({ onComplete: beginMatch });
+      timeline
+        .fromTo(".human-ai-preload-card", { y: 20, scale: .94, autoAlpha: 0 }, { y: 0, scale: 1, autoAlpha: 1, duration: .32, ease: "power3.out" })
+        .fromTo(".human-ai-preload-player", { x: -30, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: .32, ease: "power3.out" }, "-=.08")
+        .fromTo(".human-ai-preload-opponent", { x: 30, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: .32, ease: "power3.out" }, "<")
+        .fromTo(".human-ai-preload-vs", { scale: .2, rotation: -90 }, { scale: 1, rotation: 0, duration: .38, ease: "back.out(1.7)" }, "-=.08")
+        .fromTo(".human-ai-preload-track span", { scaleX: 0 }, { scaleX: 1, duration: .82, ease: "none" }, "-=.04")
+        .to(".human-ai-preload-card", { y: -12, autoAlpha: 0, duration: .2, delay: .12, ease: "power2.in" });
+    }, matchIntroRef);
+    return () => context.revert();
+  }, [matchPreloading]);
+
   function startRound() {
     const roundLevel = statsRef.current.level;
+    setOpponentCharacterId(randomOpponentFor(selectedCharacter.id, opponentCharacterId).id);
     roundIdRef.current += 1;
     const roundId = roundIdRef.current;
     settledRef.current = false;
@@ -1036,7 +1166,8 @@ export default function HumanVsAi() {
     setAiState("thinking");
     setActiveLevel(roundLevel);
     setStatus("running");
-    void runAiOpponent(roundId, roundLevel, challenge);
+    pendingMatchRef.current = { roundId, roundLevel, challenge };
+    setMatchPreloading(true);
   }
 
   function replay() {
@@ -1108,8 +1239,8 @@ export default function HumanVsAi() {
           <span className="human-ai-eyebrow"><Sparkles size={13} /> CODEXSHEET BATTLE · ROUND {stats.wins + stats.losses + 1} · LEVEL {targetLevel}</span>
           <span className="human-ai-auth-badge">SIGN IN REQUIRED · LEVELS SAVE ON THIS DEVICE</span>
           <span className="human-ai-level-badge">AI LEVEL {stats.level} / 100 · {difficultyForLevel(stats.level).toUpperCase()}</span>
-          <h1>CodexSheet <em>Battle</em></h1>
-          <p>You and Byte solve one question per level. Submit both solutions and an AI judge picks the stronger code.</p>
+          <h1>Choose your <em>legend.</em></h1>
+          <p>Pick a character from your favorite Indian action-film universe, then take on Byte in a head-to-head DSA duel.</p>
         </div>
         <div className="human-ai-scoreboard" aria-label="Your game stats">
           <div><Bot size={15} /><strong>{stats.level}</strong><span>LEVEL</span></div>
@@ -1118,6 +1249,50 @@ export default function HumanVsAi() {
           <div><Zap size={15} /><strong>{stats.xp}</strong><span>XP</span></div>
         </div>
       </header>
+
+      <section ref={characterSelectRef} className="human-ai-character-select" aria-labelledby="human-ai-character-heading">
+        <div className="human-ai-character-heading">
+          <div>
+            <span className="human-ai-section-label">BUILD YOUR BATTLE IDENTITY</span>
+            <h2 id="human-ai-character-heading">Choose your character</h2>
+          </div>
+          <p>Choose from Dhurandhar, the Cop Universe, YRF Spy Universe, or Marvel. Your pick is cosmetic—everyone gets the same fair challenge.</p>
+        </div>
+        <div ref={faceoffRef} className="human-ai-faceoff" aria-label={`${selectedCharacter.name} versus Byte's ${opponentCharacter.name}`}>
+          <div className="human-ai-faceoff-fighter human-ai-faceoff-player">
+            <span className="human-ai-faceoff-kicker">YOUR FIGHTER</span>
+            <span key={selectedCharacter.id} className="human-ai-faceoff-avatar" data-style={selectedCharacter.style}>{selectedCharacter.initials}</span>
+            <strong>{selectedCharacter.name}</strong>
+            <small>{selectedCharacter.role}</small>
+          </div>
+          <span className="human-ai-faceoff-vs" aria-hidden="true">VS</span>
+          <div className="human-ai-faceoff-fighter human-ai-faceoff-opponent">
+            <span className="human-ai-faceoff-kicker">BYTE'S RANDOM PICK</span>
+            <span key={opponentCharacter.id} className="human-ai-faceoff-avatar" data-style={opponentCharacter.style}>{opponentCharacter.initials}</span>
+            <strong>{opponentCharacter.name}</strong>
+            <small>{opponentCharacter.role}</small>
+          </div>
+          <p className="human-ai-faceoff-note">Example matchup: Hamza vs Tiger · Byte chooses a fresh rival when the match starts.</p>
+        </div>
+        <div className="human-ai-universe-tabs" role="tablist" aria-label="Character worlds">
+          {battleUniverses.map((universe) => (
+            <button key={universe.id} type="button" role="tab" aria-selected={selectedUniverse === universe.id} className={selectedUniverse === universe.id ? "active" : ""} disabled={status === "running"} onClick={() => setSelectedUniverse(universe.id)}>
+              <span>{universe.shortLabel}</span><small>{universe.description}</small>
+            </button>
+          ))}
+        </div>
+        <div className="human-ai-character-grid" role="group" aria-label={`${battleUniverses.find((universe) => universe.id === selectedUniverse)?.label} characters`}>
+          {battleCharacters.filter((character) => character.universe === selectedUniverse).map((character) => (
+            <button key={character.id} type="button" aria-pressed={selectedCharacter.id === character.id} className={`human-ai-character-card${selectedCharacter.id === character.id ? " selected" : ""}`} data-style={character.style} disabled={status === "running"} onClick={() => chooseCharacter(character)}>
+              <span key={`${character.id}-${selectedCharacter.id === character.id}`} className={`human-ai-character-mark${selectedCharacter.id === character.id ? " flipping" : ""}`} aria-hidden="true">{character.initials}</span>
+              <span className="human-ai-character-copy"><strong>{character.name}</strong><small>{character.role}</small></span>
+              <span className="human-ai-character-trait">{character.trait}</span>
+              <span className="human-ai-character-check">{selectedCharacter.id === character.id ? "SELECTED" : "CHOOSE"}</span>
+            </button>
+          ))}
+        </div>
+        <p className="human-ai-character-disclaimer">Unofficial fan-made character picker. CodexSheet is not affiliated with the film studios or Marvel; no film artwork is used.</p>
+      </section>
 
       <section className="human-ai-challenges" aria-label={`Level ${targetLevel} question`}>
         <div className="human-ai-section-label"><span>YOUR LEVEL {targetLevel} QUESTION</span><small>One focused challenge per level</small></div>
@@ -1150,13 +1325,13 @@ export default function HumanVsAi() {
         <section className="human-ai-match" aria-label="Human versus AI match">
           <div className="human-ai-match-head">
             <div className="human-ai-player human">
-              <span className="human-ai-avatar"><Code2 size={18} /></span>
-              <span><strong>YOU</strong><small>Human coder</small></span>
+              <span key={selectedCharacter.id} className="human-ai-avatar human-ai-selected-avatar" data-style={selectedCharacter.style}>{selectedCharacter.initials}</span>
+              <span><strong>{selectedCharacter.name.toUpperCase()}</strong><small>{selectedCharacter.role}</small></span>
             </div>
             <span className="human-ai-versus">VS</span>
             <div className="human-ai-player bot">
-              <span className="human-ai-avatar"><Bot size={19} /></span>
-              <span><strong>BYTE</strong><small>{status === "ai-won" ? "Judge's pick" : status === "human-won" ? "Outscored" : status === "tie" ? "Tied" : aiState === "thinking" ? "Writing code…" : aiState === "ready" ? "Submitted" : "Gemini AI"}</small></span>
+              <span key={opponentCharacter.id} className="human-ai-avatar human-ai-opponent-avatar" data-style={opponentCharacter.style}>{opponentCharacter.initials}</span>
+              <span><strong>BYTE</strong><small>{opponentCharacter.name} · {status === "ai-won" ? "Judge's pick" : status === "human-won" ? "Outscored" : status === "tie" ? "Tied" : aiState === "thinking" ? "Writing code…" : aiState === "ready" ? "Submitted" : "AI rival"}</small></span>
             </div>
           </div>
           <div className="human-ai-review-status">
@@ -1166,7 +1341,7 @@ export default function HumanVsAi() {
           </div>
           <div className="human-ai-editors">
             <div className="human-ai-editor">
-              <div className="human-ai-editor-bar"><span><i /><i /><i /></span><strong>human-solution.js</strong><button type="button" disabled={running || (status === "running" && humanSubmission !== null)} onClick={() => { setCode(challenge.starter); setTestResult(null); }}><RotateCcw size={12} /> Reset</button></div>
+              <div className="human-ai-editor-bar"><span><i /><i /><i /></span><strong>{selectedCharacter.id}.js</strong><button type="button" disabled={running || (status === "running" && humanSubmission !== null)} onClick={() => { setCode(challenge.starter); setTestResult(null); }}><RotateCcw size={12} /> Reset</button></div>
               <CodeMirror
                 value={code}
                 height="310px"
@@ -1252,6 +1427,27 @@ export default function HumanVsAi() {
         </section>
       </div>
       <footer className="human-ai-footnote"><span><Sparkles size={13} /> Correctness 50% · efficiency 20% · readability 15% · maintainability 15%</span><a href={companyTagSource} target="_blank" rel="noreferrer">Company-tag source <ChevronRight size={11} /></a></footer>
+      {matchPreloading && (
+        <div ref={matchIntroRef} className="human-ai-preload-overlay" role="status" aria-live="polite">
+          <div className="human-ai-preload-card">
+            <span className="human-ai-preload-label"><Sparkles size={13} /> CODEXSHEET BATTLE · MATCH FOUND</span>
+            <h2>Loading the coding arena</h2>
+            <div className="human-ai-preload-fighters">
+              <div className="human-ai-preload-player">
+                <span className="human-ai-preload-avatar" data-style={selectedCharacter.style}>{selectedCharacter.initials}</span>
+                <span><small>YOU</small><strong>{selectedCharacter.name}</strong></span>
+              </div>
+              <span className="human-ai-preload-vs">VS</span>
+              <div className="human-ai-preload-opponent">
+                <span className="human-ai-preload-avatar" data-style={opponentCharacter.style}>{opponentCharacter.initials}</span>
+                <span><small>BYTE'S RIVAL</small><strong>{opponentCharacter.name}</strong></span>
+              </div>
+            </div>
+            <div className="human-ai-preload-track" aria-hidden="true"><span /></div>
+            <p>Preparing your DSA challenge…</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
