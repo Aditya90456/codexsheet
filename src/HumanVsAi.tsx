@@ -11,6 +11,8 @@ import {
   RotateCcw,
   Sparkles,
   Trophy,
+  Volume2,
+  VolumeX,
   Zap,
 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
@@ -77,6 +79,25 @@ const battleCharacters: BattleCharacter[] = [
   { id: "thor", name: "Thor", role: "Asgardian warrior", universe: "marvel", initials: "TH", style: "direct", trait: "Bold problem-solving" },
   { id: "black-widow", name: "Black Widow", role: "Master spy", universe: "marvel", initials: "BW", style: "calm", trait: "Observe, then act" },
 ];
+const hindiBattleDialogues = {
+  start: [
+    "तैयार हो? देखते हैं, पहले बग पकड़ता है या Byte!",
+    "कोड साफ़ रखना—मैं हर semicolon पर नज़र रख रहा हूँ!",
+    "चलो, देखते हैं तुम्हारा कोड मुझे चौंकाता है या नहीं।",
+  ],
+  humanWin: [
+    "अरे वाह! आज तो तुमने Byte को भी पीछे छोड़ दिया।",
+    "मानना पड़ेगा—इस बार तुम्हारा कोड मुझसे तेज़ निकला!",
+  ],
+  aiWin: [
+    "ओह! इस बार मेरा कोड थोड़ा तेज़ निकला—अगली बार फिर कोशिश करना!",
+    "घबराओ मत, एक बग तो मुझसे भी छूट जाता… कभी-कभी!",
+  ],
+  tie: [
+    "बराबरी? लगता है हम दोनों ने आधा-आधा होमवर्क किया!",
+    "टाई हो गया—अब किसका कोड बेहतर है, ये अगला सवाल बताएगा।",
+  ],
+};
 
 function randomOpponentFor(playerId: string, previousOpponentId?: string) {
   const nextOpponents = battleCharacters.filter((character) => character.id !== playerId && character.id !== previousOpponentId);
@@ -89,6 +110,11 @@ function randomOpponentFor(playerId: string, previousOpponentId?: string) {
 function initialOpponentFor(playerId: string) {
   if (playerId === "hamza-jaskirat") return battleCharacters.find((character) => character.id === "tiger-rathore") ?? randomOpponentFor(playerId);
   return randomOpponentFor(playerId);
+}
+
+function characterAvatarSrc(character: BattleCharacter) {
+  const index = battleCharacters.findIndex((entry) => entry.id === character.id);
+  return `/avatars/open-peeps-${index}.svg`;
 }
 
 const javascriptHighlighting = syntaxHighlighting(HighlightStyle.define([
@@ -993,6 +1019,9 @@ export default function HumanVsAi() {
   const [aiResult, setAiResult] = useState<TestResult | null>(null);
   const [aiState, setAiState] = useState<AiState>("idle");
   const [aiError, setAiError] = useState("");
+  const [hindiDialogue, setHindiDialogue] = useState("मैच शुरू करें—Byte हिंदी में मुकाबले की बात करेगा।");
+  const [hindiVoiceEnabled, setHindiVoiceEnabled] = useState(true);
+  const [hindiVoiceError, setHindiVoiceError] = useState("");
   const [judgement, setJudgement] = useState<AiJudgement | null>(null);
   const [judgeState, setJudgeState] = useState<JudgeState>("idle");
   const [judgeError, setJudgeError] = useState("");
@@ -1000,6 +1029,9 @@ export default function HumanVsAi() {
   const [running, setRunning] = useState(false);
   const [storageError, setStorageError] = useState("");
   const [matchPreloading, setMatchPreloading] = useState(false);
+  const hindiSpeechSupported = typeof window !== "undefined"
+    && "speechSynthesis" in window
+    && typeof SpeechSynthesisUtterance !== "undefined";
   const settledRef = useRef(false);
   const roundIdRef = useRef(0);
   const characterSelectRef = useRef<HTMLElement | null>(null);
@@ -1010,6 +1042,33 @@ export default function HumanVsAi() {
   const targetLevel = status === "running" || status === "human-won" || status === "ai-won" || status === "tie" ? activeLevel : stats.level;
   const levelProgress = Math.min(100, stats.level);
   const roundFinished = status === "human-won" || status === "ai-won" || status === "tie";
+
+  function speakHindi(line: string) {
+    setHindiDialogue(line);
+    setHindiVoiceError("");
+    if (!hindiVoiceEnabled || !hindiSpeechSupported) return;
+
+    try {
+      const utterance = new SpeechSynthesisUtterance(line);
+      utterance.lang = "hi-IN";
+      utterance.rate = 0.94;
+      const hindiVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("hi"));
+      if (hindiVoice) utterance.voice = hindiVoice;
+      utterance.onerror = (event) => {
+        if (event.error !== "canceled" && event.error !== "interrupted") {
+          setHindiVoiceError("इस ब्राउज़र में हिंदी आवाज़ चल नहीं सकी।");
+        }
+      };
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setHindiVoiceError("इस ब्राउज़र में हिंदी आवाज़ चल नहीं सकी।");
+    }
+  }
+
+  useEffect(() => () => {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }, []);
 
   function chooseCharacter(character: BattleCharacter) {
     setSelectedCharacterId(character.id);
@@ -1074,6 +1133,8 @@ export default function HumanVsAi() {
     settledRef.current = true;
     roundIdRef.current += 1;
     setStatus(winner === "human" ? "human-won" : winner === "byte" ? "ai-won" : "tie");
+    const outcomeLines = winner === "human" ? hindiBattleDialogues.humanWin : winner === "byte" ? hindiBattleDialogues.aiWin : hindiBattleDialogues.tie;
+    speakHindi(outcomeLines[Math.floor(Math.random() * outcomeLines.length)]);
     setRunning(false);
     const current = statsRef.current;
     const next: GameStats = winner === "human"
@@ -1151,6 +1212,7 @@ export default function HumanVsAi() {
 
   function startRound() {
     const roundLevel = statsRef.current.level;
+    speakHindi(hindiBattleDialogues.start[Math.floor(Math.random() * hindiBattleDialogues.start.length)]);
     setOpponentCharacterId(randomOpponentFor(selectedCharacter.id, opponentCharacterId).id);
     roundIdRef.current += 1;
     const roundId = roundIdRef.current;
@@ -1261,14 +1323,14 @@ export default function HumanVsAi() {
         <div ref={faceoffRef} className="human-ai-faceoff" aria-label={`${selectedCharacter.name} versus Byte's ${opponentCharacter.name}`}>
           <div className="human-ai-faceoff-fighter human-ai-faceoff-player">
             <span className="human-ai-faceoff-kicker">YOUR FIGHTER</span>
-            <span key={selectedCharacter.id} className="human-ai-faceoff-avatar" data-style={selectedCharacter.style}>{selectedCharacter.initials}</span>
+            <img key={selectedCharacter.id} className="human-ai-faceoff-avatar" data-style={selectedCharacter.style} src={characterAvatarSrc(selectedCharacter)} alt="" aria-hidden="true" />
             <strong>{selectedCharacter.name}</strong>
             <small>{selectedCharacter.role}</small>
           </div>
           <span className="human-ai-faceoff-vs" aria-hidden="true">VS</span>
           <div className="human-ai-faceoff-fighter human-ai-faceoff-opponent">
             <span className="human-ai-faceoff-kicker">BYTE'S RANDOM PICK</span>
-            <span key={opponentCharacter.id} className="human-ai-faceoff-avatar" data-style={opponentCharacter.style}>{opponentCharacter.initials}</span>
+            <img key={opponentCharacter.id} className="human-ai-faceoff-avatar" data-style={opponentCharacter.style} src={characterAvatarSrc(opponentCharacter)} alt="" aria-hidden="true" />
             <strong>{opponentCharacter.name}</strong>
             <small>{opponentCharacter.role}</small>
           </div>
@@ -1284,7 +1346,7 @@ export default function HumanVsAi() {
         <div className="human-ai-character-grid" role="group" aria-label={`${battleUniverses.find((universe) => universe.id === selectedUniverse)?.label} characters`}>
           {battleCharacters.filter((character) => character.universe === selectedUniverse).map((character) => (
             <button key={character.id} type="button" aria-pressed={selectedCharacter.id === character.id} className={`human-ai-character-card${selectedCharacter.id === character.id ? " selected" : ""}`} data-style={character.style} disabled={status === "running"} onClick={() => chooseCharacter(character)}>
-              <span key={`${character.id}-${selectedCharacter.id === character.id}`} className={`human-ai-character-mark${selectedCharacter.id === character.id ? " flipping" : ""}`} aria-hidden="true">{character.initials}</span>
+              <img key={`${character.id}-${selectedCharacter.id === character.id}`} className={`human-ai-character-mark${selectedCharacter.id === character.id ? " flipping" : ""}`} src={characterAvatarSrc(character)} alt="" aria-hidden="true" loading={selectedCharacter.id === character.id ? "eager" : "lazy"} decoding="async" />
               <span className="human-ai-character-copy"><strong>{character.name}</strong><small>{character.role}</small></span>
               <span className="human-ai-character-trait">{character.trait}</span>
               <span className="human-ai-character-check">{selectedCharacter.id === character.id ? "SELECTED" : "CHOOSE"}</span>
@@ -1325,14 +1387,26 @@ export default function HumanVsAi() {
         <section className="human-ai-match" aria-label="Human versus AI match">
           <div className="human-ai-match-head">
             <div className="human-ai-player human">
-              <span key={selectedCharacter.id} className="human-ai-avatar human-ai-selected-avatar" data-style={selectedCharacter.style}>{selectedCharacter.initials}</span>
+              <img key={selectedCharacter.id} className="human-ai-avatar human-ai-selected-avatar" data-style={selectedCharacter.style} src={characterAvatarSrc(selectedCharacter)} alt="" aria-hidden="true" />
               <span><strong>{selectedCharacter.name.toUpperCase()}</strong><small>{selectedCharacter.role}</small></span>
             </div>
             <span className="human-ai-versus">VS</span>
             <div className="human-ai-player bot">
-              <span key={opponentCharacter.id} className="human-ai-avatar human-ai-opponent-avatar" data-style={opponentCharacter.style}>{opponentCharacter.initials}</span>
+              <img key={opponentCharacter.id} className="human-ai-avatar human-ai-opponent-avatar" data-style={opponentCharacter.style} src={characterAvatarSrc(opponentCharacter)} alt="" aria-hidden="true" />
               <span><strong>BYTE</strong><small>{opponentCharacter.name} · {status === "ai-won" ? "Judge's pick" : status === "human-won" ? "Outscored" : status === "tie" ? "Tied" : aiState === "thinking" ? "Writing code…" : aiState === "ready" ? "Submitted" : "AI rival"}</small></span>
             </div>
+          </div>
+          <div className="human-ai-hindi-dialogue" role="status" aria-live="polite">
+            <div><strong>BYTE · हिंदी</strong><p>{hindiDialogue}</p>{hindiVoiceError && <small role="alert">{hindiVoiceError}</small>}</div>
+            <button type="button" aria-pressed={hindiVoiceEnabled} disabled={!hindiSpeechSupported} onClick={() => {
+              const nextEnabled = !hindiVoiceEnabled;
+              setHindiVoiceEnabled(nextEnabled);
+              setHindiVoiceError("");
+              if (!nextEnabled && "speechSynthesis" in window) window.speechSynthesis.cancel();
+            }}>
+              {hindiVoiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+              {hindiSpeechSupported ? hindiVoiceEnabled ? "आवाज़ चालू" : "आवाज़ बंद" : "आवाज़ उपलब्ध नहीं"}
+            </button>
           </div>
           <div className="human-ai-review-status">
             <div className="human-ai-review-label"><span><Sparkles size={13} /> AI CODE-QUALITY JUDGE</span><strong>{judgeState === "thinking" ? "ANALYZING" : judgeState === "done" ? status === "tie" ? "TIE" : "VERDICT READY" : status === "human-won" ? "YOU WIN" : status === "ai-won" ? "BYTE WINS" : status === "tie" ? "TIE" : "AWAITING SUBMISSIONS"}</strong></div>
@@ -1434,12 +1508,12 @@ export default function HumanVsAi() {
             <h2>Loading the coding arena</h2>
             <div className="human-ai-preload-fighters">
               <div className="human-ai-preload-player">
-                <span className="human-ai-preload-avatar" data-style={selectedCharacter.style}>{selectedCharacter.initials}</span>
+                <img className="human-ai-preload-avatar" data-style={selectedCharacter.style} src={characterAvatarSrc(selectedCharacter)} alt="" aria-hidden="true" />
                 <span><small>YOU</small><strong>{selectedCharacter.name}</strong></span>
               </div>
               <span className="human-ai-preload-vs">VS</span>
               <div className="human-ai-preload-opponent">
-                <span className="human-ai-preload-avatar" data-style={opponentCharacter.style}>{opponentCharacter.initials}</span>
+                <img className="human-ai-preload-avatar" data-style={opponentCharacter.style} src={characterAvatarSrc(opponentCharacter)} alt="" aria-hidden="true" />
                 <span><small>BYTE'S RIVAL</small><strong>{opponentCharacter.name}</strong></span>
               </div>
             </div>

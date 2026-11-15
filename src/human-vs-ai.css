@@ -148,6 +148,7 @@
 .human-ai-match-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 15px 18px; border-bottom: 1px solid #2b1f21; }
 .human-ai-player { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .human-ai-avatar { display: grid; width: 35px; height: 35px; flex: 0 0 auto; place-items: center; border: 1px solid #443033; border-radius: 11px; background: #1c1415; color: #ff9384; }
+.human-ai-avatar { object-fit: cover; }
 .human-ai-player.bot .human-ai-avatar { border-color: #47303a; background: #21131a; color: #e781b2; }
 .human-ai-player > span:last-child { display: grid; gap: 4px; }
 .human-ai-player strong { color: #f4e8e6; font: 700 10px "DM Mono", monospace; letter-spacing: .09em; }
@@ -385,6 +386,7 @@
   color: #fff2ff;
   font: 800 10px "DM Mono", monospace;
   box-shadow: inset 0 0 18px #fbc0ff13;
+  object-fit: cover;
 }
 
 .human-ai-character-card[data-style="direct"] .human-ai-character-mark { border-color: #bd805866; background: linear-gradient(145deg, #885039, #362337); }
@@ -415,6 +417,13 @@
 .human-ai-player > span:last-child { min-width: 0; }
 .human-ai-player small { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .human-ai-match-head { background: linear-gradient(100deg, #17121a, #120e15); }
+.human-ai-hindi-dialogue { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #553b55; border-radius: 0 0 10px 10px; background: linear-gradient(100deg, #211827, #17121a); }
+.human-ai-hindi-dialogue > div { min-width: 0; }
+.human-ai-hindi-dialogue strong { color: #e3a8d1; font: 700 8px "DM Mono", monospace; letter-spacing: .08em; }
+.human-ai-hindi-dialogue p { margin: 4px 0 0; color: #f0e2ed; font: 13px "Noto Sans Devanagari", "Nirmala UI", sans-serif; line-height: 1.5; }
+.human-ai-hindi-dialogue small { color: #f0a2a2; font-size: 9px; }
+.human-ai-hindi-dialogue button { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; padding: 7px 9px; border: 1px solid #614762; border-radius: 8px; background: #281d2c; color: #e8cce1; font: 600 8px "Noto Sans Devanagari", "Nirmala UI", sans-serif; cursor: pointer; }
+.human-ai-hindi-dialogue button:disabled { cursor: not-allowed; opacity: .55; }
 .human-ai-primary { border-color: #c46c9f; background: linear-gradient(120deg, #b85b91, #714078); box-shadow: 0 7px 22px #8d467533; }
 .human-ai-primary:not(:disabled):hover { border-color: #eda4cf; background: linear-gradient(120deg, #ca70a5, #81508a); }
 
@@ -477,6 +486,7 @@
   color: #fff0ff;
   font: 800 10px "DM Mono", monospace;
   box-shadow: inset 0 0 18px #fbc0ff13, 0 5px 15px #0005;
+  object-fit: cover;
 }
 
 .human-ai-faceoff-avatar[data-style="direct"] { border-color: #bd8058; background: linear-gradient(145deg, #885039, #362337); }
@@ -523,7 +533,7 @@
 .human-ai-preload-opponent small { color: #a58ca6; font: 600 7px "DM Mono", monospace; letter-spacing: .1em; }
 .human-ai-preload-player strong,
 .human-ai-preload-opponent strong { overflow: hidden; color: #fff0f2; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.human-ai-preload-avatar { display: grid; width: 42px; height: 46px; flex: 0 0 auto; place-items: center; border: 1px solid #9a678f; border-radius: 12px; background: linear-gradient(145deg, #70436d, #292139); color: #fff1ff; font: 800 9px "DM Mono", monospace; }
+.human-ai-preload-avatar { display: grid; width: 42px; height: 46px; flex: 0 0 auto; place-items: center; border: 1px solid #9a678f; border-radius: 12px; background: linear-gradient(145deg, #70436d, #292139); color: #fff1ff; font: 800 9px "DM Mono", monospace; object-fit: cover; }
 .human-ai-preload-avatar[data-style="direct"] { border-color: #bd8058; background: linear-gradient(145deg, #885039, #362337); }
 .human-ai-preload-avatar[data-style="sharp"] { border-color: #639a9b; background: linear-gradient(145deg, #316a70, #26243e); }
 .human-ai-preload-vs { color: #ff9a76; font: 900 16px "DM Mono", monospace; }
@@ -545,4 +555,7 @@
   .human-ai-preload-avatar { width: 34px; height: 38px; }
   .human-ai-preload-player strong,
   .human-ai-preload-opponent strong { font-size: 8px; }
+  .human-ai-hindi-dialogue { align-items: flex-start; padding: 9px; }
+  .human-ai-hindi-dialogue p { font-size: 11px; }
+  .human-ai-hindi-dialogue button { gap: 4px; padding: 6px; font-size: 7px; }
 }
