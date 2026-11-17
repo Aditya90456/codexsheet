@@ -7,3 +7,10 @@ The Flask API exposes `/api/execute` for JavaScript function tests and for compi
 For local use, put `GEMINI_API_KEY=...` in the root `.env` file; the backend loads it, and the key never belongs in a Vite `VITE_*` variable. `GEMINI_MODEL` can optionally override the default `gemini-3.8-flash` model. On a Gemini 503, the tutor automatically tries `GEMINI_FALLBACK_MODEL` (default `gemini-3.6-flash`). For Vercel, add `GEMINI_API_KEY` and optional `GEMINI_MODEL` / `GEMINI_FALLBACK_MODEL` in Project Settings → Environment Variables. Python Function entry points are in `api/`, and the root `requirements.txt` installs Flask and the Gemini SDK. `https://codexsheet.in` is an allowed origin by default. Set `RUNNER_ALLOWED_ORIGINS` to a comma-separated list when using another production domain.
 
 In another terminal, run `npm run dev`. Vite proxies `/api/execute` to Flask. Start the Flask process and your local Judge0 service before running programs in Deva. Production needs `JUDGE0_API_URL` configured in Vercel.
+
+The nine-round student tournament uses `/api/student-tournament`. Each student
+submission and its AI opponent's solution run against server-side test cases
+through the configured compiler service. The endpoint requires `GEMINI_API_KEY`
+and a working Piston or Judge0 configuration; it does not require Clerk or
+Supabase credentials. If Gemini is temporarily unavailable, the tournament uses
+verified built-in solutions for its fixed problems so the round can still be judged.

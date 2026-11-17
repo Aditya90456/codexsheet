@@ -42,14 +42,15 @@ type TestStatus = "Accepted" | "Wrong Answer" | "Compile Error" | "Runtime Error
 type TestResult = { passed: number; total: number; details: string[]; status: TestStatus; runtimeMs?: number; error?: string };
 type RoundStatus = "ready" | "running" | "human-won" | "ai-won" | "tie";
 type GameStats = { level: number; wins: number; losses: number; streak: number; xp: number };
-type BattleUniverse = "dhurandhar" | "cop" | "spy" | "marvel";
-type BattleCharacter = { id: string; name: string; role: string; universe: BattleUniverse; initials: string; style: string; trait: string };
+export type BattleUniverse = "dhurandhar" | "cop" | "spy" | "marvel";
+export type BattleCharacter = { id: string; name: string; role: string; universe: BattleUniverse; initials: string; style: string; trait: string };
 type AiState = "idle" | "thinking" | "ready" | "error";
 type JudgeState = "idle" | "thinking" | "error" | "done";
 type JudgeScore = { correctness: number; efficiency: number; readability: number; maintainability: number; feedback: string };
 type AiJudgement = { human: JudgeScore; byte: JudgeScore; summary: string };
 
 const storageKey = "codexsheet-human-vs-ai-v1";
+export const battleCharacterStorageKey = `${storageKey}:character`;
 const emptyStats: GameStats = { level: 1, wins: 0, losses: 0, streak: 0, xp: 0 };
 const companyTagSource = "https://github.com/snehasishroy/leetcode-companywise-interview-questions";
 const battleUniverses: { id: BattleUniverse; label: string; shortLabel: string; description: string }[] = [
@@ -58,7 +59,7 @@ const battleUniverses: { id: BattleUniverse; label: string; shortLabel: string; 
   { id: "spy", label: "YRF Spy Universe", shortLabel: "Spy universe", description: "Tiger · War · Pathaan" },
   { id: "marvel", label: "Marvel Universe", shortLabel: "Marvel", description: "Marvel heroes and rivals" },
 ];
-const battleCharacters: BattleCharacter[] = [
+export const battleCharacters: BattleCharacter[] = [
   { id: "hamza-jaskirat", name: "Hamza / Jaskirat", role: "Undercover Indian operative", universe: "dhurandhar", initials: "HJ", style: "direct", trait: "Undercover focus" },
   { id: "rehman-dakait", name: "Rehman Dakait", role: "Lyari gang leader", universe: "dhurandhar", initials: "RD", style: "sharp", trait: "Strategic pressure" },
   { id: "chaudhary-aslam", name: "Chaudhary Aslam", role: "SP · Lyari Task Force", universe: "dhurandhar", initials: "CA", style: "calm", trait: "Steady investigation" },
@@ -112,7 +113,7 @@ function initialOpponentFor(playerId: string) {
   return randomOpponentFor(playerId);
 }
 
-function characterAvatarSrc(character: BattleCharacter) {
+export function characterAvatarSrc(character: BattleCharacter) {
   const index = battleCharacters.findIndex((entry) => entry.id === character.id);
   return `/avatars/open-peeps-${index}.svg`;
 }
@@ -787,9 +788,9 @@ function readStats(): GameStats {
   }
 }
 
-function readBattleCharacter() {
+export function readBattleCharacter() {
   try {
-    const savedId = window.localStorage.getItem(`${storageKey}:character`);
+    const savedId = window.localStorage.getItem(battleCharacterStorageKey);
     return battleCharacters.find((character) => character.id === savedId)?.id ?? battleCharacters[0].id;
   } catch {
     return battleCharacters[0].id;
@@ -1077,7 +1078,7 @@ export default function HumanVsAi() {
       setOpponentCharacterId(randomOpponentFor(character.id, opponentCharacterId).id);
     }
     try {
-      window.localStorage.setItem(`${storageKey}:character`, character.id);
+      window.localStorage.setItem(battleCharacterStorageKey, character.id);
       setStorageError("");
     } catch {
       setStorageError("Character selection could not be saved in this browser.");
@@ -1310,6 +1311,7 @@ export default function HumanVsAi() {
           <div><Flame size={15} /><strong>{stats.streak}</strong><span>STREAK</span></div>
           <div><Zap size={15} /><strong>{stats.xp}</strong><span>XP</span></div>
         </div>
+        <a className="human-ai-tournament-link" href="/tournament"><Trophy size={14} /> Enter student tournament <ChevronRight size={14} /></a>
       </header>
 
       <section ref={characterSelectRef} className="human-ai-character-select" aria-labelledby="human-ai-character-heading">

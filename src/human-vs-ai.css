@@ -45,6 +45,8 @@
 .human-ai-hero-copy > p { margin: 12px 0 0; color: #b7a5a4; font-size: 13px; }
 
 .human-ai-scoreboard { display: flex; gap: 7px; }
+.human-ai-tournament-link { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 11px; border: 1px solid #6f4665; border-radius: 9px; background: linear-gradient(110deg, #322039, #1d1825); color: #f0c1df; font-size: 9px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.human-ai-tournament-link:hover { border-color: #c17bad; color: #fff0f8; }
 .human-ai-scoreboard > div {
   display: grid;
   grid-template-columns: 19px auto;
@@ -250,6 +252,7 @@
   .human-ai-hero { gap: 18px; padding: 22px 18px; }
   .human-ai-scoreboard { width: 100%; }
   .human-ai-scoreboard > div { flex: 1; }
+  .human-ai-tournament-link { align-self: stretch; }
   .human-ai-challenge-list { grid-template-columns: 1fr; gap: 6px; }
   .human-ai-challenge { min-height: 55px; }
   .human-ai-challenge { grid-template-columns: 28px minmax(0, 1fr) minmax(90px, .45fr); padding: 9px; }

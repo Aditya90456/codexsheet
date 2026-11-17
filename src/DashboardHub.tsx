@@ -81,6 +81,7 @@ export function hubGroups(counts: HubCounts): HubGroup[] {
         { view: "chat", icon: MessageCircle, name: "Group chat", note: "The study room, open all day.", count: counts.unread ? `${counts.unread} new` : "" },
         { view: "experiences", icon: Building2, name: "Interview experiences", note: "Written by the student in the room.", count: "" },
         { view: "leaderboard", icon: Trophy, name: "Leaderboard", note: "Ranked on the server, solved only.", count: "" },
+        { view: "tournament", icon: Trophy, name: "Student Tournament", note: "Play nine coding rounds against AI and study its solutions.", count: "9 rounds" },
         { view: "certificate", icon: ScrollText, name: "Certificate", note: "Minted from what you solved.", count: "" },
       ],
     },

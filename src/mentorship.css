@@ -143,6 +143,14 @@
 .mentorship-form input:focus, .mentorship-form textarea:focus { outline: 2px solid color-mix(in srgb, var(--ms-accent) 45%, transparent); border-color: var(--ms-accent); }
 .mentorship-summary { margin: 0; color: var(--ms-muted); font-size: 13px; }
 .mentorship-warning { margin: 0; color: var(--ms-warn); font-size: 13px; }
+.mentorship-account-note, .mentorship-account-next { display: grid; gap: 7px; padding: 12px; border: 1px solid var(--ms-line); border-radius: 10px; background: color-mix(in srgb, var(--ms-accent) 7%, var(--ms-surface)); }
+.mentorship-account-note { margin: 12px 0; }
+.mentorship-account-note > strong, .mentorship-account-next > strong { color: var(--ms-ink); font-size: 12px; }
+.mentorship-account-note p, .mentorship-account-next p { margin: 0; color: var(--ms-muted); font-size: 11px; line-height: 1.5; }
+.mentorship-auth-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mentorship-auth-actions button { min-height: 36px; }
+.mentorship-account-cta { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--ms-line); border-radius: 8px; color: var(--ms-accent); font-size: 12px; font-weight: 700; text-decoration: none; }
+.mentorship-account-cta:hover { border-color: var(--ms-accent); }
 
 .mentorship-confirm { display: grid; gap: 8px; justify-items: start; color: var(--ms-good); }
 .mentorship-confirm p { margin: 0; color: var(--ms-muted); font-size: 13px; }

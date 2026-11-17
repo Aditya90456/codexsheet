@@ -66,6 +66,14 @@ updates; its statements are written to be repeatable.
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
 
+## Student coding tournament
+
+The nine-round student tournament is independent of Supabase. Students choose a
+character, solve JavaScript challenges against AI opponents, and can inspect the
+AI solution after each submission. IPL team names are playful labels only and
+do not imply any team affiliation. Configure the server-side Gemini key and
+Piston/Judge0 execution service as described in [runner setup](./runner/README.md).
+
 ## Mentorship payments
 
 `/mentorship` sells Aditya's own time: 1:1 mentorship ₹19, long-term mentorship
@@ -80,6 +88,13 @@ claim (reference code, plan, amount, name, contact, Paytm reference) whether or
 not they are signed in; the table itself is not readable from the browser.
 `mentorship_order_status(reference)` is the only read path and returns just the
 status, plan, amount and filing time, never the buyer's contact details.
+
+For the smoothest access, students should sign in or create their CodexSheet
+account before paying. UPI is a manual transfer, so it cannot sign a student in
+automatically. If they already paid while signed out, submit the claim with the
+same email as the CodexSheet account, then sign in; the checkout keeps the
+reference through authentication and the confirmed claim is matched to that
+email. A phone-only claim cannot be matched automatically to a portal account.
 
 Confirm each payment in the Paytm app, then set that row's `status` to
 `confirmed` in the Supabase dashboard before the first session. If the insert

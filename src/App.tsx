@@ -100,6 +100,7 @@ import StudentFooter from "./StudentFooter";
 import LanguagePicker from "./LanguagePicker";
 import ResumeBuilder from "./ResumeBuilder";
 import HumanVsAi from "./HumanVsAi";
+import TournamentPage from "./Tournament";
 import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { uiLanguages, useT, type MessageKey } from "./i18n";
 import { mentorProfile, rupees } from "./mentorship";
@@ -170,7 +171,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "network" | "arena";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "network" | "arena" | "tournament";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -202,6 +203,7 @@ export const viewPaths: Record<WorkspaceView, string> = {
   radar: "/radar",
   network: "/network",
   arena: "/battle",
+  tournament: "/tournament",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -213,7 +215,7 @@ const siteOrigin = "https://www.codexsheet.in";
 export const selfHeadedViews: WorkspaceView[] = [
   "home", "guru", "leaderboard", "certificate", "verify", "patterns",
   "companies", "cslabs", "articles", "resume", "radar", "experiences",
-  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics", "arena",
+  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics", "arena", "tournament",
 ];
 
 const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
@@ -285,6 +287,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "CodexSheet Battle — Human vs AI Code Duel",
     description: "Practice company-tagged DSA interview questions in a timed JavaScript code duel. Filter Amazon, Google, Meta and more; run code privately and build your streak.",
   },
+  tournament: {
+    title: "Free JavaScript DSA Tournament for Students | CodexSheet",
+    description: "Practice nine JavaScript DSA challenges, face AI coding opponents, and compare code, hidden-test results, and solution summaries. Free online tournament.",
+  },
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -317,6 +323,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "radar", label: "2027 interview radar", icon: Radar },
       { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
       { view: "arena", label: "CodexSheet Battle", icon: Bot },
+      { view: "tournament", label: "Student Tournament", icon: Trophy },
       { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
       { view: "programming-basics", label: "Programming basics", icon: GraduationCap },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
@@ -2441,7 +2448,12 @@ function App() {
     if (activeView === "verify") {
       return <main className="cert-public ui-scope"><VerifyPage /><StudentFooter /></main>;
     }
-    return <main className="mentorship-public ui-scope"><MentorshipPayments /><StudentFooter /></main>;
+    return <main className="mentorship-public ui-scope"><MentorshipPayments signInSlot={(
+      <div className="mentorship-auth-actions">
+        <SignInButton mode="modal" forceRedirectUrl={window.location.href}><button type="button" className="mentorship-secondary">Sign in</button></SignInButton>
+        <SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button type="button" className="mentorship-primary">Create account</button></SignUpButton>
+      </div>
+    )} /><StudentFooter /></main>;
   }
 
   return (
@@ -2674,6 +2686,7 @@ function App() {
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} focusProblem={editorProblem} />}
       {activeView === "arena" && <HumanVsAi />}
+      {activeView === "tournament" && <TournamentPage />}
       {activeView === "dsa-course" && <DsaCoursePage />}
       {activeView === "programming-basics" && <ProgrammingBasicsCourse />}
       {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}

@@ -8,12 +8,28 @@ import re
 import shutil
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from html import unescape
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from collections import defaultdict, deque
 from urllib.parse import urlsplit
+
+if __package__:
+    from .tournament_problems import (
+        AI_TOURNAMENT_PROBLEMS,
+        AI_TOURNAMENT_REFERENCE_SOLUTIONS,
+        PLAYOFF_CASES,
+        QUALIFIER_CASES,
+    )
+else:
+    from tournament_problems import (
+        AI_TOURNAMENT_PROBLEMS,
+        AI_TOURNAMENT_REFERENCE_SOLUTIONS,
+        PLAYOFF_CASES,
+        QUALIFIER_CASES,
+    )
 
 from flask import Flask, jsonify, request
 
@@ -30,7 +46,20 @@ app.config["MAX_CONTENT_LENGTH"] = 64 * 1024
 
 
 def is_service_unavailable(error: Exception) -> bool:
-    return getattr(error, "status_code", None) == 503 or getattr(error, "code", None) == 503
+    return (
+        getattr(error, "status_code", None) in {503, 504}
+        or getattr(error, "code", None) in {503, 504}
+    )
+
+
+def is_gemini_transient_error(error: Exception) -> bool:
+    if is_service_unavailable(error):
+        return True
+    try:
+        from httpx import TransportError
+    except ImportError:
+        return False
+    return isinstance(error, TransportError)
 
 
 def is_allowed_origin(origin: str) -> bool:
@@ -377,7 +406,7 @@ def execute():
         return jsonify({"error": "Too many runs. Wait a minute and try again."}), 429
     recent.append(now)
 
-    payload, error = validate_request(request.get_json(silent=True))
+    payload, error = validate_request(data)
     if error:
         return jsonify({"error": error}), 400
 
@@ -386,8 +415,6 @@ def execute():
         return jsonify({"error": "Node.js was not found. Install Node.js 20 or newer and restart the runner."}), 503
 
     try:
-        # Keep the child process isolated from application secrets while retaining
-        # the Windows runtime variables Node needs to initialize crypto correctly.
         node_env = {"PATH": os.environ.get("PATH", ""), "NODE_OPTIONS": ""}
         for name in ("SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PATHEXT"):
             value = os.environ.get(name)
@@ -420,6 +447,192 @@ def execute():
     except json.JSONDecodeError:
         return jsonify({"error": "The JavaScript runner returned an invalid response."}), 500
     return jsonify(output)
+
+
+def tournament_execute_case(language: str, source: str, stdin: str, user_id: str) -> dict:
+    with app.test_request_context(
+        "/api/execute",
+        method="POST",
+        json={"language": language.lower().replace("++", "pp"), "source_code": source, "stdin": stdin},
+        environ_overrides={"REMOTE_ADDR": f"tournament-{user_id}"},
+    ):
+        response = execute()
+    if isinstance(response, tuple):
+        response = response[0]
+    return response.get_json() or {}
+
+
+AI_TOURNAMENT_CASES = {**QUALIFIER_CASES, **PLAYOFF_CASES}
+AI_TOURNAMENT_TEAMS = (
+    "Chennai Super Kings", "Mumbai Indians", "Kolkata Knight Riders",
+    "Royal Challengers Bengaluru", "Sunrisers Hyderabad", "Rajasthan Royals",
+    "Delhi Capitals", "Punjab Kings", "Gujarat Titans",
+)
+AI_TOURNAMENT_QUESTIONS = (
+    "pair-sum", "max-run", "balanced-brackets", "ship-capacity", "subarray-sum",
+    "minimum-jumps", "shortest-path", "climb-count", "even-sum-count",
+)
+ai_tournament_request_times: dict[str, deque[float]] = defaultdict(deque)
+
+
+def ai_tournament_solution(problem: str, round_number: int) -> tuple[str, str]:
+    strategy = "Prioritize the best practical time and space complexity." if round_number % 2 else "Prioritize a clear, robust algorithm and carefully handle edge cases."
+    prompt = (
+        "Write a complete JavaScript program for the following programming contest problem. "
+        "Read input from standard input and print only the required answer to standard output. "
+        "Do not hard-code sample cases or access the network, browser APIs, or filesystem. "
+        "Return a JSON object with exactly these string fields: code, approach, time_complexity, "
+        "space_complexity. Put only the runnable JavaScript program in code, without markdown fences. "
+        "Keep each explanation field to one short student-friendly sentence.\n\n"
+        f"Problem:\n{problem}\n"
+        f"Strategy: {strategy}"
+    )
+    try:
+        answer = gemini_reply(
+            "You are an autonomous contestant and patient coding teacher. Solve the provided problem "
+            "exactly. Return only the requested JSON object.",
+            prompt,
+            max_output_tokens=2700,
+            temperature=0.25,
+            response_mime_type="application/json",
+            thinking_level="low",
+            retry_attempts=1,
+            timeout_ms=15_000,
+        )
+    except Exception as exc:
+        if not is_gemini_transient_error(exc):
+            raise
+        question_id = AI_TOURNAMENT_QUESTIONS[round_number - 1]
+        app.logger.warning(
+            "Gemini is temporarily unavailable; using the verified tournament solution for %s: %s",
+            question_id,
+            exc,
+        )
+        solution, explanation = AI_TOURNAMENT_REFERENCE_SOLUTIONS[question_id]
+        return solution, f"Gemini is temporarily unavailable; using the verified backup solution.\n{explanation}"
+    try:
+        output = json.loads(answer)
+    except json.JSONDecodeError as exc:
+        raise ValueError("The AI contestant did not return valid JSON.") from exc
+    if not isinstance(output, dict):
+        raise ValueError("The AI contestant returned an invalid response.")
+    solution = output.get("code")
+    if not isinstance(solution, str):
+        raise ValueError("The AI contestant did not return a JavaScript solution.")
+    solution = solution.strip()
+    if not solution or len(solution) > 20_000:
+        raise ValueError("An AI contestant returned an empty or oversized solution.")
+    labels = {
+        "Approach": output.get("approach"),
+        "Time complexity": output.get("time_complexity"),
+        "Space complexity": output.get("space_complexity"),
+    }
+    if any(not isinstance(value, str) or not value.strip() for value in labels.values()):
+        raise ValueError("The AI contestant did not return all learning notes.")
+    explanation = "\n".join(
+        f"{label}: {labels[label].strip()}"
+        for label in ("Approach", "Time complexity", "Space complexity")
+    )
+    return solution, explanation
+
+
+@app.post("/api/student-tournament")
+def ai_tournament():
+    origin = request.headers.get("Origin")
+    if origin and not is_allowed_origin(origin):
+        return jsonify({"error": "Tournament rounds must come from CodexSheet."}), 403
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
+        return jsonify({"error": "The tournament needs the server-side GEMINI_API_KEY setting."}), 503
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Send the tournament submission as JSON."}), 400
+    question_id = data.get("question_id")
+    team = data.get("team")
+    round_number = data.get("round")
+    source = data.get("source_code")
+    if type(round_number) is not int or not 1 <= round_number <= len(AI_TOURNAMENT_QUESTIONS):
+        return jsonify({"error": "Choose a valid tournament round."}), 400
+    if (
+        not isinstance(question_id, str)
+        or question_id != AI_TOURNAMENT_QUESTIONS[round_number - 1]
+        or team != AI_TOURNAMENT_TEAMS[round_number - 1]
+    ):
+        return jsonify({"error": "That team and problem do not match this tournament round."}), 400
+    if not isinstance(source, str) or not source.strip() or len(source) > 20_000:
+        return jsonify({"error": "Code must contain 1 to 20,000 characters."}), 400
+
+    client_ip = request.remote_addr or "local"
+    now = time.monotonic()
+    recent = ai_tournament_request_times[client_ip]
+    while recent and now - recent[0] > 60:
+        recent.popleft()
+    if len(recent) >= 6:
+        return jsonify({"error": "Too many tournament submissions. Wait a minute before trying again."}), 429
+    recent.append(now)
+
+    try:
+        ai_code, ai_explanation = ai_tournament_solution(AI_TOURNAMENT_PROBLEMS[question_id], round_number)
+    except Exception as exc:
+        app.logger.exception("Tournament AI solution generation failed")
+        return jsonify({"error": "The AI opponent could not prepare its solution. Try again shortly."}), 502
+
+    cases = AI_TOURNAMENT_CASES[question_id]
+
+    def score_solution(tasks: list, expected_cases: list) -> dict:
+        results = []
+        for task, (_, expected) in zip(tasks, expected_cases):
+            result = task.result()
+            if result.get("error"):
+                raise RuntimeError(str(result["error"]))
+            status = str(result.get("status") or "")
+            passed = (
+                status == "Finished"
+                and not result.get("compile_output")
+                and " ".join(str(result.get("stdout") or "").split()) == " ".join(expected.split())
+            )
+            results.append({
+                "passed": passed,
+                "runtime_ms": int(float(result.get("time") or 0) * 1000),
+                "status": "Accepted" if passed else status or "Wrong Answer",
+            })
+        return {
+            "passed_cases": sum(result["passed"] for result in results),
+            "total_cases": len(expected_cases),
+            "runtime_ms": sum(result["runtime_ms"] for result in results),
+            "statuses": [result["status"] for result in results],
+        }
+
+    try:
+        worker_count = min(8, 2 * len(cases))
+        with ThreadPoolExecutor(max_workers=worker_count) as pool:
+            student_tasks = []
+            ai_tasks = []
+            for stdin, _ in cases:
+                student_tasks.append(
+                    pool.submit(tournament_execute_case, "JavaScript", source, stdin, "student")
+                )
+                ai_tasks.append(
+                    pool.submit(tournament_execute_case, "JavaScript", ai_code, stdin, "opponent")
+                )
+            student_result = score_solution(student_tasks, cases)
+            ai_result = score_solution(ai_tasks, cases)
+    except Exception as exc:
+        app.logger.exception("Tournament code judging failed")
+        return jsonify({"error": f"The compiler could not judge this round: {exc}"}), 502
+
+    student_score = (student_result["passed_cases"], -student_result["runtime_ms"])
+    ai_score = (ai_result["passed_cases"], -ai_result["runtime_ms"])
+    winner = "student" if student_score > ai_score else "ai" if ai_score > student_score else "draw"
+    return jsonify({
+        "question_id": question_id,
+        "team": team,
+        "student": student_result,
+        "ai": ai_result,
+        "ai_code": ai_code,
+        "ai_explanation": ai_explanation,
+        "winner": winner,
+    })
 
 
 @app.get("/health")
@@ -991,7 +1204,12 @@ def gemini_reply(
         api_key=os.environ.get("GEMINI_API_KEY", "").strip(),
         http_options=types.HttpOptions(
             timeout=timeout_ms if timeout_ms > 0 else None,
-            retry_options=types.HttpRetryOptions(attempts=retry_attempts, initial_delay=1, max_delay=2, http_status_codes=[503]),
+            retry_options=types.HttpRetryOptions(
+                attempts=retry_attempts,
+                initial_delay=1,
+                max_delay=2,
+                http_status_codes=[503, 504],
+            ),
         ),
     )
     models = [os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()]
@@ -1012,7 +1230,7 @@ def gemini_reply(
             )
             return (response.text or "").strip()
         except Exception as exc:
-            if is_service_unavailable(exc) and index < len(models) - 1:
+            if is_gemini_transient_error(exc) and index < len(models) - 1:
                 app.logger.warning("Gemini model %s is unavailable; retrying with %s", model_name, models[-1])
                 continue
             raise

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, BookOpen, Check, Copy, GraduationCap, LoaderCircle, Mail, MessageCircle, QrCode, RefreshCw, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
 import { supabase, supabaseConfigurationError } from "./lib/supabase";
@@ -26,7 +26,7 @@ import {
   type MentorshipOrder,
 } from "./mentorship";
 import { accessPass, productById, railLabel, soldProducts, type ProductId } from "./products";
-import { useUnlocks, type Unlocks } from "./entitlements";
+import { unlocksRail, useUnlocks, type Unlocks } from "./entitlements";
 
 type Order = { reference: string; plan: string; amount: number; status: string; filed_at: string; paytm_reference?: string };
 type Payment = Order & { due: boolean; paid: boolean };
@@ -36,6 +36,55 @@ const shortDay = (iso: string) =>
 
 const contactHref = (reference: string) =>
   `mailto:${mentorEmail}?subject=${encodeURIComponent(`CodexSheet payment ${reference}`)}&body=${encodeURIComponent(`Reference: ${reference}\nPaytm UTR:\nWhat I want to work on:`)}`;
+
+const checkoutProductKey = "codexsheet-checkout-product";
+const checkoutReferenceKey = (productId: ProductId) => `codexsheet-checkout-reference:${productId}`;
+const checkoutClaimKey = (productId: ProductId) => `codexsheet-checkout-claim:${productId}`;
+
+function initialCheckoutProduct(fallback: ProductId): ProductId {
+  try {
+    const saved = window.sessionStorage.getItem(checkoutProductKey);
+    return saved && productById(saved) ? saved as ProductId : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function initialReference(product: { id: ProductId; tag: string }): string {
+  try {
+    return window.sessionStorage.getItem(checkoutReferenceKey(product.id)) || orderReference(product);
+  } catch {
+    return orderReference(product);
+  }
+}
+
+function initialSavedClaim(productId: ProductId, signedIn: boolean): { ok: boolean; message: string } | null {
+  try {
+    const claim = window.sessionStorage.getItem(checkoutClaimKey(productId));
+    if (!claim) return null;
+    return {
+      ok: true,
+      message: signedIn
+        ? `Your payment claim ${claim} was recorded. Checking that it is connected to this account…`
+        : `Your payment claim ${claim} was recorded. Sign in with the same email you entered to connect access to your account.`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function productPath(plan: string): string | null {
+  if (plan === "family" || plan === "dsa250") return "/problems";
+  if (plan === "roadmap") return "/roadmap";
+  if (plan === "patterns") return "/patterns";
+  return null;
+}
+
+function productEntitlement(plan: string): ProductId | null {
+  if (plan === "family") return "dsa250";
+  if (plan === "dsa250" || plan === "roadmap" || plan === "patterns" || plan === "session") return plan;
+  return null;
+}
 
 /** What a confirmed claim gives you, written from the row rather than the card. */
 function openedLine(plan: string, amount: number): string {
@@ -68,6 +117,7 @@ export default function MentorshipPayments({
   userEmail = "",
   initialProduct = "dsa250" as ProductId,
   unlocks: fromApp,
+  signInSlot = null,
 }: {
   userId?: string | null;
   userName?: string;
@@ -76,19 +126,21 @@ export default function MentorshipPayments({
   initialProduct?: ProductId;
   /** App reads the ledger for the gates already; the checkout reads its own when handed none. */
   unlocks?: Unlocks;
+  /** Sign-in and sign-up actions shown when a claim must be connected to an account. */
+  signInSlot?: ReactNode;
 }) {
   const own = useUnlocks(fromApp ? null : (userId ?? null));
   const entitlements = fromApp ?? own;
-  const [productId, setProductId] = useState<ProductId>(initialProduct);
+  const [productId, setProductId] = useState<ProductId>(() => initialCheckoutProduct(initialProduct));
   const product = productById(productId) ?? accessPass;
-  const [reference, setReference] = useState(() => orderReference(product));
+  const [reference, setReference] = useState(() => initialReference(product));
   const [superseded, setSuperseded] = useState("");
   const [buyerName, setBuyerName] = useState(userName);
   const [buyerContact, setBuyerContact] = useState(userEmail);
   const [paytmReference, setPaytmReference] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<{ ok: boolean; message: string } | null>(null);
+  const [saved, setSaved] = useState<{ ok: boolean; message: string } | null>(() => initialSavedClaim(product.id, Boolean(userId)));
   const [copied, setCopied] = useState<string | null>(null);
   const [lookupReference, setLookupReference] = useState("");
   const [lookup, setLookup] = useState<{ text: string; order?: Order } | null>(null);
@@ -105,6 +157,16 @@ export default function MentorshipPayments({
   const dueRows = (ledger ?? []).filter((row) => row.due);
   const dueSum = dueRows.reduce((total, row) => total + Number(row.amount), 0);
   const owned = entitlements.mentor || entitlements.owned[product.id];
+  const watchedEntitlement = watched ? productEntitlement(watched.plan) : null;
+  const watchedProductPath = watched ? productPath(watched.plan) : null;
+  const watchedProductOwned = watchedEntitlement ? unlocksRail(entitlements, watchedEntitlement) : false;
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(checkoutProductKey, product.id);
+      window.sessionStorage.setItem(checkoutReferenceKey(product.id), reference);
+    } catch { /* The checkout reference remains visible for this visit. */ }
+  }, [product.id, reference]);
 
   async function loadLedger() {
     if (!supabase || !userId) { setLedger(null); setLedgerNote(""); return; }
@@ -119,6 +181,10 @@ export default function MentorshipPayments({
   // The ledger is keyed on the signed-in Clerk id (or the verified email of an
   // order paid without signing in), so it only exists once there is an id.
   useEffect(() => { void loadLedger(); }, [userId]);
+
+  useEffect(() => {
+    if (saved?.ok && reference) void refreshWatch(reference);
+  }, [userId]);
 
   async function refreshWatch(code: string) {
     if (!supabase) { setWatchNote(supabaseConfigurationError ?? "Supabase is not configured."); return; }
@@ -152,11 +218,14 @@ export default function MentorshipPayments({
   // the student's. A code they may already have paid against stays reachable.
   function newReference() {
     setSuperseded(reference);
-    setReference(orderReference(product));
+    const nextReference = orderReference(product);
+    setReference(nextReference);
+    try { window.sessionStorage.setItem(checkoutReferenceKey(product.id), nextReference); } catch { /* The reference remains visible for this visit. */ }
   }
 
   function restoreSuperseded() {
     setReference(superseded);
+    try { window.sessionStorage.setItem(checkoutReferenceKey(product.id), superseded); } catch { /* The reference remains visible for this visit. */ }
     setSuperseded("");
   }
 
@@ -167,11 +236,16 @@ export default function MentorshipPayments({
     const next = productById(id);
     if (!next) return;
     setProductId(id);
-    setReference(orderReference(next));
+    const nextReference = initialReference(next);
+    setReference(nextReference);
     setSuperseded("");
     setSaved(null);
     setWatched(null);
     setWatchNote("");
+    try {
+      window.sessionStorage.setItem(checkoutProductKey, id);
+      window.sessionStorage.setItem(checkoutReferenceKey(id), nextReference);
+    } catch { /* Checkout selection remains available for this visit. */ }
   }
 
   async function copy(label: string, value: string) {
@@ -191,13 +265,18 @@ export default function MentorshipPayments({
       setSaved({ ok: false, message: "The Paytm UTR is what proves the payment. Copy the 12-digit transaction reference from the Paytm receipt - it is shown under the amount, not the phone number." });
       return;
     }
+    const claimEmail = /.+@.+\..+/.test(buyerContact.trim()) ? buyerContact.trim() : userEmail.trim();
+    if (!userId && !/.+@.+\..+/.test(claimEmail)) {
+      setSaved({ ok: false, message: "Add the email address you will use to create or sign in to CodexSheet. A phone number alone cannot link a payment to your portal account." });
+      return;
+    }
     const order: MentorshipOrder = {
       reference,
       plan: product.id,
       amount,
       buyerName,
       buyerContact,
-      buyerEmail: /.+@.+\..+/.test(buyerContact.trim()) ? buyerContact.trim() : userEmail.trim(),
+      buyerEmail: claimEmail,
       paytmReference,
       status: "awaiting",
       userId: userId ?? "",
@@ -220,6 +299,13 @@ export default function MentorshipPayments({
       : alreadyOwns
         ? { ok: true, message: `This account already holds ${product.name}, so nothing more is due and ${railLabel(product)} stays open. ${product.repeatable ? "You can buy it again whenever you need it." : "One payment buys it for good."}` }
         : { ok: false, message: `Saved on this device (${outcome.reason}). Send the reference ${reference} and your Paytm screenshot to Aditya on WhatsApp so it is not lost.` });
+    if (outcome.ok && !alreadyOwns) {
+      try {
+        window.sessionStorage.setItem(checkoutProductKey, product.id);
+        window.sessionStorage.setItem(checkoutReferenceKey(product.id), reference);
+        window.sessionStorage.setItem(checkoutClaimKey(product.id), reference);
+      } catch { /* The claim remains recorded on the server. */ }
+    }
     // The record is saved and the Paytm transaction is done, so show at once
     // whether the money is still due or already confirmed.
     if (outcome.ok || alreadyOwns) void refreshWatch(reference);
@@ -349,6 +435,13 @@ export default function MentorshipPayments({
         <article className="mentorship-pay">
           <h2><span className="mentorship-step">1</span> Pay {rupees(amount)} on his Paytm QR</h2>
           <p className="mentorship-pay-note">This is Aditya&apos;s own Paytm code, straight from his app. It carries his UPI id and nothing else, so the amount is not filled in for you: type <strong>{rupees(amount)}</strong> for {product.name}, put <strong>{reference}</strong> in the note, then keep the UTR and a screenshot of the receipt - step 2 needs both.</p>
+          {!userId && (
+            <div className="mentorship-account-note">
+              <strong>For instant portal access, sign in before paying.</strong>
+              <p>Your payment claim will attach to your account. Already paid? Submit the claim with the same email you use for sign-in, then sign in below to open your product.</p>
+              {signInSlot}
+            </div>
+          )}
 
           <div className="mentorship-qr">
             <div className="payqr">
@@ -438,15 +531,42 @@ export default function MentorshipPayments({
                 <button type="button" className="mentorship-secondary" onClick={() => void refreshWatch(reference)} disabled={watching}>
                   {watching ? <LoaderCircle size={14} className="mentorship-spin" /> : <RefreshCw size={14} />} {watching ? "Checking…" : "Refresh status"}
                 </button>
+                {watched && paymentBadge(watched).cls === "done" && (
+                  userId ? (
+                    watchedEntitlement && watchedProductOwned && watchedProductPath
+                      ? <a className="mentorship-account-cta" href={watchedProductPath}><ArrowRight size={14} /> Open {railLabel(productById(watched.plan) ?? accessPass)}</a>
+                      : <p className="mentorship-small">Payment is confirmed, but this account does not match the email on the claim. Sign in with that email or contact Aditya with reference {reference}.</p>
+                  ) : signInSlot ? (
+                    <div className="mentorship-account-next">
+                      <strong>Next: sign in to open your portal</strong>
+                      <p>Use the same email you entered above. Your confirmed payment will match that account after sign-in.</p>
+                      {signInSlot}
+                    </div>
+                  ) : (
+                    <p className="mentorship-small">Sign in with the same email entered on the claim to connect this payment to your portal.</p>
+                  )
+                )}
               </div>
               <a href={whatsappHref(reference, product.name, amount)} target="_blank" rel="noreferrer"><MessageCircle size={14} /> WhatsApp the screenshot to {whatsapp.display}</a>
               <a href={contactHref(reference)}><Mail size={14} /> Email Aditya the reference {reference}</a>
-              <button type="button" className="mentorship-secondary" onClick={() => { setReference(orderReference(product)); setSaved(null); setPaytmReference(""); setWatched(null); setWatchNote(""); }}>Start another request</button>
+              <button type="button" className="mentorship-secondary" onClick={() => {
+                const nextReference = orderReference(product);
+                setReference(nextReference);
+                setSaved(null);
+                setPaytmReference("");
+                setWatched(null);
+                setWatchNote("");
+                try {
+                  window.sessionStorage.setItem(checkoutReferenceKey(product.id), nextReference);
+                  window.sessionStorage.removeItem(checkoutClaimKey(product.id));
+                } catch { /* The new reference remains visible for this visit. */ }
+              }}>Start another request</button>
             </div>
           ) : (
             <div className="mentorship-form">
               <label>Name<input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} placeholder="Your name" maxLength={120} /></label>
               <label>Email or phone<input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} placeholder="where the product is opened for you" maxLength={160} /></label>
+              {!userId && <p className="mentorship-account-note">Already paid? Enter the same email you’ll use for CodexSheet sign-in; it links your confirmed payment to the portal.</p>}
               <label>Paytm UTR / transaction reference (required)<input value={paytmReference} onChange={(event) => setPaytmReference(event.target.value)} placeholder="the 12-digit reference on your Paytm receipt" maxLength={80} /></label>
               <label>What do you want to work on<textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="DSA roadmap, system design, mock interviews…" maxLength={1000} /></label>
               <p className="mentorship-summary">Product: <strong>{product.name}</strong> · {rupees(amount)} · ref {reference}</p>
