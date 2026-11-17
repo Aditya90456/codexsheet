@@ -6,7 +6,7 @@
 //
 // Three rules keep this honest:
 //   1. Every price here has a matching CHECK on public.mentorship_orders
-//      (supabase/migrations/20261108_all_access_pass.sql). The row cannot land
+//      (supabase/migrations/20261117_dsa250_ten_rupees.sql). The row cannot land
 //      at any other figure, so the page cannot over-promise.
 //   2. `gate` says exactly which view the product opens. Copy may describe more,
 //      but only what is in `gate` is locked, and what was already free stays free.

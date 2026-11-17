@@ -60,8 +60,10 @@ For existing profiles, it adds and backfills the `user_id`
 column from the legacy UUID `id`. It migrates the private notebook to support
 multiple titled notes per user, preserving existing note content, and creates
 an initial empty note for each existing profile. New profiles automatically
-receive an initial private note. Rerun the complete script after pulling schema
-updates; its statements are written to be repeatable.
+receive an initial private note. For newer features, apply the pending
+`supabase/migrations/*.sql` files in date order. On an existing project, apply
+pending migrations only; the base script contains legacy definitions and must
+not be rerun over newer migrations.
 
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
@@ -76,16 +78,23 @@ Piston/Judge0 execution service as described in [runner setup](./runner/README.m
 
 ## Mentorship payments
 
-`/mentorship` sells Aditya's own time: 1:1 mentorship ₹19, long-term mentorship
-₹100 for 3 months and ₹499 for 6 months, weekly session plus DMs anytime. Payment
-goes straight to his personal Paytm UPI handle (`8335873311@paytm`) through a UPI
-intent link and QR, so there is no gateway, no API key, and no card data.
+`/mentorship` currently offers CodexSheet All Access for ₹10. The mentor session
+is booked and paid separately on Topmate. All Access payment goes straight to
+Aditya's personal Paytm UPI handle through a UPI intent link and QR, so there is
+no gateway, no API key, and no card data.
+
+The current checkout writes product ids and exact prices to
+`public.mentorship_orders`. After the base schema, apply pending migrations in
+date order and ensure `supabase/migrations/20261106_codexsheet_products.sql`
+runs before `supabase/migrations/20261117_dsa250_ten_rupees.sql`. The latter
+aligns the database's All Access price check with the ₹10 shown in the checkout;
+without it, the database rejects a valid payment claim.
 
 `public.mentorship_orders` is created by
-`supabase/migrations/20261028_mentorship_orders.sql` (applied 2026-10-28) and is
-included in `supabase.sql`; rerun either after schema edits. Students insert a
-claim (reference code, plan, amount, name, contact, Paytm reference) whether or
-not they are signed in; the table itself is not readable from the browser.
+`supabase/migrations/20261028_mentorship_orders.sql` and is included in
+`supabase.sql`. Students insert a claim (reference code, product, amount, name,
+contact, Paytm reference) whether or not they are signed in; the table itself is
+not readable from the browser.
 `mentorship_order_status(reference)` is the only read path and returns just the
 status, plan, amount and filing time, never the buyer's contact details.
 
@@ -96,10 +105,10 @@ same email as the CodexSheet account, then sign in; the checkout keeps the
 reference through authentication and the confirmed claim is matched to that
 email. A phone-only claim cannot be matched automatically to a portal account.
 
-Confirm each payment in the Paytm app, then set that row's `status` to
-`confirmed` in the Supabase dashboard before the first session. If the insert
-ever fails, the page keeps the claim in browser `localStorage` and tells the
-student to DM the reference code, so no request is lost.
+After paying, submit the receipt's UTR in the checkout. The All Access claim is
+confirmed when it is recorded; keep the receipt so the transfer can be reconciled
+against the Paytm statement. If the insert fails, the page queues the claim on
+that device and shows the reference to share with Aditya.
 
 ## Notification mail
 
