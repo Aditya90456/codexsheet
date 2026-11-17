@@ -86,9 +86,10 @@ no gateway, no API key, and no card data.
 The current checkout writes product ids and exact prices to
 `public.mentorship_orders`. After the base schema, apply pending migrations in
 date order and ensure `supabase/migrations/20261106_codexsheet_products.sql`
-runs before `supabase/migrations/20261117_dsa250_ten_rupees.sql`. The latter
-aligns the database's All Access price check with the ₹10 shown in the checkout;
-without it, the database rejects a valid payment claim.
+runs before `supabase/migrations/20261117_dsa250_ten_rupees.sql` and
+`supabase/migrations/20261117155000_dsa250_unlock_all_access.sql`. These align
+the database's All Access price check with the ₹10 shown in checkout and unlock
+the sheet, roadmap and pattern course for confirmed All Access claims.
 
 `public.mentorship_orders` is created by
 `supabase/migrations/20261028_mentorship_orders.sql` and is included in
