@@ -855,7 +855,7 @@ export default function MenteeSpace({ userId = null, userEmail = "" }: { userId?
             <p className="mentees-note">
               {dues.length > 0
                 ? "A claim confirms itself the moment the server accepts it, so a DUE row here means the record never arrived — send your Paytm screenshot to Aditya on WhatsApp and it will be opened by hand."
-                : <>Nothing confirmed yet. {soldProducts.map((product) => `${product.name} ${rupees(product.price)}`).join(" · ")} — bought on the <a href="/mentorship">mentorship page</a>. A mentor session is what opens this lane; the pass opens the rails, not the call.</>}
+                : <>Nothing confirmed yet. {soldProducts.map((product) => `${product.name} ${rupees(product.price)}`).join(" · ")} — bought on the <a href="/mentorship">mentorship page</a>. A mentor session opens this lane; research and Battle are separate purchases.</>}
             </p>
           )}
           {mine.map((mentee) => {

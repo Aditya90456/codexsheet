@@ -2,29 +2,23 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Code2, ExternalLink, LayoutDashboard, LoaderCircle, Pause, Play, RotateCcw, Save, Search, Send, Sparkles, TriangleAlert, X } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
-import { python } from "@codemirror/lang-python";
-import { java } from "@codemirror/lang-java";
-import { cpp } from "@codemirror/lang-cpp";
 import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import DsaCourseStudio from "./DsaCourseStudio";
 import ShivaTandavPreloader from "./ShivaTandavPreloader";
 import { devaTestCaseCount, devaTestCases } from "./deva-test-cases";
-import { judgeCases, outputsMatch, parseTestLiteral, splitTestArguments, type JudgeCase } from "./deva-judge";
+import { parseTestLiteral, splitTestArguments } from "./deva-judge";
 import { starterFor, starters } from "./deva-starters";
 import { supabase } from "./lib/supabase";
 
-type Language = "JavaScript" | "Python" | "Java" | "C++";
+type Language = "JavaScript";
 type Problem = { number: number; title: string; pattern: string; difficulty: "Easy" | "Medium" | "Hard"; link?: string };
 type TraceStep = { index: number; value: number; variable: string; arrayName: string; logic: string; memory: string[] };
 type FlowStep = { line: number | null; source: string; title: string; detail: string; kind: "call" | "function" | "array" | "loop" | "branch" | "return" | "statement" | "error" };
 type TreeNode = { id: number; value: number; depth: number; x: number; left: number | null; right: number | null };
 type InvokeError = { message: string; context?: Response };
 type SubmissionResult = { passed: number; total: number; details: string[]; error?: string; verdict?: string; time?: number; memory?: number };
-const runtimes: Record<Language, string> = { JavaScript: "javascript", Python: "python", Java: "java", "C++": "cpp" };
-const codeMirrorLanguage: Record<Language, () => Extension> = {
-  JavaScript: () => javascript(), Python: () => python(), Java: () => java(), "C++": () => cpp(),
-};
+const codeMirrorLanguage: Record<Language, () => Extension> = { JavaScript: () => javascript() };
 // oneDark supplies the syntax palette; this layer only restyles the surfaces so
 // the editor keeps the workspace's warm #101010 chrome instead of oneDark's grey.
 const devaEditorTheme = EditorView.theme({
@@ -313,7 +307,7 @@ export default function DsaCodingWorkspace({ problems, userId, focusProblem }: {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [librarySearch, setLibrarySearch] = useState("");
   const [structure, setStructure] = useState<"array" | "linked-list" | "bst" | "stack" | "queue" | "hash-map" | "graph">("array");
-  const [language, setLanguage] = useState<Language>("JavaScript");
+  const [language] = useState<Language>("JavaScript");
   const [problemNumber, setProblemNumber] = useState(1);
   const [code, setCode] = useState(starters.JavaScript);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
@@ -349,33 +343,21 @@ export default function DsaCodingWorkspace({ problems, userId, focusProblem }: {
     setRunningCode(true);
     setRunOutput(null);
     try {
-      if (language === "JavaScript") {
-        const solution = solutionFunction(code);
-        const cases = submissionCases(problemNumber);
-        if (solution && cases.length) {
-          const response = await fetch("/api/execute", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: solution.code, fn: solution.fn, cases }),
-            signal: AbortSignal.timeout(30_000),
-          });
-          const result = await response.json() as SubmissionResult;
-          if (!response.ok) throw new Error(result.error ?? "The sample cases could not be run.");
-          setSubmission(result);
-          return;
-        }
-        const result = await runJavaScriptInBrowser(code, stdin);
-        setRunOutput(result);
+      const solution = solutionFunction(code);
+      const cases = submissionCases(problemNumber);
+      if (solution && cases.length) {
+        const response = await fetch("/api/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: solution.code, fn: solution.fn, cases }),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const result = await response.json() as SubmissionResult;
+        if (!response.ok) throw new Error(result.error ?? "The sample cases could not be run.");
+        setSubmission(result);
         return;
       }
-      const response = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: runtimes[language], source_code: code, stdin }),
-        signal: AbortSignal.timeout(30_000),
-      });
-      const result = await response.json() as NonNullable<typeof runOutput>;
-      if (!response.ok) throw new Error(result.error ?? "The code could not be run.");
+      const result = await runJavaScriptInBrowser(code, stdin);
       setRunOutput(result);
     } catch (error) {
       setRunOutput({ error: error instanceof Error ? error.message : "The compiler request failed." });
@@ -432,67 +414,9 @@ export default function DsaCodingWorkspace({ problems, userId, focusProblem }: {
     } catch { setSaveMessage("Could not save"); }
   }
 
-  async function submitCompiledLanguage(cases: JudgeCase[]): Promise<SubmissionResult> {
-    const details: string[] = [];
-    let passed = 0;
-    let error: string | undefined;
-    let verdict: string | undefined;
-    let slowest = 0;
-    let peakMemory = 0;
-    for (let index = 0; index < cases.length; index++) {
-      const testCase = cases[index];
-      const response = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: runtimes[language], source_code: code, stdin: testCase.stdin }),
-        signal: AbortSignal.timeout(30_000),
-      });
-      const result = await response.json() as { status?: string; stdout?: string; stderr?: string; compile_output?: string; time?: string | null; memory?: number | null; error?: string };
-      if (!response.ok) { error = result.error ?? "The compiler service could not check this submission."; break; }
-      if (result.compile_output?.trim()) {
-        verdict = "Compile Error";
-        error = result.compile_output.trim().split("\n").slice(0, 8).join("\n");
-        break;
-      }
-      const status = result.status ?? "";
-      if (/time limit|timeout/i.test(status)) { verdict = "Time Limit Exceeded"; error = `Case ${index + 1} ran past the time limit.`; break; }
-      if (/runtime error|signal|internal error/i.test(status)) {
-        verdict = "Runtime Error";
-        error = (result.stderr || result.stdout || status).trim().split("\n").slice(0, 8).join("\n");
-        break;
-      }
-      slowest = Math.max(slowest, Number(result.time) || 0);
-      peakMemory = Math.max(peakMemory, Number(result.memory) || 0);
-      const actual = (result.stdout ?? "").trim();
-      if (outputsMatch(actual, testCase.expected)) { passed += 1; continue; }
-      verdict = verdict ?? "Wrong Answer";
-      if (details.length < 3) details.push(`Case ${index + 1}\ninput:\n${testCase.stdin.trim()}\nexpected: ${testCase.expected}\ngot: ${actual || "(no output)"}`);
-    }
-    return { passed, total: cases.length, details, error, verdict, time: slowest || undefined, memory: peakMemory || undefined };
-  }
-
   async function submitSolution() {
     markAttempted();
     setSubmission(null);
-    if (language !== "JavaScript") {
-      const cases = judgeCases(problemNumber);
-      if (!cases?.length) {
-        setSubmission({ passed: 0, total: 0, details: [], error: "This problem’s examples use an input shape the line-based judge cannot express yet, such as a nested list or a string containing spaces. Use Run to execute your code." });
-        return;
-      }
-      setRunningCode(true);
-      setRunOutput(null);
-      try {
-        const result = await submitCompiledLanguage(cases);
-        setSubmission(result);
-        if (result.total > 0 && result.passed === result.total && !result.error && !solvedProblems.includes(problemNumber)) toggleSolved();
-      } catch (submitError) {
-        setSubmission({ passed: 0, total: cases.length, details: [], error: submitError instanceof Error ? submitError.message : "The submission could not be checked." });
-      } finally {
-        setRunningCode(false);
-      }
-      return;
-    }
     const solution = solutionFunction(code);
     const cases = submissionCases(problemNumber);
     if (!solution) {
@@ -624,7 +548,7 @@ export default function DsaCodingWorkspace({ problems, userId, focusProblem }: {
       </section>
       <div className="deva-workspace-pane"><div className="deva-problem-toolbar"><span><i className={`difficulty ${(problem?.difficulty ?? "Easy").toLowerCase()}`}/>{problem?.difficulty} <b>·</b> {problem?.pattern}</span><button type="button" className={solvedProblems.includes(problemNumber) ? "solved" : ""} onClick={toggleSolved}>{solvedProblems.includes(problemNumber) ? <Check size={14}/> : <Check size={14}/>} {solvedProblems.includes(problemNumber) ? "Solved" : "Mark solved"}</button></div><section className="dsa-live-workspace">
       <div className="dsa-live-editor">
-        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.{language === "Python" ? "py" : language === "C++" ? "cpp" : language === "Java" ? "java" : "js"}</strong><label className="deva-pattern-language"><span>{language === "JavaScript" ? "JS" : language}</span><select aria-label="Programming language" value={language} onChange={(event) => setLanguage(event.target.value as Language)}>{(["JavaScript", "Python", "Java", "C++"] as Language[]).map((item) => <option key={item}>{item}</option>)}</select></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => setAiOpen((open) => !open)}><Sparkles size={12}/> AI help</button><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div>{aiOpen && <section className="deva-ai-panel" aria-label="Gemini editor help"><header><div><strong><Sparkles size={14}/> Ask Gemini 3.6 Flash</strong><small>Get a hint, explain your approach, or debug the current code.</small></div><button type="button" aria-label="Close AI help" onClick={() => setAiOpen(false)}><X size={15}/></button></header>{aiReply && <p className="deva-ai-reply">{aiReply}</p>}{aiError && <p className="deva-ai-error" role="alert">{aiError}</p>}<form onSubmit={(event) => { event.preventDefault(); void askDevaAi(aiQuestion); }}><input value={aiQuestion} onChange={(event) => setAiQuestion(event.target.value)} placeholder="e.g. Give me a hint for this problem" maxLength={300} disabled={aiBusy}/><button type="submit" disabled={aiBusy || !aiQuestion.trim()}>{aiBusy ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} {aiBusy ? "Thinking…" : "Ask"}</button></form></section>}<CodeMirror
+        <div className="pattern-editor-shell deva-pattern-editor"><div className="pattern-editor-toolbar"><span><i/><i/><i/></span><strong>solution.js</strong><label className="deva-pattern-language"><span>JavaScript</span></label><span className="deva-pattern-saved"><i/> {saveMessage}</span><button type="button" onClick={() => setAiOpen((open) => !open)}><Sparkles size={12}/> AI help</button><button type="button" onClick={() => void saveCurrentCode()}><Save size={12}/> Save</button><button type="button" onClick={() => { editCode(starterFor(language, problem)); setCursor({ line: 1, column: 1 }); }}><RotateCcw size={12}/> Reset</button></div>{aiOpen && <section className="deva-ai-panel" aria-label="Gemini editor help"><header><div><strong><Sparkles size={14}/> Ask Gemini 3.6 Flash</strong><small>Get a hint, explain your approach, or debug the current code.</small></div><button type="button" aria-label="Close AI help" onClick={() => setAiOpen(false)}><X size={15}/></button></header>{aiReply && <p className="deva-ai-reply">{aiReply}</p>}{aiError && <p className="deva-ai-error" role="alert">{aiError}</p>}<form onSubmit={(event) => { event.preventDefault(); void askDevaAi(aiQuestion); }}><input value={aiQuestion} onChange={(event) => setAiQuestion(event.target.value)} placeholder="e.g. Give me a hint for this problem" maxLength={300} disabled={aiBusy}/><button type="submit" disabled={aiBusy || !aiQuestion.trim()}>{aiBusy ? <LoaderCircle className="deva-spinner" size={14}/> : <Send size={14}/>} {aiBusy ? "Thinking…" : "Ask"}</button></form></section>}<CodeMirror
           className="deva-source-editor deva-codemirror"
           value={code}
           theme="dark"

@@ -90,7 +90,7 @@ export const mentorCraft: string[] = [
   "He reads your solution line by line, on the real judged submission in the Deva editor — not a paragraph of advice.",
   "Confirmed students get a private chat lane; he publishes 1:1 Google Meet slots and you pick the hour.",
   "Stuck at 2am on a sliding window? Message him; there is no per-question charge.",
-  "Your pass opens the moment the claim is recorded, and he reconciles the UTR against his own Paytm statement after the fact.",
+  "Product access opens as soon as the claim is recorded, and he reconciles the UTR against his own Paytm statement afterwards.",
 ];
 
 /**

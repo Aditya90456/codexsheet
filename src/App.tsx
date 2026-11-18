@@ -88,6 +88,7 @@ import MenteeSpace from "./MenteeSpace";
 import Marketplace from "./Marketplace";
 import MentorStudio from "./MentorStudio";
 import InterviewExperiences from "./InterviewExperiences";
+import InterviewQuestionResearch from "./InterviewQuestionResearch";
 import InterviewRadar from "./InterviewRadar";
 import Leaderboard from "./Leaderboard";
 import Certificates, { VerifyPage } from "./Certificates";
@@ -105,7 +106,7 @@ import { articleDetails, type ArticleDetail } from "./articleDetails";
 import { uiLanguages, useT, type MessageKey } from "./i18n";
 import { mentorProfile, rupees } from "./mentorship";
 import adityaPortrait from "./assets/aditya-bakshi.jpg";
-import { accessPass, productById, railLabel, soldProducts, type CodexSheetProduct, type ProductId } from "./products";
+import { interviewResearch, productById, railLabel, soldProducts, type CodexSheetProduct, type ProductId } from "./products";
 import { unlocksRail, useUnlocks } from "./entitlements";
 import { gitLogCommand, parseCommitSubjects, studentRepoCloneCommand, studentRepoUrl, topicFolderFor } from "./studentRepo";
 import { hauslaLine, rewardVoice, sheetModeVoice, sheetVoice } from "./sheetVoice";
@@ -171,7 +172,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "network" | "arena" | "tournament";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "interviews" | "network" | "arena" | "tournament";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -201,6 +202,7 @@ export const viewPaths: Record<WorkspaceView, string> = {
   studio: "/mentor-studio",
   experiences: "/experiences",
   radar: "/radar",
+  interviews: "/interviews",
   network: "/network",
   arena: "/battle",
   tournament: "/tournament",
@@ -214,7 +216,7 @@ const siteOrigin = "https://www.codexsheet.in";
 // wrong. Anything not listed here is a plain rail and gets the band.
 export const selfHeadedViews: WorkspaceView[] = [
   "home", "guru", "leaderboard", "certificate", "verify", "patterns",
-  "companies", "cslabs", "articles", "resume", "radar", "experiences",
+  "companies", "cslabs", "articles", "resume", "radar", "interviews", "experiences",
   "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics", "arena", "tournament",
 ];
 
@@ -233,7 +235,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     description: "Every pattern behind the 250-problem DSA sheet: how to spot it, the code skeleton, an eight-week interview plan, and a lesson film that reads its own captions in eight Indian languages while the real algorithm runs step by step on screen.",
   },
   companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
-  "dsa-ide": { title: "DSA code editor with real test judging — CodexSheet", description: "Write Python, Java, C++ or JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
+  "dsa-ide": { title: "JavaScript DSA code editor with test judging — CodexSheet", description: "Write JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
   "dsa-course": { title: "Animated DSA course — CodexSheet", description: "A lesson-by-lesson DSA course where every data structure is shown moving, not described." },
   "programming-basics": { title: "Programming basics in Python, Java & C++ — CodexSheet", description: "A hands-on beginner course covering programming foundations in Python, Java, and C++, with runnable examples and short lessons." },
   guru: { title: "Guru — the free AI DSA teacher — CodexSheet", description: "Guru teaches one DSA topic at a time, checks your reasoning and hands you the problem that follows." },
@@ -262,8 +264,8 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   articles: { title: "DSA articles and interview notes — CodexSheet", description: "Short, opinionated write-ups on the parts of DSA that candidates keep getting wrong." },
   resume: { title: "Resume builder — CodexSheet", description: "Build a polished resume with a live preview and save a PDF. Your draft stays in this browser." },
   mentorship: {
-    title: `CodexSheet ${rupees(accessPass.price)} All Access — every paid rail, plus 1:1 mentor sessions`,
-    description: `One ${rupees(accessPass.price)} CodexSheet All Access payment opens all three paid rails: the 250-problem DSA sheet with its 84-day task plan, the 12-week roadmap board and the 16 pattern films with their PPT decks. A 45-minute 1:1 Google Meet with Aditya is ${rupees(productById("session")!.price)} and bought per session. Pay on his Paytm QR, confirmed the moment the claim lands, refundable within 5 days. The rest of the workspace is free, and anyone who paid for an older rail keeps every rail.`,
+    title: `${interviewResearch.name} · ${rupees(interviewResearch.price)}`,
+    description: `Source-linked interview question research costs ${rupees(interviewResearch.price)}. CodexSheet Battle is ${rupees(productById("battle")!.price)}. A 45-minute 1:1 Google Meet with Aditya is ${rupees(productById("session")!.price)} and bought per session. Pay on his Paytm QR, confirmed the moment the claim lands, refundable within 5 days.`,
   },
   mentees: { title: "Mentee console — CodexSheet", description: "Track the students you are mentoring and the sessions still owed." },
   marketplace: {
@@ -276,8 +278,12 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     description: "Round by round, in the candidate's own words: which company, which role, what they actually asked. Every card was written here and read by a mentor before it was published - nothing is scraped.",
   },
   radar: {
-    title: "2027 interview questions, by round — CodexSheet Radar",
-    description: "What the 2027 hiring cycle is actually asking: the AI-pairing round, reading code you did not write, defending your own project, designing around a model, behavioural answers and the DSA that still gates. 27 questions across 7 rounds, each linked to the write-up it came from.",
+    title: "2027 Interview Radar — sourced interview trends",
+    description: "A source-linked view of reported changes to interview rounds, with company material distinguished from candidate reports and guidance to verify current practices.",
+  },
+  interviews: {
+    title: "Interview Questions Research — original practice prompts",
+    description: "Practise original CodexSheet coding, system design, debugging and behavioral questions alongside official interview guidance from Google, Amazon, Microsoft and Atlassian. The prompts are not company questions.",
   },
   network: {
     title: "CodexSheet Network — share code, follow students and ask in private",
@@ -320,7 +326,8 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
     label: "Learn",
     items: [
       { view: "patterns", label: "Pattern library", icon: Layers },
-      { view: "radar", label: "2027 interview radar", icon: Radar },
+      { view: "interviews", label: "Interview Questions Research", icon: BookOpen },
+      { view: "radar", label: "2027 Interview Radar", icon: Radar },
       { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
       { view: "arena", label: "CodexSheet Battle", icon: Bot },
       { view: "tournament", label: "Student Tournament", icon: Trophy },
@@ -460,7 +467,7 @@ export function HomePage({
               {signedIn ? (
                 <button className="home-primary" type="button" onClick={() => onNavigate("problems")}>{tr("home.cta1")} <ArrowRight size={16} /></button>
               ) : signInSlot}
-              <button className="home-secondary" type="button" onClick={() => onOpenProduct(accessPass.id)}>{tr("home.ctaPass", { price: rupees(accessPass.price) })}</button>
+              <button className="home-secondary" type="button" onClick={() => onOpenProduct(interviewResearch.id)}>{interviewResearch.name} · {rupees(interviewResearch.price)}</button>
             </div>
             <ul className="home-numbers">
               <li><strong>{problems.length}</strong><span>problems</span></li>
@@ -522,15 +529,15 @@ export function HomePage({
 
       <section className="home-tiers" aria-labelledby="home-tiers-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">ONE {rupees(accessPass.price)} PAYMENT · NO GATEWAY</span><h2 id="home-tiers-title">Free to start. <em>Then one pass.</em></h2></div>
-          <p>Paid on Aditya&apos;s Paytm QR and confirmed the moment the claim lands. The pass never expires.</p>
+          <div><span className="home-section-kicker">INTERVIEW RESEARCH · NO GATEWAY</span><h2 id="home-tiers-title">Free to start. <em>Research the interview.</em></h2></div>
+          <p>Pay on Aditya&apos;s Paytm QR and the claim is confirmed as it lands. Research access never expires.</p>
         </div>
         <ul className="home-tier-list">
           <li className="home-tier home-tier-free">
             <span className="home-tier-price">FREE</span>
             <div className="home-tier-body">
               <strong>The workspace</strong>
-              <p>The Deva editor with real judged submissions, Guru in {uiLanguages.length - 1} Indian languages, the Algorithm Labs, notes, group chat, the leaderboard, your certificate and the 2027 radar - open with a Google sign-in.</p>
+              <p>The DSA problem library, JavaScript Deva editor, Guru in {uiLanguages.length - 1} Indian languages, Algorithm Labs, notes, group chat, leaderboard and certificates are free with a Google sign-in.</p>
             </div>
             <span className="home-tier-action">{signedIn ? "Yours already" : "Google sign-in"}</span>
           </li>
@@ -1166,7 +1173,7 @@ function ProductLock({ product, checking, onOpenStore, onRecheck, onFreeRail }: 
       <div className="sheet-lock-card">
         <span className="sheet-lock-kicker"><Lock size={13} /> {product.tag} · {rupees(product.price)}</span>
         <h2>{product.name} for {rupees(product.price)}. <em>{product.cadence}.</em></h2>
-        <p>{product.oneLine} It opens {railLabel(product)} and nothing else — the Deva editor with real judged submissions, Guru, the Algorithm Labs, notes, chat, the calendar, the leaderboard and the 2027 radar stay open for everyone, and anyone who paid for the old Sheet Pass keeps every rail.</p>
+        <p>{product.oneLine} It opens {railLabel(product)}. The DSA library, JavaScript editor, Guru, Algorithm Labs, notes, chat, calendar, leaderboard and certificates remain free.</p>
         <ul className="sheet-lock-list">
           {product.includes.map((line) => <li key={line}><Check size={14} /> {line}</li>)}
         </ul>
@@ -1215,7 +1222,7 @@ function StudentRepoCard({ group, onImportGit }: {
       <span className="problem-repo-icon"><GitBranch size={17} /></span>
       <div className="problem-repo-copy">
         <strong>The sheet is a git repo - and your commits count here.</strong>
-        <p>250 folders, one per problem, each with the brief and runnable Python, JavaScript, Java and C++ starters - the same starter the editor hands you. Commit with the problem number in front, then paste your log here: the solves, the XP, the streak, the leaderboard and the certificate all pick it up.</p>
+        <p>250 folders, one per problem, each with the brief and a runnable JavaScript starter. Commit with the problem number in front, then paste your log here: the solves, the XP, the streak, the leaderboard and the certificate all pick it up.</p>
         {open && (
           <div className="problem-repo-import">
             <label className="problem-repo-log">
@@ -1341,15 +1348,12 @@ function App() {
     });
     return () => { active = false; };
   }, [activeView, companyTagsReload]);
-  // One definer-side RPC answers all four entitlements for this account, and
-  // tells us whether it is a mentor: mentors and the grandfathered Sheet Pass
-  // payers see every rail. With Supabase missing the dev build never locks.
+  // One definer-side RPC answers product entitlements for this account and
+  // tells us whether it is a mentor. With Supabase missing the dev build never locks.
   const unlocks = useUnlocks(userId ?? null);
-  // A lock panel sends the checkout to the card the student was looking at, so
-  // the page does not open on the sheet when they wanted the roadmap.
-  const [checkoutProduct, setCheckoutProduct] = useState<ProductId>("dsa250");
+  // A lock panel sends checkout to the exact product the student was viewing.
+  const [checkoutProduct, setCheckoutProduct] = useState<ProductId>("interview-research");
   const lockedFor = (product: ProductId) => !unlocksRail(unlocks, product);
-  const sheetLocked = lockedFor("dsa250");
   function openCheckout(product: ProductId) {
     setCheckoutProduct(product);
     navigateToView("mentorship");
@@ -1587,7 +1591,7 @@ function App() {
   );
 
   useEffect(() => {
-    if (activeView !== "problems" || sheetLocked) return;
+    if (activeView !== "problems") return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
@@ -1615,7 +1619,7 @@ function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [activeView, cursorNumber, noteFor, orderedRows, progress, sheetLocked, studyNumber]);
+  }, [activeView, cursorNumber, noteFor, orderedRows, progress, studyNumber]);
   useEffect(() => {
     if (activeView !== "problems" || !problemLibraryRef.current) return;
     let cancelled = false;
@@ -2400,7 +2404,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "dsa-ide");
+  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "interviews" || activeView === "dsa-ide");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2437,7 +2441,18 @@ function App() {
       return <main className="exp-public ui-scope"><InterviewExperiences /><StudentFooter /></main>;
     }
     if (activeView === "radar") {
-      return <main className="rad-public ui-scope"><InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} /><StudentFooter /></main>;
+      return <main className="rad-public ui-scope">
+        <InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} />
+        <StudentFooter />
+      </main>;
+    }
+    if (activeView === "interviews") {
+      return <main className="interviews-public ui-scope">
+        {lockedFor("interview-research")
+          ? <ProductLock product={interviewResearch} checking={!unlocks.loaded} onOpenStore={() => openCheckout(interviewResearch.id)} onRecheck={() => void unlocks.refresh()} onFreeRail={() => navigateToView("problems")} />
+          : <InterviewQuestionResearch />}
+        <StudentFooter />
+      </main>;
     }
     if (activeView === "patterns") {
       return <main className="patterns-public ui-scope"><PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} /><StudentFooter /></main>;
@@ -2677,6 +2692,9 @@ function App() {
       {activeView === "studio" && <MentorStudio userId={user?.id ?? null} userName={clerkDisplayName} userEmail={user?.email ?? ""} />}
       {activeView === "experiences" && <InterviewExperiences userId={user?.id ?? ""} />}
       {activeView === "radar" && <InterviewRadar onPractice={() => navigateToView("problems")} onOpenPatterns={() => navigateToView("patterns")} onOpenStories={() => navigateToView("experiences")} />}
+      {activeView === "interviews" && (lockedFor("interview-research")
+        ? <ProductLock product={interviewResearch} checking={!unlocks.loaded} onOpenStore={() => openCheckout(interviewResearch.id)} onRecheck={() => void unlocks.refresh()} onFreeRail={() => navigateToView("problems")} />
+        : <InterviewQuestionResearch />)}
       {activeView === "leaderboard" && <Leaderboard userId={user?.id ?? ""} />}
       {activeView === "network" && <StudentNetwork userId={user?.id ?? ""} messagesRequest={messagesNavRequest} onUnreadCountChange={setStudentDmUnread} />}
       {activeView === "certificate" && <Certificates userId={user?.id ?? ""} />}
@@ -2685,8 +2703,26 @@ function App() {
       {activeView === "whiteboard" && <LldWhiteboardPage />}
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} focusProblem={editorProblem} />}
-      {activeView === "arena" && <HumanVsAi />}
-      {activeView === "tournament" && <TournamentPage />}
+      {activeView === "arena" && lockedFor("battle") && (
+        <ProductLock
+          product={productById("battle")!}
+          checking={!unlocks.loaded}
+          onOpenStore={() => openCheckout("battle")}
+          onRecheck={() => void unlocks.refresh()}
+          onFreeRail={() => navigateToView("dsa-ide")}
+        />
+      )}
+      {activeView === "arena" && !lockedFor("battle") && <HumanVsAi />}
+      {activeView === "tournament" && lockedFor("battle") && (
+        <ProductLock
+          product={productById("battle")!}
+          checking={!unlocks.loaded}
+          onOpenStore={() => openCheckout("battle")}
+          onRecheck={() => void unlocks.refresh()}
+          onFreeRail={() => navigateToView("dsa-ide")}
+        />
+      )}
+      {activeView === "tournament" && !lockedFor("battle") && <TournamentPage />}
       {activeView === "dsa-course" && <DsaCoursePage />}
       {activeView === "programming-basics" && <ProgrammingBasicsCourse />}
       {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}
@@ -2831,16 +2867,7 @@ function App() {
           <DashboardHub counts={hubCounts} onOpen={navigateToView} />
         </>
       )}
-      {activeView === "roadmap" && lockedFor("roadmap") && (
-        <ProductLock
-          product={accessPass}
-          checking={!unlocks.loaded}
-          onOpenStore={() => openCheckout("dsa250")}
-          onRecheck={() => void unlocks.refresh()}
-          onFreeRail={() => navigateToView("guru")}
-        />
-      )}
-      {activeView === "roadmap" && !lockedFor("roadmap") && (
+      {activeView === "roadmap" && (
         <section className="roadmap-card" aria-label="Customized DSA roadmap">
           <header className="roadmap-heading">
             <div className="roadmap-icon"><MapIcon size={18} /></div>
@@ -2849,7 +2876,6 @@ function App() {
               <h2>Your DSA roadmap</h2>
               <p>Ten days before an interview, the full ladder, or six months from first principles - the same {problems.length} problems, cut to the time you have.</p>
             </div>
-            <button type="button" className="roadmap-buy unlocked" onClick={() => openCheckout("dsa250")}>Unlock everything · {rupees(accessPass.price)} <ArrowRight size={15}/></button>
           </header>
           <StudyPlanner
             startKey={planStart}
@@ -3198,28 +3224,10 @@ function App() {
           )}
         </section>
       )}
-      {activeView === "patterns" && lockedFor("patterns") && (
-        <ProductLock
-          product={accessPass}
-          checking={!unlocks.loaded}
-          onOpenStore={() => openCheckout("dsa250")}
-          onRecheck={() => void unlocks.refresh()}
-          onFreeRail={() => navigateToView("guru")}
-        />
-      )}
-      {activeView === "patterns" && !lockedFor("patterns") && <section className="patterns-page">
+      {activeView === "patterns" && <section className="patterns-page">
         <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
       </section>}
-      {activeView === "problems" && sheetLocked && (
-        <ProductLock
-          product={productById("dsa250")!}
-          checking={!unlocks.loaded}
-          onOpenStore={() => openCheckout("dsa250")}
-          onRecheck={() => void unlocks.refresh()}
-          onFreeRail={() => navigateToView("guru")}
-        />
-      )}
-      {activeView === "problems" && !sheetLocked && <section className="problem-library-page">
+      {activeView === "problems" && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> {sheetVoice.eyebrow}</span>

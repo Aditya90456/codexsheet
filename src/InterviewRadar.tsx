@@ -1,5 +1,5 @@
-// The 2027 radar: a public page of what the round structure is turning into, and
-// the questions going into it. Kept deliberately different from /experiences -
+// The interview radar page: source-linked round formats and question themes.
+// Kept deliberately different from /experiences -
 // that page is one student's account of one interview, this one is what several
 // write-ups agree on. Every card links to the source it came from and says
 // whether the source is the company itself or somebody reporting about it,
@@ -107,21 +107,21 @@ export default function InterviewRadar({
   const sourced = useMemo(() => radarQuestions.filter((question) => question.confidence === "first_party").length, []);
 
   return (
-    <section className="rad" aria-label="2027 interview radar">
+    <section className="rad" aria-label="2027 Interview Radar">
       <header className="rad-head">
         <span className="rad-kicker">
-          <Radar size={14} /> 2027 HIRING CYCLE · {radarQuestions.length} QUESTIONS · {radarRounds.length} ROUNDS · COMPILED {radarCompiledOn.toUpperCase()}
+        <Radar size={14} /> 2027 INTERVIEW RADAR · {radarQuestions.length} QUESTION NOTES · {radarRounds.length} ROUNDS · UPDATED {radarCompiledOn.toUpperCase()}
         </span>
-        <h1>What the 2027 loop <em>is actually asking.</em></h1>
+        <h1>Research the interview.<br/><em>Prepare with sources.</em></h1>
         <p>
-          Interviewers are not asking the old questions any more, because an assistant answers them in
-          seconds. This page is the replacement set, read off the write-ups the companies and the people
-          running these loops published themselves: the AI-pairing round, code you did not write, your own
-          project taken apart, and the design rounds that now end in “how would you know it works”.
+          This research collects interview question themes and round formats from linked company and
+          candidate write-ups. Prompts are summaries, not transcripts; each card identifies whether
+          its source is first-party or reported. Candidate reports are signals, not guarantees of
+          what a future interviewer will ask. Verify current details for your role with the recruiter.
         </p>
         <div className="rad-actions">
           <button type="button" className="rad-primary" onClick={onPractice}>
-            Train the part still gating <ArrowRight size={16} />
+            Practise a DSA problem <ArrowRight size={16} />
           </button>
           <button type="button" className="rad-ghost" onClick={onOpenPatterns}>
             <Layers size={15} /> 16 pattern films
@@ -131,7 +131,7 @@ export default function InterviewRadar({
       </header>
 
       <section className="rad-panel" aria-label="What changed">
-        <h2><Target size={16} /> What changed between your seniors’ loop and yours</h2>
+        <h2><Target size={16} /> Interview shifts reported in public sources</h2>
         <div className="rad-shifts">
           {radarShifts.map((shift) => (
             <article key={shift.headline}>
@@ -168,9 +168,8 @@ export default function InterviewRadar({
       <section className="rad-panel" aria-label="Who allows AI in the interview">
         <h2><ShieldCheck size={16} /> Can you use AI in the room?</h2>
         <p className="rad-banner">
-          Read this as a list of things to check, not as permission. Every row except Canva’s is somebody
-          else reporting a rule that changes with each hiring season, and the ones that changed most were
-          still being quoted wrong in 2026. The invite email and your recruiter outrank this table.
+        Treat this as a sourced snapshot, not a promise of the current process. Verify role-specific
+        details with the recruiter and the current job posting; hiring practices can change.
         </p>
         <ul className="rad-policy">
           {radarPolicy.map((row) => (
@@ -189,7 +188,7 @@ export default function InterviewRadar({
       </section>
 
       <section className="rad-panel" aria-label="What not to believe">
-        <h2><TriangleAlert size={16} /> Four things being said about 2027 that cost students offers</h2>
+        <h2><TriangleAlert size={16} /> Interview claims to verify before you rely on them</h2>
         <div className="rad-myths">
           {radarMyths.map((myth) => (
             <article key={myth.myth}>
@@ -205,7 +204,7 @@ export default function InterviewRadar({
         <h2><BadgeCheck size={16} /> How to work through it</h2>
         <ol>
           <li>Pick the round you are weakest on, not the fashionable one. If your project cannot survive “why this architecture?”, that is the round losing you offers.</li>
-          <li>For every DSA card, drill the named pattern in the film, then solve the tier-1 problems in the sheet against a clock — the 2027 version still filters on recognition speed.</li>
+          <li>For every DSA card, drill the named pattern in the film, then practise recognizing the underlying pattern under a realistic time limit.</li>
           <li>Rehearse the AI-pairing round out loud, alone, with an assistant open and a timer running. Nobody else is practising this, which is exactly why it is worth the hour.</li>
           <li>Write the six behavioural stories in your notes and tag each one against a quality. Then check your reasoning with Guru before you say it to a stranger.</li>
         </ol>
@@ -216,7 +215,7 @@ export default function InterviewRadar({
 
       <p className="rad-foot">
         Patterns this page points you at: {radarPatternLinks().join(" · ")}. Compiled from public
-        write-ups on {radarCompiledOn} — it is a map of the round structure, not next month’s question
+        write-ups on {radarCompiledOn} — it is a map of reported round structures, not next month’s question
         sheet, and it says so on every card.
       </p>
     </section>

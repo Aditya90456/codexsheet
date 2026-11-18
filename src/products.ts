@@ -1,23 +1,20 @@
-// CodexSheet sells two things: a ₹10 pass that opens every rail, and Aditya's own
-// time. This module is the only place a price is written down, because the last
+// CodexSheet sells named products and Aditya's own time. This module is the only
+// place a price is written down, because the last
 // time pricing lived in strings the page said ₹199 while the database still
 // refused anything under ₹800 — and the student who paid the advertised price got
 // nothing.
 //
 // Three rules keep this honest:
-//   1. Every price here has a matching CHECK on public.mentorship_orders
-//      (supabase/migrations/20261117_dsa250_ten_rupees.sql). The row cannot land
-//      at any other figure, so the page cannot over-promise.
+//   1. Every active price has a matching CHECK on public.mentorship_orders.
+//      The row cannot land at any other figure, so the page cannot over-promise.
 //   2. `gate` says exactly which view the product opens. Copy may describe more,
 //      but only what is in `gate` is locked, and what was already free stays free.
-//   3. The ids a student can no longer buy (`sold: false`) stay in this list,
-//      because public.codexsheet_unlock_status() answers per id and an old ₹159
-//      roadmap claim must keep opening the roadmap. Buying the pass sets
-//      `unlocks_all`, which satisfies every id at once.
+//   3. Retired product ids stay in this list so old payment history and
+//      entitlements continue to resolve. Legacy all-access claims remain valid.
 
 import { rupees } from "./mentorship";
 
-export type ProductId = "dsa250" | "roadmap" | "patterns" | "session";
+export type ProductId = "dsa250" | "interview-research" | "roadmap" | "patterns" | "battle" | "session";
 
 export type CodexSheetProduct = {
   id: ProductId;
@@ -38,37 +35,49 @@ export type CodexSheetProduct = {
 };
 
 /** The views a product can lock. Mirrors WorkspaceView in App.tsx, without the union. */
-export type WorkspaceGate = "problems" | "roadmap" | "patterns" | "mentees";
+export type WorkspaceGate = "problems" | "interview-research" | "roadmap" | "patterns" | "arena" | "mentees";
 
 export const codexSheetProducts: CodexSheetProduct[] = [
   {
     id: "dsa250",
-    name: "CodexSheet All Access",
-    cadence: "one payment · never expires",
-    price: 10,
-    tag: "ALL ACCESS",
-    oneLine: "Every paid rail in the workspace for ₹10 - the sheet, the roadmap and the pattern course.",
+    name: "Legacy CodexSheet DSA Sheet",
+    cadence: "retired",
+    price: 100,
+    tag: "RETIRED",
+    oneLine: "This product is no longer available. Existing claims remain in the payment history.",
     includes: [
-      "All 250 problems with your notes, status, XP and streak saved to your account",
-      "Aaj ka task - the same 250 rows cut into 84 days, ticked off from the top of the sheet",
-      "Every row opens its own approach ladder, the traps it falls into and a step-by-step whiteboard",
-      "The sheet as a git repo - clone it, commit your solves, paste the log back for credit",
-      "The 12-week roadmap board, with the pace counted from your real sheet",
-      "All 16 pattern films, the narration in eight Indian languages and the .pptx deck per pattern",
-      "Solve milestones that feed the leaderboard and your certificate",
+      "All 250 DSA problems with your notes, status, XP and streak saved to your account",
+    ],
+    gate: ["problems"],
+    repeatable: false,
+    sold: false,
+  },
+  {
+    id: "interview-research",
+    name: "CodexSheet Interview Questions Research",
+    cadence: "one payment · never expires",
+    price: 100,
+    tag: "INTERVIEW RESEARCH",
+    oneLine: "Original company-grouped interview practice prompts, with official guide links.",
+    includes: [
+      "Original CodexSheet prompts for coding, system design, debugging and behavioral practice",
+      "Company and question-type filters, plus follow-up prompts",
+      "Official company interview-guide links for further preparation",
+      "Evaluation guidance explaining what each practice prompt exercises",
+      "Clear notice that prompts are not official or reported company questions",
       "Refund inside 5 days of the confirmed payment if it was not worth it",
     ],
-    gate: ["problems", "roadmap", "patterns"],
+    gate: ["interview-research"],
     repeatable: false,
     sold: true,
   },
   {
     id: "roadmap",
     name: "CodexSheet Roadmap",
-    cadence: "folded into the pass",
+    cadence: "retired · kept for existing claims",
     price: 159,
     tag: "PLAN",
-    oneLine: "The 12-week roadmap board - now part of the ₹10 pass, kept here for the claims already made.",
+    oneLine: "The 12-week roadmap board - no longer sold separately; kept for existing claims.",
     includes: [
       "The node-graph board with all 12 weeks, their patterns and their outcomes",
       "The pace counted from the real sheet, so no week promises a number that does not exist",
@@ -82,10 +91,10 @@ export const codexSheetProducts: CodexSheetProduct[] = [
   {
     id: "patterns",
     name: "CodexSheet Pattern Course",
-    cadence: "folded into the pass",
+    cadence: "retired · kept for existing claims",
     price: 200,
     tag: "COURSE",
-    oneLine: "Sixteen patterns as spoken lesson films - now part of the ₹10 pass, kept for the claims already made.",
+    oneLine: "Sixteen patterns as spoken lesson films - no longer sold separately; kept for existing claims.",
     includes: [
       "All 16 pattern films: the mechanism runs on screen while the captions read themselves",
       "Narration in eight Indian languages, with the skeleton line spoken as it highlights",
@@ -96,6 +105,23 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     gate: ["patterns"],
     repeatable: false,
     sold: false,
+  },
+  {
+    id: "battle",
+    name: "CodexSheet Battle",
+    cadence: "one payment · never expires",
+    price: 200,
+    tag: "AI DUEL",
+    oneLine: "Play the 45-minute JavaScript battle against AI and unlock every battle level for ₹200.",
+    includes: [
+      "JavaScript-only battle challenges with hidden tests",
+      "The full 100-level progression",
+      "Character selection, wins, streaks and battle XP",
+      "AI opponent solutions and post-match review",
+    ],
+    gate: ["arena"],
+    repeatable: false,
+    sold: true,
   },
   {
     id: "session",
@@ -119,8 +145,8 @@ export const codexSheetProducts: CodexSheetProduct[] = [
 /** What a student can actually buy today, in the order the checkout shows it. */
 export const soldProducts = codexSheetProducts.filter((product) => product.sold);
 
-/** The pass every rail points its lock card at. */
-export const accessPass = productById("dsa250")!;
+/** The current research product shown in the catalog and its lock card. */
+export const interviewResearch = productById("interview-research")!;
 
 export function productById(id: string): CodexSheetProduct | undefined {
   return codexSheetProducts.find((product) => product.id === id);
@@ -129,8 +155,10 @@ export function productById(id: string): CodexSheetProduct | undefined {
 /** The rails a product opens, said the way a student would say it. */
 export const gateLabels: Record<WorkspaceGate, string> = {
   problems: "the 250-problem sheet on /problems",
+  "interview-research": "Interview Questions Research on /interviews",
   roadmap: "the 12-week board on /roadmap",
   patterns: "the 16 films and PPT decks on /patterns",
+  arena: "CodexSheet Battle on /battle",
   mentees: "your chat lane and 1:1 Meet slot on /mentees",
 };
 

@@ -60,10 +60,30 @@ For existing profiles, it adds and backfills the `user_id`
 column from the legacy UUID `id`. It migrates the private notebook to support
 multiple titled notes per user, preserving existing note content, and creates
 an initial empty note for each existing profile. New profiles automatically
-receive an initial private note. For newer features, apply the pending
-`supabase/migrations/*.sql` files in date order. On an existing project, apply
-pending migrations only; the base script contains legacy definitions and must
-not be rerun over newer migrations.
+receive an initial private note. For newer features, apply pending migrations in order with the Supabase CLI.
+On an existing project, apply pending migrations only; the base script contains
+legacy definitions and must not be rerun over newer migrations.
+
+Install dependencies, link the local project to the intended Supabase project,
+then inspect and apply migrations:
+
+```sh
+npm install
+npx supabase link --project-ref <project-ref>
+npm run db:migration:status
+npm run db:migration:push
+```
+
+Create future migrations through the CLI so each file gets a unique ordered
+version:
+
+```sh
+npm run db:migration:new -- interview_questions_research
+```
+
+Review the generated SQL before applying it. `db:migration:push` applies all
+pending local migrations to the linked remote project; do not run it against
+production until the diff and target project have been checked.
 
 Removing session booking from this project does not drop existing session tables,
 requests, policies, or deployed Edge Functions in your Supabase project.
@@ -78,18 +98,18 @@ Piston/Judge0 execution service as described in [runner setup](./runner/README.m
 
 ## Mentorship payments
 
-`/mentorship` currently offers CodexSheet All Access for ₹10. The mentor session
-is booked and paid separately on Topmate. All Access payment goes straight to
-Aditya's personal Paytm UPI handle through a UPI intent link and QR, so there is
-no gateway, no API key, and no card data.
+`/mentorship` offers CodexSheet Interview Questions Research for ₹100 and
+CodexSheet Battle for ₹200. The DSA library, roadmap and pattern lessons are
+free; legacy sheet claims remain in payment history. The mentor session is
+booked and paid separately on Topmate. Product claims go straight to Aditya's
+personal Paytm UPI handle through a UPI intent link and QR, so there is no
+gateway, no API key, and no card data.
 
-The current checkout writes product ids and exact prices to
-`public.mentorship_orders`. After the base schema, apply pending migrations in
-date order and ensure `supabase/migrations/20261106_codexsheet_products.sql`
-runs before `supabase/migrations/20261117_dsa250_ten_rupees.sql` and
-`supabase/migrations/20261117155000_dsa250_unlock_all_access.sql`. These align
-the database's All Access price check with the ₹10 shown in checkout and unlock
-the sheet, roadmap and pattern course for confirmed All Access claims.
+The checkout writes product ids and exact prices to `public.mentorship_orders`.
+After the base schema, apply pending migrations through the Supabase CLI. The
+`20261118_dsa100_js_battle200.sql` migration sets the current sheet and Battle
+prices; `20261118092042_interview_questions_research.sql` retires new sheet
+claims, adds the interview-research product, and updates entitlements.
 
 `public.mentorship_orders` is created by
 `supabase/migrations/20261028_mentorship_orders.sql` and is included in
@@ -106,7 +126,7 @@ same email as the CodexSheet account, then sign in; the checkout keeps the
 reference through authentication and the confirmed claim is matched to that
 email. A phone-only claim cannot be matched automatically to a portal account.
 
-After paying, submit the receipt's UTR in the checkout. The All Access claim is
+After paying, submit the receipt's UTR in the checkout. The product claim is
 confirmed when it is recorded; keep the receipt so the transfer can be reconciled
 against the Paytm statement. If the insert fails, the page queues the claim on
 that device and shows the reference to share with Aditya.

@@ -1,18 +1,16 @@
-// The 2027 interview radar: what the round structure is turning into, and the
-// questions that are actually being asked in it.
+// Source-linked interview research notes, compiled for 2027 preparation.
 //
 // Two rules this file keeps, because breaking either one makes the page a lie:
-//   1. Nothing goes in here without a source we read. `url` is the write-up the
-//      question came from, and `confidence` says whether that write-up is the
+//   1. Every note points to a source. `url` is the write-up informing the
+//      research prompt, and `confidence` says whether that write-up is the
 //      company itself (`first_party`) or somebody reporting about it (`reported`).
 //   2. Reported claims about a named company's rules are marked as needing a
 //      check with the recruiter. Third-party lists of who bans AI in interviews
 //      are months out of date by the time they are published, and a candidate
 //      who trusts them in the room is the one who loses.
 //
-// This is deliberately not a leaked-question bank. Nobody can promise a student
-// what Amazon will ask in March; what can be shown is which rounds are changing
-// and what each new round is probing.
+// This is deliberately not a leaked-question bank or a transcript archive.
+// Prompts summarize themes; cited sources and recruiters remain authoritative.
 
 export type RadarRoundId =
   | "ai_pairing"
@@ -26,16 +24,16 @@ export type RadarRoundId =
 export type RadarRound = {
   id: RadarRoundId;
   name: string;
-  /** What happens in the room, in one line a student can repeat to themselves. */
+  /** Summary of the interview format described by the linked research source. */
   blurb: string;
-  /** Who is running this round today. */
+  /** Companies or sources associated with this round; verify current practices. */
   who: string;
 };
 
 export type RadarQuestion = {
   id: string;
   round: RadarRoundId;
-  /** The question as it gets said out loud. */
+  /** A representative research prompt, not a verbatim interview transcript. */
   ask: string;
   /** What the interviewer is actually measuring. */
   probes: string;

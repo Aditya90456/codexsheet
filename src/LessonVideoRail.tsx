@@ -1,7 +1,7 @@
 // LessonVideoRail.tsx — the Love Babbar lessons that sit under the 250-problem
 // sheet. One row per lecture of the real CodeHelp placement series, each opening
 // in the player on this page instead of the old playlist block that pointed
-// somewhere else. Free: nothing here is behind the ₹10 pass, and the
+// somewhere else. These lessons are free, and the
 // player stays empty until a lecture is picked, so YouTube loads nothing on its
 // own.
 import { useEffect, useMemo, useRef, useState } from "react";

@@ -32,6 +32,7 @@ import {
 import type { WorkspaceView } from "./App";
 import { courseLessons } from "./deva-course-lessons";
 import { radarQuestions } from "./interviewRadar2027";
+import { interviewPracticeQuestions } from "./interviewQuestionResearchData";
 import { roadmapStages } from "./dsaPatterns";
 import { uiLanguages } from "./i18n";
 
@@ -58,7 +59,7 @@ export function hubGroups(counts: HubCounts): HubGroup[] {
       cards: [
         { view: "problems", icon: Target, name: "The 250 sheet", note: "Status, notes, the next problem.", count: `${counts.solved}/${counts.total}` },
         { view: "patterns", icon: Layers, name: "Pattern library", note: "Each pattern filmed on live data.", count: `${counts.patterns} patterns` },
-        { view: "dsa-ide", icon: CodeXml, name: "Deva editor", note: "Run it against hidden tests.", count: "4 languages" },
+        { view: "dsa-ide", icon: CodeXml, name: "Deva editor", note: "JavaScript practice with hidden tests.", count: "JavaScript only" },
         { view: "cslabs", icon: Activity, name: "Algorithm Labs", note: "Watch the algorithm move.", count: "no sign-in" },
         { view: "calendar", icon: CalendarDays, name: "Practice calendar", note: "The days you actually showed up.", count: `${counts.activeDays} active` },
         { view: "notes", icon: NotebookPen, name: "Personal notes", note: "Private notes that sync with your account.", count: "" },
@@ -71,7 +72,8 @@ export function hubGroups(counts: HubCounts): HubGroup[] {
         { view: "articles", icon: Rows3, name: "Field notes", note: "Approach, worked steps, trade-offs, FAQ.", count: "deep dives" },
         { view: "guru", icon: Sparkles, name: "Guru", note: "It teaches, then checks your reasoning.", count: `${uiLanguages.length - 1} Indian languages` },
         { view: "roadmap", icon: MapIcon, name: "Roadmap", note: "A plan around your season, not a list.", count: `${roadmapStages.length} stages` },
-        { view: "radar", icon: Radar, name: "2027 radar", note: "What the loop is actually asking now.", count: `${radarQuestions.length} questions` },
+        { view: "interviews", icon: BookOpen, name: "Interview Questions Research", note: "Original practice prompts with official company guides.", count: `${interviewPracticeQuestions.length} practice prompts` },
+        { view: "radar", icon: Radar, name: "2027 Interview Radar", note: "Reported interview trends and source notes.", count: `${radarQuestions.length} research notes` },
       ],
     },
     {
