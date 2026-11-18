@@ -19,6 +19,7 @@ import "./articleReader.css";
 import "./home.css";
 import "./ui.css";
 import "./study-plan.css";
+import "./ai-practice-sheet.css";
 import "./dashboard-hub.css";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

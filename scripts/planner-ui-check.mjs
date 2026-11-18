@@ -50,7 +50,7 @@ const activeWindow = (html) => {
 const rowNumbers = (html) => [...html.matchAll(/planner-row-no">(\d{3})/g)].map((match) => Number(match[1]));
 
 const fresh = plannerHtml();
-fails("the planner does not offer all three windows", studyTracks.some((track) => !fresh.includes(track.label)));
+fails("the planner does not offer all study windows", studyTracks.some((track) => !fresh.includes(track.label)));
 fails(`the window marked chosen is ${activeWindow(fresh) || "nothing"}`, activeWindow(fresh) !== "m3");
 fails("two windows look chosen", count(fresh, /aria-checked="true"/g) !== 1);
 fails("the AI brief is missing", !fresh.includes("Build my plan") || !fresh.includes("<textarea"));

@@ -57,7 +57,7 @@ export function hubGroups(counts: HubCounts): HubGroup[] {
     {
       label: "Practice",
       cards: [
-        { view: "problems", icon: Target, name: "The 250 sheet", note: "Status, notes, the next problem.", count: `${counts.solved}/${counts.total}` },
+        { view: "problems", icon: Target, name: "AI practice sheet", note: "A plan shaped around your goal.", count: `${counts.solved}/${counts.total}` },
         { view: "patterns", icon: Layers, name: "Pattern library", note: "Each pattern filmed on live data.", count: `${counts.patterns} patterns` },
         { view: "dsa-ide", icon: CodeXml, name: "Deva editor", note: "JavaScript practice with hidden tests.", count: "JavaScript only" },
         { view: "cslabs", icon: Activity, name: "Algorithm Labs", note: "Watch the algorithm move.", count: "no sign-in" },

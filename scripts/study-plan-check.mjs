@@ -66,9 +66,19 @@ const ladderPartway = planFor({ track: "m3", solved: did });
 const firstFortnight = (plan) => plan.days.slice(0, 14).map((day) => day.rows.map((row) => row.number).join(",")).join("|");
 fails("the ladder moved rows off the day the sheet assigned them", firstFortnight(ladderPartway) !== firstFortway_plan());
 function firstFortway_plan() { return Array.from({ length: 14 }, (_, index) => taskForDay(index + 1).rows.map((row) => row.number).join(",")).join("|"); }
+const lastDay = planFor({ track: "sprint1", dailyTarget: 3 });
+const lastDayRows = lastDay.days.flatMap((day) => day.rows);
+fails("the tomorrow plan is not exactly one day", lastDay.days.length !== 1);
+fails(`the tomorrow plan is too large (${lastDayRows.length} rows)`, lastDayRows.length > 4);
+const solvedLastDayRows = lastDayRows.map((problem) => problem.number);
+const lastDayAfterSolves = planFor({ track: "sprint1", dailyTarget: 3, solved: solvedLastDayRows });
+fails("the tomorrow plan did not replace already-solved rows", lastDayAfterSolves.days[0].rows.length !== 3 || lastDayAfterSolves.days[0].rows.some((problem) => solvedLastDayRows.includes(problem.number)));
 
 // What the planner hears when a student writes instead of clicking.
 const hears = [
+  ["My interview is tomorrow and my DSA is weak", "sprint1", null],
+  ["One day left until my interview", "sprint1", null],
+  ["I gave a few interviews, but my DSA is poor", "m3", null],
   ["I have an interview in 10 days and I am weak at DP", "sprint10", "1-D DP"],
   ["placements in 3 months, college means 5 days a week", "m3", null],
   ["starting now, 6 months, 2 hours a day", "m6", null],
@@ -99,6 +109,12 @@ fails("the goal text is not capped", junk.goal.length > 400);
 
 const offline = await planFromAi("I have 10 days and DP is weak", { solved: [] });
 fails("no network, no plan", offline.source !== "local" || offline.config.track !== "sprint10");
+
+const savedFetch = globalThis.fetch;
+globalThis.fetch = async () => new Response(JSON.stringify({ plan: { track: "sprint10", dailyTarget: 6, note: "Keep it focused." } }), { status: 200, headers: { "Content-Type": "application/json" } });
+const urgentAi = await planFromAi("My interview is tomorrow and DSA is weak", { solved: [] });
+globalThis.fetch = savedFetch;
+fails("the AI overrode the one-day interview plan", urgentAi.config.track !== "sprint1" || urgentAi.config.dailyTarget > 4);
 
 const sprint = planFor({ track: "sprint10" });
 fails("planOnDay does not clamp", planOnDay(sprint, 99)?.day !== 10 || planOnDay(sprint, -4)?.day !== 1);

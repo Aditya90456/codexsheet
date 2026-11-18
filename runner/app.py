@@ -1156,10 +1156,13 @@ Answer with one JSON object and nothing else:
 {"track": "<one of the ids in tracks>", "daysPerWeek": <3, 5 or 7>, "dailyTarget": <2 to 6>, "weakPatterns": ["<names copied from patterns>"], "note": "<two sentences to the student>"}
 
 Rules:
-- A student with less than three weeks takes the shortest track offered, even if the sheet will not fit. The core is the honest answer.
+- If an interview is tomorrow, the next day, or explicitly within 24 hours, choose the one-day track. Keep it to a realistic, high-yield review; do not imply the student can master DSA overnight.
+- For the one-day track, choose 2 to 4 problems, not a full-day cram list.
+- For any other deadline under three weeks, choose the shortest suitable sprint, even if the whole sheet will not fit. The core is the honest answer.
 - A student with more than four months gets the longest track: the ladder first, then a second pass.
 - daysPerWeek is what they can actually keep, not what they wish for. 5 is the default for a student with college.
 - weakPatterns only when they named one or it is obvious from their words; copy the names exactly.
+- If the student describes past interviews and weak DSA but gives no upcoming deadline, do not infer an urgent interview. Prefer a sustainable 12-week foundation plan and acknowledge that they can name weak topics to focus it further.
 - note speaks to the student in the language asked for. Plain, warm, no exclamation marks, no lecture.
 """
 
@@ -1291,10 +1294,22 @@ def plan():
 
     # The same clamp the browser runs, so a bad answer never reaches a student.
     weak = parsed.get("weakPatterns")
+    urgent_brief = re.search(
+        r"\b(?:tomorrow|next\s+day|within\s+(?:24\s*(?:hours?|hrs?|h)|one\s+day)|in\s+(?:24\s*(?:hours?|hrs?|h)|(?:1|one)\s+day)|(?:1|one)\s+day\s+(?:left|away)|day after tomorrow)\b",
+        brief.lower(),
+    )
+    selected_track = parsed.get("track") if str(parsed.get("track")) in allowed_tracks else None
+    if urgent_brief and "sprint1" in allowed_tracks:
+        selected_track = "sprint1"
+    selected_target = parsed.get("dailyTarget")
+    if not isinstance(selected_target, (int, float)) or not 0 <= selected_target <= 8:
+        selected_target = 3 if selected_track == "sprint1" else None
+    if selected_track == "sprint1":
+        selected_target = min(selected_target or 3, 4)
     plan_out = {
-        "track": parsed.get("track") if str(parsed.get("track")) in allowed_tracks else None,
+        "track": selected_track,
         "daysPerWeek": parsed.get("daysPerWeek") if parsed.get("daysPerWeek") in (3, 5, 7, 3.0, 5.0, 7.0) else None,
-        "dailyTarget": parsed.get("dailyTarget") if isinstance(parsed.get("dailyTarget"), (int, float)) and 0 <= parsed.get("dailyTarget") <= 8 else None,
+        "dailyTarget": selected_target,
         "weakPatterns": [name for name in (weak if isinstance(weak, list) else []) if name in sheet_patterns][:6],
         "note": str(parsed.get("note", ""))[:320],
     }

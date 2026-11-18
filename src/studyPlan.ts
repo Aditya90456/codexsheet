@@ -10,9 +10,9 @@
 //   1. The three-month plan with a seven-day week is byte-identical to taskForDay()
 //      - scripts/study-plan-check.mjs proves it - so /problems and /roadmap cannot
 //      disagree about today's task.
-//   2. A short track does not compress the ladder. It switches to the core: the
-//      tier-1 "must know" rows, spread across the whole arc instead of the first
-//      stages, so ten days still teaches the subject and not just arrays.
+//   2. Short tracks do not compress the ladder. They switch to the core: the
+//      tier-1 "must know" rows, spread across the whole arc. The one-day track
+//      keeps that core deliberately small for a last-day review.
 //   3. Rest days are not empty. A student who studies five days a week gets a
 //      revision card on the other two - what they did last, capped at two rows.
 
@@ -20,7 +20,7 @@ import { patterns, problems, type Problem } from "./dsaSheet";
 import { interviewTier, roadmapStages, tierLabels } from "./dsaPatterns";
 import { planDays, taskForDay } from "./dailyTasks";
 
-export type TrackId = "sprint10" | "m3" | "m6";
+export type TrackId = "sprint10" | "m3" | "m6" | "sprint1";
 
 export type StudyTrack = {
   id: TrackId;
@@ -63,6 +63,15 @@ export const studyTracks: StudyTrack[] = [
     kicker: "TWO PASSES AND A MOCK",
     promise: "The same ladder at an easy pace, then a full second pass over the problems that decide interviews, then timed mixed sets.",
     scope: "ladder",
+  },
+  {
+    id: "sprint1",
+    days: 1,
+    short: "1 day",
+    label: "Interview tomorrow",
+    kicker: "A LAST-DAY RESET",
+    promise: "A small, high-yield review from across the sheet. Focus on patterns and clear thinking, not cramming the whole library.",
+    scope: "core",
   },
 ];
 
@@ -143,9 +152,9 @@ function ladderOrder(weak: string[]): Problem[] {
  * budget on the Blind-75 end of the sheet without ever dropping a stage. Weak
  * patterns get their top two rows before the rotation starts.
  */
-function coreRows(count: number, weak: string[]): Problem[] {
+function coreRows(count: number, weak: string[], solved: Set<number> = new Set()): Problem[] {
   const pools = patterns
-    .map((name) => ({ name, rows: problems.filter((problem) => problem.pattern === name).sort((a, b) => interviewTier(a) - interviewTier(b) || a.number - b.number) }))
+    .map((name) => ({ name, rows: problems.filter((problem) => problem.pattern === name && !solved.has(problem.number)).sort((a, b) => interviewTier(a) - interviewTier(b) || a.number - b.number) }))
     .filter((pool) => pool.rows.length);
   const rotation = [...pools].sort((a, b) => Number(weak.includes(b.name)) - Number(weak.includes(a.name)));
   const picked = new Set<number>();
@@ -200,12 +209,12 @@ export function buildPlan(rawConfig: Partial<PlanConfig>): StudyPlan {
   const track = trackById(config.track);
   const solved = new Set(config.solved);
   const studySlots = Math.max(1, Math.ceil((track.days * config.daysPerWeek) / 7));
+  const dailyBudget = config.dailyTarget || (track.id === "sprint1" ? 3 : 6);
 
-  // A sprint picks its own rows, so it skips what the student already did. The
-  // ladder does not: day 9 belongs to those rows whether or not they are solved,
-  // because the rail has to be able to show them ticked.
+  // A core sprint skips solved problems. The ladder does not: day 9 belongs to
+  // those rows whether or not they are solved, because the rail shows them ticked.
   const learnPool = track.scope === "core"
-    ? coreRows(Math.min(studySlots * (config.dailyTarget || 6), problems.length), config.weakPatterns).filter((problem) => !solved.has(problem.number))
+    ? coreRows(Math.min(studySlots * dailyBudget, problems.length), config.weakPatterns, solved)
     : ladderOrder(config.weakPatterns);
 
   const perStudyDay = Math.max(1, config.dailyTarget || Math.ceil(learnPool.length / studySlots));
@@ -275,6 +284,7 @@ export function planOnDay(plan: StudyPlan, day: number): PlanDay | null {
 export function configFromBrief(brief: string, base: Partial<PlanConfig> = {}): PlanConfig {
   const text = String(brief ?? "").toLowerCase();
   const config = normaliseConfig({ ...base, goal: String(brief ?? "").trim() });
+  const interviewTomorrow = /\b(?:tomorrow|next\s+day|within\s+(?:24\s*(?:hours?|hrs?|h)|one\s+day)|in\s+(?:24\s*(?:hours?|hrs?|h)|(?:1|one)\s+day)|(?:1|one)\s+day\s+(?:left|away)|day after tomorrow)\b/.test(text);
   const weeks = text.match(/(\d{1,2})\s*(?:week|wk|hafta|هفته|सप्ताह)/);
   const months = text.match(/(\d{1,2})\s*(?:month|mahine|महीने|masa)/);
   const days = text.match(/(\d{1,3})\s*(?:day|din|दिन)/);
@@ -283,7 +293,9 @@ export function configFromBrief(brief: string, base: Partial<PlanConfig> = {}): 
   if (weeks) window = Math.max(window, Number(weeks[1]) * 7);
   if (months) window = Math.max(window, Number(months[1]) * 30);
   if (/placement|off ?campus|internship|next month|june|July/i.test(brief ?? "") && !window) window = 60;
-  if (window <= 0) {
+  if (interviewTomorrow) {
+    config.track = "sprint1";
+  } else if (window <= 0) {
     config.track = "m3";
   } else if (window <= 21) {
     config.track = "sprint10";
@@ -298,6 +310,7 @@ export function configFromBrief(brief: string, base: Partial<PlanConfig> = {}): 
   if (hours && !perDay) config.dailyTarget = Number(hours[1]) >= 4 ? 5 : Number(hours[1]) >= 2 ? 3 : 2;
   const five = text.match(/(\d)\s*(?:days?)\s*(?:a|per)\s*week/);
   if (five && [3, 5, 7].includes(Number(five[1]))) config.daysPerWeek = Number(five[1]);
+  if (interviewTomorrow) config.dailyTarget = Math.min(config.dailyTarget || 3, 4);
   // A student writes "dp" or "graphs", not "1-D DP". Full names still win, and the
   // words that are common English ("a bit hard") are not treated as patterns.
   const tokens = new Set(text.match(/[a-z0-9-]+/g) ?? []);

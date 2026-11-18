@@ -81,6 +81,7 @@ import { DashboardHub, ResumeTrack, resumeRows, type HubCounts } from "./Dashboa
 import DsaCoursePage from "./DsaCoursePage";
 import ProgrammingBasicsCourse from "./ProgrammingBasicsArticles";
 import StudyPlanner from "./StudyPlanner";
+import AiPracticeSheet from "./AiPracticeSheet";
 import StudentNetwork from "./StudentNetwork";
 import { loadUnreadDms } from "./studentGraph";
 import MentorshipPayments from "./MentorshipPayments";
@@ -227,8 +228,8 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   },
   dashboard: { title: "Your DSA dashboard — CodexSheet", description: "Track streaks, weak patterns and the next problem worth your time." },
   problems: {
-    title: "The CodexSheet DSA problem sheet — by pattern and company",
-    description: "A curated DSA problem sheet organised by pattern, difficulty and hiring company, with the solution approach for every problem.",
+    title: "AI-personalized DSA practice sheet — CodexSheet",
+    description: "Tell CodexSheet AI your goal, timeline, pace, and weak patterns. Get a focused DSA practice plan built from the curated problem library.",
   },
   patterns: {
     title: "16 DSA patterns, each with a spoken lesson film — CodexSheet",
@@ -1327,7 +1328,7 @@ function App() {
   const [editorProblem, setEditorProblem] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<WorkspaceView>(viewFromLocation);
   useEffect(() => {
-    if (activeView !== "problems") return;
+    if (activeView !== "problems" || !document.querySelector(".problem-library-page")) return;
     let active = true;
     setCompanyTagsLoading(true);
     setCompanyTagsError("");
@@ -1591,7 +1592,7 @@ function App() {
   );
 
   useEffect(() => {
-    if (activeView !== "problems") return;
+    if (activeView !== "problems" || !document.querySelector(".problem-library-page")) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
@@ -1621,7 +1622,7 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [activeView, cursorNumber, noteFor, orderedRows, progress, studyNumber]);
   useEffect(() => {
-    if (activeView !== "problems" || !problemLibraryRef.current) return;
+    if (activeView !== "problems" || !document.querySelector(".problem-library-page") || !problemLibraryRef.current) return;
     let cancelled = false;
     let revert: (() => void) | undefined;
     const timer = window.setTimeout(() => {
@@ -2502,8 +2503,8 @@ function App() {
             aria-pressed={activeView === "problems" || activeView === "companies"}
             onClick={() => { navigateToView("problems"); setNavOpen(false); }}
           >
-            <Rows3 size={16} /><span>{tr("nav.problems")}</span>
-            <em className="sidebar-count">{visibleProblems.length}</em>
+            <Rows3 size={16} /><span>AI practice</span>
+            <em className="sidebar-count">{solved}/{problems.length}</em>
           </button>
 
           <button type="button"
@@ -2604,7 +2605,7 @@ function App() {
                 {activeView === "dashboard"
                   ? "Dashboard"
                   : activeView === "problems"
-                    ? "Problems"
+                    ? "AI practice"
                     : activeView === "dsa-ide"
                       ? "Deva Editor"
                   : activeView === "dsa-course"
@@ -2632,7 +2633,7 @@ function App() {
               {activeView === "dashboard"
                 ? "Your progress"
                 : activeView === "problems"
-                  ? "Problem library"
+                  ? "Your AI practice sheet"
                   : activeView === "dsa-ide"
                     ? "Deva Editor"
                   : activeView === "dsa-course"
@@ -2650,13 +2651,13 @@ function App() {
                       : activeView === "notes"
                         ? "Personal notebook"
                 : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : activeView === "network" ? "Share your code, read theirs" : activeView === "resume" ? "Create a resume that tells your story" : "Your workspace"}{" "}
-              <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : "DSA 250"}</span>
+              <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : activeView === "problems" ? "CODEXSHEET AI" : "DSA 250"}</span>
             </h1>
             <p>
               {activeView === "dashboard"
                 ? "A clear view of your practice and what to tackle next."
                 : activeView === "problems"
-                  ? "Practice the 250-question interview sheet, explore community-reported company tags, and track every solve."
+                  ? "Tell CodexSheet what you’re preparing for. It will shape a focused plan from the curated problem library and keep your progress."
                 : activeView === "dsa-ide"
                     ? "Plan on the whiteboard, edit your solution, and trace each loop step."
                 : activeView === "dsa-course"
@@ -3227,7 +3228,9 @@ function App() {
       {activeView === "patterns" && <section className="patterns-page">
         <PatternLibrary problems={problems} progress={progress} onPractice={() => navigateToView("problems")} />
       </section>}
-      {activeView === "problems" && <section className="problem-library-page">
+      {activeView === "problems" && <AiPracticeSheet solvedNumbers={solvedNumbers} statusOf={(number) => progress[number]?.status ?? "Todo"} onStatus={setProblemStatus} />}
+      {activeView === "problems" && sheetReward && <div className={`sheet-reward${sheetReward.milestone ? " milestone" : ""}`} key={sheetReward.id} role="status" aria-live="polite"><span className="sheet-reward-icon"><Sparkles size={18}/></span><div className="sheet-reward-copy"><strong>{sheetReward.headline}</strong><span>{sheetReward.detail}</span></div><em className="sheet-reward-xp">+{sheetReward.xp} XP</em><button type="button" className="sheet-reward-close" onClick={() => setSheetReward(null)} aria-label="Dismiss"><X size={14}/></button></div>}
+      {activeView === "problems" && false && <section className="problem-library-page">
         <div className="problem-library-hero">
           <div className="problem-library-intro">
             <span className="problem-library-eyebrow"><span/> {sheetVoice.eyebrow}</span>

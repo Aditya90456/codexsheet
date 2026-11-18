@@ -53,7 +53,10 @@ export async function planFromAi(brief: string, base: Partial<PlanConfig> = {}, 
     const result = (await response.json()) as { plan?: AiPlan; error?: string };
     if (!response.ok || !result.plan) throw new Error(result.error ?? "The planner did not answer.");
     const { note, ...answer } = clamp(result.plan);
-    const config = normaliseConfig({ ...local, ...answer });
+    const urgentOverride = local.track === "sprint1"
+      ? { track: "sprint1" as const, dailyTarget: Math.min(answer.dailyTarget ?? (local.dailyTarget || 3), 4) }
+      : {};
+    const config = normaliseConfig({ ...local, ...answer, ...urgentOverride });
     return { config, note: note ?? "Guru set the pace from what you wrote.", source: "ai" };
   } catch {
     return { config: local, note: fallbackNote, source: "local" };
