@@ -31,7 +31,7 @@ else:
         QUALIFIER_CASES,
     )
 
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request, stream_with_context
 
 if not os.environ.get("VERCEL"):
     try:
@@ -661,6 +661,9 @@ def tutor():
     data = request.get_json(silent=True)
     messages = data.get("messages") if isinstance(data, dict) else None
     persona = (data.get("persona", "tutor") if isinstance(data, dict) else "tutor") or "tutor"
+    stream_requested = isinstance(data, dict) and data.get("stream") is True
+    if stream_requested and persona != "tutor":
+        return jsonify({"error": "Streaming is only supported for the DSA tutor."}), 400
     language = str(data.get("language", "en") if isinstance(data, dict) else "en").strip().lower()[:5]
     system_prompt = (
         GURU_SYSTEM_PROMPT if persona == "guru"
@@ -713,6 +716,46 @@ def tutor():
         model = requested_model if requested_model in {"gemini-3.6-flash"} else configured_model
         fallback_model = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-3.6-flash").strip()
         models = list(dict.fromkeys(candidate for candidate in (model, fallback_model, configured_model) if candidate))
+
+        if stream_requested:
+            def tutor_events():
+                yield ": ready\n\n"
+                for model_index, model_name in enumerate(models):
+                    sent_text = False
+                    try:
+                        chunks = client.models.generate_content_stream(
+                            model=model_name,
+                            contents=contents,
+                            config=types.GenerateContentConfig(
+                                system_instruction=system_prompt,
+                                temperature=0.35,
+                                max_output_tokens=1_000,
+                            ),
+                        )
+                        for chunk in chunks:
+                            text = (chunk.text or "")
+                            if text:
+                                sent_text = True
+                                yield f"data: {json.dumps({'text': text}, ensure_ascii=False)}\n\n"
+                        return
+                    except Exception as exc:
+                        if is_service_unavailable(exc) and not sent_text and model_index + 1 < len(models):
+                            app.logger.warning("Gemini model %s is unavailable; retrying stream with %s", model_name, models[model_index + 1])
+                            continue
+                        if is_service_unavailable(exc):
+                            app.logger.warning("Gemini tutor stream is temporarily unavailable: %s", exc)
+                            message = "Google Gemini is temporarily at capacity. Please try again in a minute."
+                        else:
+                            app.logger.exception("Gemini DSA tutor stream failed")
+                            message = "The DSA tutor could not respond right now. Please try again shortly."
+                        yield f"event: error\ndata: {json.dumps({'error': message})}\n\n"
+                        return
+
+            return Response(
+                stream_with_context(tutor_events()),
+                mimetype="text/event-stream",
+                headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+            )
 
         response = None
         for model_index, model_name in enumerate(models):
@@ -1153,7 +1196,7 @@ PLAN_SYSTEM_PROMPT = """You are the CodexSheet study planner. A student tells yo
 You never write problems, patterns, weeks or links. The app owns the 250-problem sheet; you only pick a window and a pace. Anything you invent is thrown away, so do not try.
 
 Answer with one JSON object and nothing else:
-{"track": "<one of the ids in tracks>", "daysPerWeek": <3, 5 or 7>, "dailyTarget": <2 to 6>, "weakPatterns": ["<names copied from patterns>"], "note": "<two sentences to the student>"}
+{"track": "<one of the ids in tracks>", "daysPerWeek": <3, 5 or 7>, "dailyTarget": <2 to 6>, "weakPatterns": ["<names copied from patterns>"], "note": "<a warm, practical coaching reply in 4-6 sentences>"}
 
 Rules:
 - If an interview is tomorrow, the next day, or explicitly within 24 hours, choose the one-day track. Keep it to a realistic, high-yield review; do not imply the student can master DSA overnight.
@@ -1163,7 +1206,8 @@ Rules:
 - daysPerWeek is what they can actually keep, not what they wish for. 5 is the default for a student with college.
 - weakPatterns only when they named one or it is obvious from their words; copy the names exactly.
 - If the student describes past interviews and weak DSA but gives no upcoming deadline, do not infer an urgent interview. Prefer a sustainable 12-week foundation plan and acknowledge that they can name weak topics to focus it further.
-- note speaks to the student in the language asked for. Plain, warm, no exclamation marks, no lecture.
+- note speaks directly to the student in the language asked for. Be conversational and specific: reflect their goal, explain why this timeline and pace fit, outline how to approach learning and review, and give them a doable first step. Use 4-6 short sentences, no exclamation marks or lecture.
+- Base all claims on the student's brief, selected track, pace and named patterns. Do not invent dates, topics, problem names, or promises; the app displays the exact day-by-day roadmap separately.
 """
 
 plan_request_times: dict[str, deque[float]] = defaultdict(deque)
@@ -1311,7 +1355,7 @@ def plan():
         "daysPerWeek": parsed.get("daysPerWeek") if parsed.get("daysPerWeek") in (3, 5, 7, 3.0, 5.0, 7.0) else None,
         "dailyTarget": selected_target,
         "weakPatterns": [name for name in (weak if isinstance(weak, list) else []) if name in sheet_patterns][:6],
-        "note": str(parsed.get("note", ""))[:320],
+        "note": str(parsed.get("note", ""))[:1200],
     }
     return jsonify({"plan": {key: value for key, value in plan_out.items() if value is not None}})
 

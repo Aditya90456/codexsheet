@@ -82,6 +82,7 @@ import DsaCoursePage from "./DsaCoursePage";
 import ProgrammingBasicsCourse from "./ProgrammingBasicsArticles";
 import StudyPlanner from "./StudyPlanner";
 import AiPracticeSheet from "./AiPracticeSheet";
+import TributePage from "./TributePage";
 import StudentNetwork from "./StudentNetwork";
 import { loadUnreadDms } from "./studentGraph";
 import MentorshipPayments from "./MentorshipPayments";
@@ -173,7 +174,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "interviews" | "network" | "arena" | "tournament";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "interviews" | "network" | "arena" | "tournament" | "mahima-tribute" | "striver-tribute" | "saumya-tribute";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -207,6 +208,9 @@ export const viewPaths: Record<WorkspaceView, string> = {
   network: "/network",
   arena: "/battle",
   tournament: "/tournament",
+  "mahima-tribute": "/tribute/mahima",
+  "striver-tribute": "/tribute/striver",
+  "saumya-tribute": "/tribute/saumya-singh",
 };
 
 const siteOrigin = "https://www.codexsheet.in";
@@ -298,6 +302,18 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
     title: "Free JavaScript DSA Tournament for Students | CodexSheet",
     description: "Practice nine JavaScript DSA challenges, face AI coding opponents, and compare code, hidden-test results, and solution summaries. Free online tournament.",
   },
+  "mahima-tribute": {
+    title: "A Tribute to Mahima Ma’am — CodexSheet",
+    description: "A warm tribute to Mahima Ma’am, celebrating her patience, dedication, and encouragement as a teacher and mentor.",
+  },
+  "striver-tribute": {
+    title: "A Tribute to Striver — CodexSheet",
+    description: "A warm tribute to Striver, celebrating the energy and inspiration he brings to learning.",
+  },
+  "saumya-tribute": {
+    title: "A Tribute to Saumya Singh Ma’am — CodexSheet",
+    description: "A note of gratitude for Saumya Singh Ma’am, an AI expert whose knowledge and guidance inspire curiosity and learning.",
+  },
 };
 
 function viewFromLocation(): WorkspaceView {
@@ -347,6 +363,9 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "chat", label: "Group chat", icon: MessageCircle },
       { view: "network", label: "Network", icon: Users },
       { view: "experiences", label: "Interview experiences", icon: Building2 },
+      { view: "saumya-tribute", label: "Saumya Singh Ma’am", icon: Sparkles },
+      { view: "mahima-tribute", label: "Mahima Ma’am", icon: GraduationCap },
+      { view: "striver-tribute", label: "Striver", icon: Sparkles },
     ],
   },
   {
@@ -2400,6 +2419,16 @@ function App() {
 
   if (!isLoaded) {
     return <main className="auth-gate"><div className="auth-gate-card auth-gate-loading"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span>CODEXSHEET · DSA WORKSPACE</span><h1>Preparing your workspace…</h1></div></main>;
+  }
+
+  if (activeView === "mahima-tribute") {
+    return <TributePage person="mahima" />;
+  }
+  if (activeView === "striver-tribute") {
+    return <TributePage person="striver" />;
+  }
+  if (activeView === "saumya-tribute") {
+    return <TributePage person="saumya" />;
   }
 
   // Students pay from a shared link, so the store stays public. Guru is the free

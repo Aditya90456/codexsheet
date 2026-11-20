@@ -9,6 +9,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import StudyPlanner from "../src/StudyPlanner.tsx";
+import AiPracticeSheet, { parseTutorReply } from "../src/AiPracticeSheet.tsx";
 import DailyTaskRail from "../src/DailyTaskRail.tsx";
 import { patterns, problems } from "../src/dsaSheet.ts";
 import { taskForDay } from "../src/dailyTasks.ts";
@@ -98,8 +99,21 @@ const hostileWeak = [...hostile.matchAll(/planner-weak-chip active[^>]*>\s*<span
 fails(`a junk pattern survived the read: ${hostileWeak.join("/")}`, hostileWeak.length !== 1 || hostileWeak[0] !== "1-D DP");
 fails("the junk page is not the ladder either", rowNumbers(hostile).join(",") !== ladderRows);
 
+store["codexsheet-study-plan"] = JSON.stringify({ track: "sprint10", daysPerWeek: 5, dailyTarget: 3, weakPatterns: ["Graphs"], goal: "Prepare for interviews in 10 days", solved: [] });
+const practiceHtml = renderToStaticMarkup(createElement(AiPracticeSheet, {
+  solvedNumbers, statusOf, onStatus: noop,
+}));
+fails("the saved AI practice plan is missing its generated roadmap diagram", !practiceHtml.includes("Roadmap diagram based on your plan") || !practiceHtml.includes("STEP 01"));
+fails("the roadmap diagram does not show real plan topics", !practiceHtml.includes("Graphs"));
+fails("the practice coach follow-up composer is missing", !practiceHtml.includes("Ask your coach anything") || !practiceHtml.includes("Press Enter to send"));
+
+const tutorDiagram = parseTutorReply('Use the left and right pointers.\n```dsa-diagram\n{"type":"array","title":"Two pointers","values":["1","2"],"pointers":[{"index":0,"label":"left"},{"index":1,"label":"right"}]}\n```');
+fails("the tutor array diagram was not parsed", tutorDiagram.diagram?.type !== "array" || tutorDiagram.content !== "Use the left and right pointers.");
+const invalidTutorDiagram = parseTutorReply('```dsa-diagram\n{"type":"flowchart","title":"Unsafe edge","nodes":[{"id":"start","label":"Start","x":50,"y":50}],"edges":[{"from":"start","to":"missing"}]}\n```');
+fails("an invalid tutor diagram was accepted", !invalidTutorDiagram.diagramError || invalidTutorDiagram.diagram !== undefined);
+
 console.log(`windows: ${studyTracks.map((track) => `${track.id}=${track.days}d`).join(" ")}`);
 console.log(`day ${dayNumber}: ladder ${ladderRows.split(",").length} rows ${ladderRows} · sprint ${sprintRows.split(",").length} rows ${sprintRows}`);
-console.log(`markup: ${fresh.length} default · ${sprint.length} sprint · ${count(sprint, /<a href="https/g)} sheet links on the sprint page`);
+console.log(`markup: ${fresh.length} default · ${sprint.length} sprint · ${count(sprint, /<a href="https/g)} sheet links on the sprint page · ${count(practiceHtml, /STEP 0[1-4]/g)} roadmap steps`);
 console.log(failures.length ? `FAILURES (${failures.length}):\n` + failures.join("\n") : "no failures");
 if (failures.length) process.exitCode = 1;

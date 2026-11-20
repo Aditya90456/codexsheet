@@ -30,13 +30,14 @@ function clamp(answer: AiPlan): Partial<PlanConfig> & { note?: string } {
   if (typeof answer.daysPerWeek === "number" && weekly.has(answer.daysPerWeek)) picked.daysPerWeek = answer.daysPerWeek;
   if (typeof answer.dailyTarget === "number" && Number.isFinite(answer.dailyTarget)) picked.dailyTarget = Math.min(8, Math.max(0, Math.round(answer.dailyTarget)));
   if (Array.isArray(answer.weakPatterns)) picked.weakPatterns = answer.weakPatterns.filter((name): name is string => typeof name === "string" && patternNames.has(name)).slice(0, 6);
-  if (typeof answer.note === "string" && answer.note.trim()) picked.note = answer.note.trim().slice(0, 320);
+  if (typeof answer.note === "string" && answer.note.trim()) picked.note = answer.note.trim().slice(0, 1200);
   return picked;
 }
 
 export async function planFromAi(brief: string, base: Partial<PlanConfig> = {}, language = "en"): Promise<PlanSuggestion> {
   const local = configFromBrief(brief, base);
-  const fallbackNote = `Read from your words: ${studyTracks.find((track) => track.id === local.track)?.label ?? "the 12-week ladder"}.`;
+  const selectedTrack = studyTracks.find((track) => track.id === local.track);
+  const fallbackNote = `I heard that you are working toward the ${selectedTrack?.label ?? "12-week ladder"}. We will keep the workload tied to your timeline${local.weakPatterns.length ? ` and bring ${local.weakPatterns.join(", ")} forward for extra practice` : ""}. Start with the first day below${(selectedTrack?.days ?? 1) > 1 ? " and revisit patterns that still feel unfamiliar as you go" : " and focus on clear reasoning rather than trying to cram everything"}.`;
   try {
     const response = await fetch("/api/plan", {
       method: "POST",

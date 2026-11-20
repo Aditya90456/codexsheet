@@ -116,6 +116,12 @@ const urgentAi = await planFromAi("My interview is tomorrow and DSA is weak", { 
 globalThis.fetch = savedFetch;
 fails("the AI overrode the one-day interview plan", urgentAi.config.track !== "sprint1" || urgentAi.config.dailyTarget > 4);
 
+const detailedNote = ("Approach: " + "Build the pattern gradually. ".repeat(20)).trim();
+globalThis.fetch = async () => new Response(JSON.stringify({ plan: { track: "m3", dailyTarget: 3, note: detailedNote } }), { status: 200, headers: { "Content-Type": "application/json" } });
+const detailedAi = await planFromAi("I want a steady plan", { solved: [] });
+globalThis.fetch = savedFetch;
+fails("the planner shortened its detailed coaching reply", detailedAi.note.length !== detailedNote.length || detailedAi.source !== "ai");
+
 const sprint = planFor({ track: "sprint10" });
 fails("planOnDay does not clamp", planOnDay(sprint, 99)?.day !== 10 || planOnDay(sprint, -4)?.day !== 1);
 
