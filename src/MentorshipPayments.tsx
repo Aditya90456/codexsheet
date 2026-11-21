@@ -74,6 +74,7 @@ function initialSavedClaim(productId: ProductId, signedIn: boolean): { ok: boole
 }
 
 function productPath(plan: string): string | null {
+  if (plan === "codexsheet-pass") return "/learn/dsa/voice";
   if (plan === "family" || plan === "dsa250") return "/problems";
   if (plan === "interview-research") return "/interviews";
   if (plan === "roadmap") return "/roadmap";
@@ -83,6 +84,7 @@ function productPath(plan: string): string | null {
 }
 
 function productEntitlement(plan: string): ProductId | null {
+  if (plan === "codexsheet-pass") return "codexsheet-pass";
   if (plan === "family") return "dsa250";
   if (plan === "dsa250" || plan === "interview-research" || plan === "roadmap" || plan === "patterns" || plan === "battle" || plan === "session") return plan;
   return null;
@@ -117,7 +119,7 @@ export default function MentorshipPayments({
   userId = null,
   userName = "",
   userEmail = "",
-  initialProduct = "interview-research" as ProductId,
+  initialProduct = "codexsheet-pass" as ProductId,
   unlocks: fromApp,
   signInSlot = null,
 }: {
@@ -134,7 +136,7 @@ export default function MentorshipPayments({
   const own = useUnlocks(fromApp ? null : (userId ?? null));
   const entitlements = fromApp ?? own;
   const [productId, setProductId] = useState<ProductId>(() => initialCheckoutProduct(initialProduct));
-  const product = productById(productId) ?? interviewResearch;
+  const product = productById(productId) ?? productById("codexsheet-pass")!;
   const [reference, setReference] = useState(() => initialReference(product));
   const [superseded, setSuperseded] = useState("");
   const [buyerName, setBuyerName] = useState(userName);
@@ -332,9 +334,9 @@ export default function MentorshipPayments({
   return (
     <section className="mentorship" aria-label="Mentorship payment">
       <header className="mentorship-head">
-        <span className="mentorship-kicker">INTERVIEW RESEARCH · BATTLE · MENTORSHIP</span>
-        <h1>CodexSheet products. <em>Research the interview.</em></h1>
-        <p>{soldProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(" · ")}. Interview Questions Research is a separate practice page with original prompts and official guide links; the prompts are not company questions. CodexSheet Battle and mentor sessions are separate purchases. The 250-problem DSA library, roadmap and pattern lessons stay free. Paytm QR only, no card forms, no gateway.</p>
+        <span className="mentorship-kicker">ONE PASS · ALL CODEXSHEET ACCESS</span>
+        <h1>CodexSheet Pass. <em>One price, full access.</em></h1>
+        <p>The CodexSheet Pass is {rupees(product.price)} once. It unlocks the current learning and practice rails, including Priya&apos;s DSA voice tutor and JavaScript IDE. Pay on Aditya&apos;s Paytm QR; claims are approved automatically as they land, and an email alert is sent to Aditya.</p>
       </header>
 
       <div className="mentorship-shelf" role="group" aria-label="Choose a product">
@@ -636,12 +638,12 @@ export default function MentorshipPayments({
       </section>
 
       <section className="mentorship-faq" aria-label="How the products work">
-        <article><strong>Separate products</strong><p>{soldProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(", ")}. Each product has its own rail, and the server checks the exact amount before confirming the claim.</p></article>
-        <article><strong>What stayed free</strong><p>The 250-problem DSA library, roadmap, pattern lessons, Deva JavaScript editor, Guru, Algorithm Labs, notes, chat, calendar, leaderboard and certificates are free. Interview Questions Research is a separate paid research page.</p></article>
+        <article><strong>One pass</strong><p>{soldProducts.map((item) => `${item.name} ${rupees(item.price)}`).join(", ")}. The server checks the exact amount before confirming the claim and opening access.</p></article>
+        <article><strong>Included with the pass</strong><p>Priya&apos;s voice tutor and JavaScript DSA IDE, plus the current CodexSheet learning and practice rails.</p></article>
         <article><strong>If you paid before</strong><p>Legacy sheet, roadmap and pattern-course claims remain in the payment ledger and retain their original entitlements. Nothing you already bought is taken back.</p></article>
         <article><strong>Sessions are on Topmate</strong><p>1:1 sessions are booked and paid on <a href="https://topmate.io/aditya_bakshi/2260868" target="_blank" rel="noopener noreferrer">topmate.io/aditya_bakshi</a> — slot selection, payment and the Meet link are all handled there.</p></article>
         <article><strong>DM anytime</strong><p>Stuck at 2am on a sliding window? Book a session on Topmate or message Aditya — no per-question charge.</p></article>
-        <article><strong>How payment is confirmed</strong><p>Pay the figure on Paytm, then record the reference and UTR here — or WhatsApp the receipt screenshot to {whatsapp.display}. The claim is confirmed as it lands, so the rail stops asking for money straight away, and Aditya reconciles your UTR against his statement afterwards.</p></article>
+        <article><strong>Automatic approval and email</strong><p>Pay {rupees(product.price)} on Paytm and submit the reference and UTR. The claim is approved automatically, access opens, and an email alert is sent to Aditya. He reconciles the UTR against his statement afterwards.</p></article>
         <article><strong>Refund within {refundWindow.days} days</strong><p>Full money back if it was not worth it, asked inside {refundWindow.days} days of confirmation — refunded on Paytm to the UPI id you paid from.</p></article>
       </section>
     </section>

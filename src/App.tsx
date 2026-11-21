@@ -27,7 +27,6 @@ import {
   NotebookPen,
   Plus,
   Bell,
-  Rows3,
   Send,
   Search,
   Target,
@@ -246,7 +245,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
   "dsa-ide": { title: "JavaScript DSA code editor with test judging — CodexSheet", description: "Write JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
   "dsa-course": { title: "Animated DSA course — CodexSheet", description: "A lesson-by-lesson DSA course where every data structure is shown moving, not described." },
-  "dsa-voice": { title: "DSA Voice Course with Priya — CodexSheet", description: "Learn data structures and algorithms in guided voice lessons with Priya, your conversational AI DSA tutor." },
+  "dsa-voice": { title: "DSA Voice Practice with Priya — CodexSheet Pass · ₹101", description: "Practice DSA in a JavaScript coding workspace while talking through problems with Priya. Included with the one-time CodexSheet Pass." },
   "programming-basics": { title: "Programming basics in Python, Java & C++ — CodexSheet", description: "A hands-on beginner course covering programming foundations in Python, Java, and C++, with runnable examples and short lessons." },
   guru: { title: "Guru — the free AI DSA teacher — CodexSheet", description: "Guru teaches one DSA topic at a time, checks your reasoning and hands you the problem that follows." },
   cslabs: {
@@ -343,7 +342,6 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
     label: "Workspace",
     items: [
       { view: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { view: "calendar", label: "Practice calendar", icon: CalendarDays },
       { view: "certificate", label: "Certificate", icon: ScrollText },
       { view: "home", label: "Home", labelKey: "nav.home", icon: House },
     ],
@@ -353,12 +351,7 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
     items: [
       { view: "patterns", label: "Pattern library", icon: Layers },
       { view: "interviews", label: "Interview Questions Research", icon: BookOpen },
-      { view: "radar", label: "2027 Interview Radar", icon: Radar },
-      { view: "dsa-ide", label: "Deva", labelKey: "nav.deva", icon: CodeXml },
       { view: "arena", label: "CodexSheet Battle", icon: Bot },
-      { view: "tournament", label: "Student Tournament", icon: Trophy },
-      { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
-      { view: "dsa-voice", label: "DSA Voice Course · Priya", icon: AudioLines },
       { view: "programming-basics", label: "Programming basics", icon: GraduationCap },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
       { view: "cslabs", label: "Algorithm Labs", icon: Activity },
@@ -560,18 +553,10 @@ export function HomePage({
 
       <section className="home-tiers" aria-labelledby="home-tiers-title">
         <div className="home-section-heading">
-          <div><span className="home-section-kicker">INTERVIEW RESEARCH · NO GATEWAY</span><h2 id="home-tiers-title">Free to start. <em>Research the interview.</em></h2></div>
-          <p>Pay on Aditya&apos;s Paytm QR and the claim is confirmed as it lands. Research access never expires.</p>
+          <div><span className="home-section-kicker">ONE PAYMENT · FULL ACCESS</span><h2 id="home-tiers-title">One pass. <em>Your CodexSheet workspace.</em></h2></div>
+          <p>The ₹101 CodexSheet Pass includes Priya&apos;s voice tutor and JavaScript IDE. Payment claims are approved automatically.</p>
         </div>
         <ul className="home-tier-list">
-          <li className="home-tier home-tier-free">
-            <span className="home-tier-price">FREE</span>
-            <div className="home-tier-body">
-              <strong>The workspace</strong>
-              <p>The DSA problem library, JavaScript Deva editor, Guru in {uiLanguages.length - 1} Indian languages, Algorithm Labs, notes, group chat, leaderboard and certificates are free with a Google sign-in.</p>
-            </div>
-            <span className="home-tier-action">{signedIn ? "Yours already" : "Google sign-in"}</span>
-          </li>
           {soldProducts.map((item) => (
             <li className="home-tier" key={item.id}>
               <span className="home-tier-price">{rupees(item.price)}</span>
@@ -1192,19 +1177,20 @@ function recognizeSheetQuery(raw: string) {
 // figure, the promise and the rail it opens all come from src/products.ts, so a
 // lock can never advertise a price the database would refuse - and a student who
 // bought the roadmap is not offered the sheet again by a copy-pasted headline.
-function ProductLock({ product, checking, onOpenStore, onRecheck, onFreeRail }: {
+function ProductLock({ checking, onOpenStore, onRecheck, onFreeRail }: {
   product: CodexSheetProduct;
   checking: boolean;
   onOpenStore: () => void;
   onRecheck: () => void;
   onFreeRail?: () => void;
 }) {
+  const product = productById("codexsheet-pass")!;
   return (
     <section className="sheet-lock" aria-label={`${product.name} is locked`}>
       <div className="sheet-lock-card">
         <span className="sheet-lock-kicker"><Lock size={13} /> {product.tag} · {rupees(product.price)}</span>
         <h2>{product.name} for {rupees(product.price)}. <em>{product.cadence}.</em></h2>
-        <p>{product.oneLine} It opens {railLabel(product)}. The DSA library, JavaScript editor, Guru, Algorithm Labs, notes, chat, calendar, leaderboard and certificates remain free.</p>
+        <p>{product.oneLine} It opens {railLabel(product)}.</p>
         <ul className="sheet-lock-list">
           {product.includes.map((line) => <li key={line}><Check size={14} /> {line}</li>)}
         </ul>
@@ -1383,10 +1369,10 @@ function App() {
   // tells us whether it is a mentor. With Supabase missing the dev build never locks.
   const unlocks = useUnlocks(userId ?? null);
   // A lock panel sends checkout to the exact product the student was viewing.
-  const [checkoutProduct, setCheckoutProduct] = useState<ProductId>("interview-research");
+  const [checkoutProduct, setCheckoutProduct] = useState<ProductId>("codexsheet-pass");
   const lockedFor = (product: ProductId) => !unlocksRail(unlocks, product);
-  function openCheckout(product: ProductId) {
-    setCheckoutProduct(product);
+  function openCheckout(_product: ProductId) {
+    setCheckoutProduct("codexsheet-pass");
     navigateToView("mentorship");
   }
 
@@ -2445,7 +2431,7 @@ function App() {
   // Students pay from a shared link, so the store stays public. Guru is the free
   // teacher and CS Labs the free laboratory, so a student with no account and no
   // money still gets taught and still gets to see the algorithms run.
-  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "interviews" || activeView === "dsa-ide");
+  const publicView = !isSignedIn && (activeView === "home" || activeView === "mentorship" || activeView === "guru" || activeView === "cslabs" || activeView === "marketplace" || activeView === "experiences" || activeView === "verify" || activeView === "patterns" || activeView === "radar" || activeView === "interviews" || activeView === "dsa-ide" || activeView === "dsa-voice");
 
   if (!isSignedIn && !publicView) {
     return <main className="auth-gate"><div className="auth-gate-card"><div className="auth-gate-copy"><img className="auth-gate-logo" src="/codexsheet-primary-reversed.svg" alt="CodexSheet" /><span className="auth-gate-kicker">CODEXSHEET · DSA WORKSPACE</span><h1>One sign in.<br/><em>Your whole toolkit.</em></h1><p>Sign in to unlock your DSA practice workspace: problems, articles, roadmap, notes, editor, and study features.</p><div className="auth-gate-features"><span>Problem library</span><span>Animated lessons</span><span>Interview prep</span></div><div className="auth-gate-actions"><SignInButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-primary">Sign in <ArrowRight size={16}/></button></SignInButton><SignUpButton mode="modal" forceRedirectUrl={window.location.href}><button className="auth-gate-secondary">Create student account</button></SignUpButton></div><small>Your workspace opens automatically after sign in.</small></div><div className="auth-gate-art" aria-hidden="true"><div className="auth-gate-orbit auth-gate-orbit-one"/><div className="auth-gate-orbit auth-gate-orbit-two"/><div className="auth-gate-code"><span>YOUR NEXT STEP</span><strong>Learn →<br/>Practice →<br/><i>Grow.</i></strong><small>DSA · INTERVIEWS · CAREER</small></div><b>✳</b></div></div><StudentFooter /></main>;
@@ -2501,6 +2487,14 @@ function App() {
     if (activeView === "dsa-ide") {
       return <main className="human-ai-public ui-scope"><DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={null} focusProblem={editorProblem} /><StudentFooter /></main>;
     }
+    if (activeView === "dsa-voice") {
+      return <main className="voice-practice-public ui-scope">
+        {lockedFor("codexsheet-pass")
+          ? <ProductLock product={productById("codexsheet-pass")!} checking={!unlocks.loaded} onOpenStore={() => openCheckout("codexsheet-pass")} onRecheck={() => void unlocks.refresh()} />
+          : <DsaVoiceCourse problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />}
+        <StudentFooter />
+      </main>;
+    }
     if (activeView === "verify") {
       return <main className="cert-public ui-scope"><VerifyPage /><StudentFooter /></main>;
     }
@@ -2539,12 +2533,11 @@ function App() {
           </button>
 
           <button type="button"
-            className={`sidebar-item${activeView === "problems" || activeView === "companies" ? " active" : ""}`}
-            aria-pressed={activeView === "problems" || activeView === "companies"}
-            onClick={() => { navigateToView("problems"); setNavOpen(false); }}
+            className={`sidebar-item${activeView === "dsa-voice" ? " active" : ""}`}
+            aria-pressed={activeView === "dsa-voice"}
+            onClick={() => { navigateToView("dsa-voice"); setNavOpen(false); }}
           >
-            <Rows3 size={16} /><span>AI practice</span>
-            <em className="sidebar-count">{solved}/{problems.length}</em>
+            <AudioLines size={16} /><span>Voice practice</span>
           </button>
 
           <button type="button"
@@ -2772,7 +2765,9 @@ function App() {
       )}
       {activeView === "tournament" && !lockedFor("battle") && <TournamentPage />}
       {activeView === "dsa-course" && <DsaCoursePage />}
-      {activeView === "dsa-voice" && <DsaVoiceCourse />}
+      {activeView === "dsa-voice" && (lockedFor("codexsheet-pass")
+        ? <ProductLock product={productById("codexsheet-pass")!} checking={!unlocks.loaded} onOpenStore={() => openCheckout("codexsheet-pass")} onRecheck={() => void unlocks.refresh()} />
+        : <DsaVoiceCourse problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} />)}
       {activeView === "programming-basics" && <ProgrammingBasicsCourse />}
       {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}
       {activeView === "cslabs" && <CsLabs onOpenMentorship={() => navigateToView("mentorship")} />}
@@ -2792,8 +2787,7 @@ function App() {
                 <button type="button" className="dashboard-identity-cta" onClick={() => navigateToView("network")}><Users size={14} /> Share your code</button>
               </div>
               <div className="dashboard-welcome-actions">
-                <button className="dashboard-continue" onClick={() => navigateToView("problems")}>Continue practicing <ArrowRight size={15} /></button>
-                <button className="dashboard-calendar-link" onClick={() => navigateToView("calendar")}><CalendarDays size={15} /> View calendar</button>
+                <button className="dashboard-continue" onClick={() => navigateToView("dsa-voice")}>Continue voice practice <ArrowRight size={15} /></button>
                 <button className="dashboard-tool-link" onClick={() => navigateToView("companies")}><UsersRound size={15} /> Company sets</button>
                 <button className="dashboard-tool-link" onClick={() => navigateToView("resume")}><FileText size={15} /> Resume builder</button>
               </div>
@@ -2906,10 +2900,8 @@ function App() {
             </div>
           </section>
           <section className="dashboard-lc-bottom">
-            <article className="dashboard-panel dashboard-activity-panel">
-              <header className="panel-heading"><div><span className="insight-label">Activity</span><h2>Your practice calendar</h2></div><span className="dashboard-activity-total">{practiceDays.length} active days</span></header>
-              <div className="dashboard-heatmap-wrap"><div className="dashboard-heatmap-weekdays"><span>Mon</span><span>Wed</span><span>Fri</span></div><div className="dashboard-heatmap" role="grid" aria-label="Practice activity in the last 12 weeks">{Array.from({ length: 84 }, (_, index) => { const date = new Date(); date.setHours(0,0,0,0); date.setDate(date.getDate() - (83 - index)); const dateKey = localDateKey(date); const didPractice = practiceDaySet.has(dateKey); return <span role="gridcell" key={dateKey} className={didPractice ? "active" : ""} title={`${date.toLocaleDateString(undefined,{month:"short",day:"numeric"})}${didPractice?" · Practice session":" · No practice logged"}`} aria-label={`${date.toLocaleDateString()}${didPractice?", practice session":""}`}/>; })}</div></div>
-              <footer className="dashboard-heatmap-footer"><span>{practiceStreak.current > 0 ? <><Flame size={13}/> {practiceStreak.current}-day streak · best {practiceStreak.best} days</> : "Log a solved problem to start your streak"}</span><span>LESS <i/><i/><i className="active"/> MORE</span></footer>
+            <article className="dashboard-panel dashboard-lld-card dashboard-voice-practice-card">
+              <span className="dashboard-lld-kicker"><AudioLines size={14}/> INCLUDED IN ₹101 CODEXSHEET PASS</span><h2>Think aloud.<br/><em>Code with Priya.</em></h2><p>Open the JavaScript IDE, run your solution, and talk through the problem with your voice tutor in the same workspace.</p><button type="button" onClick={() => navigateToView("dsa-voice")}>Open voice practice <ArrowRight size={15}/></button>
             </article>
             <article className="dashboard-panel dashboard-lld-card"><span className="dashboard-lld-kicker"><Layers3 size={14}/> NEXT CAREER TRACK</span><h2>Design for the<br/><em>senior engineer.</em></h2><p>A visual 12-week LLD roadmap: domain modeling, concurrency, resilience, and senior-level trade-offs.</p><div className="dashboard-lld-steps"><span>01 · MODEL</span><i/><span>02 · SCALE</span><i/><span>03 · LEAD</span></div><button type="button" onClick={() => navigateToView("lld")}>Open LLD roadmap <ArrowRight size={15}/></button></article>
           </section>

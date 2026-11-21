@@ -1,5 +1,5 @@
-// CodexSheet sells five named products, priced in src/products.ts and enforced by
-// a CHECK constraint on public.mentorship_orders. Each one is one exact figure,
+// CodexSheet sells one pass, priced in src/products.ts and enforced by
+// a CHECK constraint on public.mentorship_orders. It is one exact figure,
 // paid once to Aditya's personal Paytm UPI handle, so the app never touches a
 // gateway: his own QR carries the payee only, the UPI intent carries the figure,
 // and the server refuses a claim that does not match the price on the card. The

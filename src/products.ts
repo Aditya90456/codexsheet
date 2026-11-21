@@ -14,7 +14,7 @@
 
 import { rupees } from "./mentorship";
 
-export type ProductId = "dsa250" | "interview-research" | "roadmap" | "patterns" | "battle" | "session";
+export type ProductId = "dsa250" | "interview-research" | "roadmap" | "patterns" | "battle" | "session" | "codexsheet-pass";
 
 export type CodexSheetProduct = {
   id: ProductId;
@@ -35,9 +35,27 @@ export type CodexSheetProduct = {
 };
 
 /** The views a product can lock. Mirrors WorkspaceView in App.tsx, without the union. */
-export type WorkspaceGate = "problems" | "interview-research" | "roadmap" | "patterns" | "arena" | "mentees";
+export type WorkspaceGate = "problems" | "interview-research" | "roadmap" | "patterns" | "arena" | "mentees" | "dsa-voice";
 
 export const codexSheetProducts: CodexSheetProduct[] = [
+  {
+    id: "codexsheet-pass",
+    name: "CodexSheet Pass",
+    cadence: "one payment · never expires",
+    price: 101,
+    tag: "FULL ACCESS",
+    oneLine: "One ₹101 pass unlocks CodexSheet learning and practice, including Priya’s DSA voice practice with the JavaScript IDE.",
+    includes: [
+      "Priya’s voice tutor and JavaScript DSA coding workspace",
+      "One-time access to all current CodexSheet product rails",
+      "Automatic approval when your payment claim is submitted",
+      "A payment email alert is sent to the CodexSheet owner",
+      "Refund inside 5 days if it was not worth it",
+    ],
+    gate: ["dsa-voice", "problems", "interview-research", "roadmap", "patterns", "arena", "mentees"],
+    repeatable: false,
+    sold: true,
+  },
   {
     id: "dsa250",
     name: "Legacy CodexSheet DSA Sheet",
@@ -69,7 +87,7 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     ],
     gate: ["interview-research"],
     repeatable: false,
-    sold: true,
+    sold: false,
   },
   {
     id: "roadmap",
@@ -121,7 +139,7 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     ],
     gate: ["arena"],
     repeatable: false,
-    sold: true,
+    sold: false,
   },
   {
     id: "session",
@@ -138,7 +156,7 @@ export const codexSheetProducts: CodexSheetProduct[] = [
     ],
     gate: ["mentees"],
     repeatable: true,
-    sold: true,
+    sold: false,
   },
 ];
 
@@ -154,6 +172,7 @@ export function productById(id: string): CodexSheetProduct | undefined {
 
 /** The rails a product opens, said the way a student would say it. */
 export const gateLabels: Record<WorkspaceGate, string> = {
+  "dsa-voice": "DSA Voice Practice with Priya and the JavaScript IDE on /learn/dsa/voice",
   problems: "the 250-problem sheet on /problems",
   "interview-research": "Interview Questions Research on /interviews",
   roadmap: "the 12-week board on /roadmap",
