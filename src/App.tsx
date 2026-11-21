@@ -79,8 +79,10 @@ import DailyTaskRail from "./DailyTaskRail";
 import { expectedByDay, planDays, taskForDay } from "./dailyTasks";
 import { DashboardHub, ResumeTrack, resumeRows, type HubCounts } from "./DashboardHub";
 import DsaCoursePage from "./DsaCoursePage";
+import DsaVoiceCourse from "./DsaVoiceCourse";
 import ProgrammingBasicsCourse from "./ProgrammingBasicsArticles";
 import StudyPlanner from "./StudyPlanner";
+import DsaAiRoadmap from "./DsaAiRoadmap";
 import AiPracticeSheet from "./AiPracticeSheet";
 import TributePage from "./TributePage";
 import StudentNetwork from "./StudentNetwork";
@@ -174,7 +176,7 @@ function sheetGroupHint(group: Problem[], mode: SheetGroupMode) {
   const members = new Set(group.map((problem) => problem.pattern));
   return `${members.size} ${members.size === 1 ? "pattern" : "patterns"} · ${mustKnow} must-know`;
 }
-export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "interviews" | "network" | "arena" | "tournament" | "mahima-tribute" | "striver-tribute" | "saumya-tribute";
+export type WorkspaceView = "home" | "dashboard" | "problems" | "patterns" | "companies" | "dsa-ide" | "dsa-course" | "dsa-voice" | "programming-basics" | "guru" | "cslabs" | "leaderboard" | "certificate" | "verify" | "calendar" | "roadmap" | "dsa-ai-roadmap" | "lld" | "whiteboard" | "chat" | "notes" | "articles" | "resume" | "mentorship" | "mentees" | "marketplace" | "studio" | "experiences" | "radar" | "interviews" | "network" | "arena" | "tournament" | "mahima-tribute" | "striver-tribute" | "saumya-tribute";
 
 export const viewPaths: Record<WorkspaceView, string> = {
   home: "/",
@@ -184,6 +186,7 @@ export const viewPaths: Record<WorkspaceView, string> = {
   companies: "/companies",
   "dsa-ide": "/ide/dsa",
   "dsa-course": "/learn/dsa",
+  "dsa-voice": "/learn/dsa/voice",
   "programming-basics": "/learn/programming",
   guru: "/guru",
   cslabs: "/cslabs",
@@ -192,6 +195,7 @@ export const viewPaths: Record<WorkspaceView, string> = {
   verify: "/verify",
   calendar: "/calendar",
   roadmap: "/roadmap",
+  "dsa-ai-roadmap": "/roadmap/dsa-ai",
   lld: "/roadmap/lld",
   whiteboard: "/whiteboard/lld",
   chat: "/chat",
@@ -222,7 +226,7 @@ const siteOrigin = "https://www.codexsheet.in";
 export const selfHeadedViews: WorkspaceView[] = [
   "home", "guru", "leaderboard", "certificate", "verify", "patterns",
   "companies", "cslabs", "articles", "resume", "radar", "interviews", "experiences",
-  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "programming-basics", "arena", "tournament",
+  "mentorship", "mentees", "marketplace", "studio", "network", "dsa-course", "dsa-voice", "programming-basics", "arena", "tournament",
 ];
 
 const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
@@ -242,6 +246,7 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   companies: { title: "Company-wise DSA questions — CodexSheet", description: "See which patterns each company actually asks before you spend a month on the wrong topics." },
   "dsa-ide": { title: "JavaScript DSA code editor with test judging — CodexSheet", description: "Write JavaScript and run it against hidden test cases with verdicts, runtime and memory." },
   "dsa-course": { title: "Animated DSA course — CodexSheet", description: "A lesson-by-lesson DSA course where every data structure is shown moving, not described." },
+  "dsa-voice": { title: "DSA Voice Course with Priya — CodexSheet", description: "Learn data structures and algorithms in guided voice lessons with Priya, your conversational AI DSA tutor." },
   "programming-basics": { title: "Programming basics in Python, Java & C++ — CodexSheet", description: "A hands-on beginner course covering programming foundations in Python, Java, and C++, with runnable examples and short lessons." },
   guru: { title: "Guru — the free AI DSA teacher — CodexSheet", description: "Guru teaches one DSA topic at a time, checks your reasoning and hands you the problem that follows." },
   cslabs: {
@@ -262,6 +267,10 @@ const viewSeo: Record<WorkspaceView, { title: string; description: string }> = {
   },
   calendar: { title: "Study calendar — CodexSheet", description: "Plan the week you will actually study, and see the gap between plan and practice." },
   roadmap: { title: "12-week DSA roadmap — CodexSheet", description: "A week-by-week DSA roadmap built around your target placement season." },
+  "dsa-ai-roadmap": {
+    title: "26-week DSA + AI roadmap — CodexSheet",
+    description: "A practical 26-week learning track for DSA, machine learning, modern AI, projects, and interview readiness.",
+  },
   lld: { title: "Low-level design practice — CodexSheet", description: "Design the systems interviewers ask for: parking lot, elevator, splitwise, and the rest." },
   whiteboard: { title: "LLD whiteboard — CodexSheet", description: "Sketch classes and interactions the way you would on a real interview whiteboard." },
   chat: { title: "Mentor chat — CodexSheet", description: "Ask your mentor between sessions and get an answer the same day." },
@@ -349,10 +358,12 @@ const navMenuGroups: Array<{ label: string; items: NavMenuItem[] }> = [
       { view: "arena", label: "CodexSheet Battle", icon: Bot },
       { view: "tournament", label: "Student Tournament", icon: Trophy },
       { view: "dsa-course", label: "DSA Course", labelKey: "nav.course", icon: BookOpen },
+      { view: "dsa-voice", label: "DSA Voice Course · Priya", icon: AudioLines },
       { view: "programming-basics", label: "Programming basics", icon: GraduationCap },
       { view: "guru", label: "Guru", labelKey: "nav.guru", icon: Sparkles },
       { view: "cslabs", label: "Algorithm Labs", icon: Activity },
       { view: "roadmap", label: "Roadmap", icon: MapIcon },
+      { view: "dsa-ai-roadmap", label: "DSA + AI roadmap", icon: Bot },
       { view: "notes", label: "Notes", icon: NotebookPen },
       { view: "articles", label: "Articles", icon: BookOpen },
     ],
@@ -2643,6 +2654,8 @@ function App() {
                       ? "Calendar"
                       : activeView === "roadmap"
                         ? "Roadmap"
+                        : activeView === "dsa-ai-roadmap"
+                          ? "DSA + AI roadmap"
                       : activeView === "lld"
                         ? "Senior SDE LLD"
                       : activeView === "whiteboard"
@@ -2671,6 +2684,8 @@ function App() {
                     ? "Practice calendar"
                     : activeView === "roadmap"
                       ? "Your DSA roadmap"
+                      : activeView === "dsa-ai-roadmap"
+                        ? "DSA + AI · 26-week learning track"
                       : activeView === "lld"
                         ? "Senior SDE · Low-Level Design"
                       : activeView === "whiteboard"
@@ -2680,7 +2695,7 @@ function App() {
                       : activeView === "notes"
                         ? "Personal notebook"
                 : activeView === "articles" ? "DSA concept articles" : activeView === "experiences" ? "What they were actually asked" : activeView === "network" ? "Share your code, read theirs" : activeView === "resume" ? "Create a resume that tells your story" : "Your workspace"}{" "}
-              <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : activeView === "problems" ? "CODEXSHEET AI" : "DSA 250"}</span>
+              <span className="private-pill">{activeView === "lld" ? "SENIOR SDE" : activeView === "dsa-ai-roadmap" ? "DSA + AI" : activeView === "problems" ? "CODEXSHEET AI" : "DSA 250"}</span>
             </h1>
             <p>
               {activeView === "dashboard"
@@ -2695,6 +2710,8 @@ function App() {
                     ? "See your practice history and keep your daily streak going."
                     : activeView === "roadmap"
                       ? "A study plan shaped around your pace and the patterns you want to master."
+                      : activeView === "dsa-ai-roadmap"
+                        ? "A week-by-week path from DSA foundations to applied AI projects and interview readiness."
                       : activeView === "lld"
                         ? "A visual, phase-by-phase LLD plan for senior engineering interviews."
                       : activeView === "whiteboard"
@@ -2731,6 +2748,7 @@ function App() {
       {activeView === "verify" && <VerifyPage />}
       {activeView === "lld" && <LldRoadmapPage onOpenWhiteboard={() => navigateToView("whiteboard")} />}
       {activeView === "whiteboard" && <LldWhiteboardPage />}
+      {activeView === "dsa-ai-roadmap" && <DsaAiRoadmap onOpenDsaPractice={() => navigateToView("problems")} />}
       {activeView === "companies" && <CompanyProblems />}
       {activeView === "dsa-ide" && <DsaIde problems={problems.map(({ number, title, pattern, difficulty }) => ({ number, title, pattern, difficulty }))} userId={user?.id ?? null} focusProblem={editorProblem} />}
       {activeView === "arena" && lockedFor("battle") && (
@@ -2754,6 +2772,7 @@ function App() {
       )}
       {activeView === "tournament" && !lockedFor("battle") && <TournamentPage />}
       {activeView === "dsa-course" && <DsaCoursePage />}
+      {activeView === "dsa-voice" && <DsaVoiceCourse />}
       {activeView === "programming-basics" && <ProgrammingBasicsCourse />}
       {activeView === "guru" && <DsaGuru onOpenMentorship={() => navigateToView("mentorship")} />}
       {activeView === "cslabs" && <CsLabs onOpenMentorship={() => navigateToView("mentorship")} />}

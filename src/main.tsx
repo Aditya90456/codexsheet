@@ -22,6 +22,7 @@ import "./study-plan.css";
 import "./ai-practice-sheet.css";
 import "./dashboard-hub.css";
 import "./tribute-page.css";
+import "./dsa-ai-roadmap.css";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const hasClerkPublishableKey =
